@@ -49,12 +49,20 @@ function createWindow() {
 }
 
 function createTray() {
+  let trayIcon;
   const iconPath = path.join(__dirname, 'icon.ico');
-  const trayIcon = nativeImage.createFromPath(iconPath);
 
-  // Check if icon loaded successfully
+  // Try to load icon.ico first
+  trayIcon = nativeImage.createFromPath(iconPath);
+
+  // If icon doesn't exist, create a fallback from data URL (16x16 purple square)
   if (trayIcon.isEmpty()) {
-    console.warn('Tray icon not found, using empty icon');
+    console.warn('Tray icon not found at:', iconPath);
+    console.log('Creating fallback tray icon...');
+
+    // Base64 encoded 16x16 PNG with purple color
+    const pngData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAP0lEQVQ4T2NkoBAwUqifYdQAhtEwGBUG4oXB////GRkZGf9TNQD+//+PWgZQ1QCYAaMBMBoGw8AARvI1kE9gAACqvQURlKWzKwAAAABJRU5ErkJggg==';
+    trayIcon = nativeImage.createFromDataURL(pngData);
   }
 
   tray = new Tray(trayIcon);

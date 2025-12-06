@@ -26,11 +26,11 @@ const generateName = () => {
     return `${adjs[Math.floor(Math.random() * adjs.length)]}${nouns[Math.floor(Math.random() * nouns.length)]}`;
 };
 
-const DEFAULT_PROFILE: UserProfile = {
+const getDefaultProfile = (): UserProfile => ({
     displayName: generateName(),
     statusMessage: "",
     color: "#5865F2"
-};
+});
 
 const DEFAULT_DEVICES: DeviceSettings = {
     audioInputId: "",
@@ -53,7 +53,13 @@ export default function App() {
   });
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
       const saved = localStorage.getItem('pisscord_profile');
-      return saved ? JSON.parse(saved) : DEFAULT_PROFILE;
+      if (saved) {
+          return JSON.parse(saved);
+      }
+      // Generate and save a default profile on first launch
+      const defaultProfile = getDefaultProfile();
+      localStorage.setItem('pisscord_profile', JSON.stringify(defaultProfile));
+      return defaultProfile;
   });
   const [deviceSettings, setDeviceSettings] = useState<DeviceSettings>(() => {
       const saved = localStorage.getItem('pisscord_devices');
@@ -77,7 +83,8 @@ export default function App() {
 
   // --- REFS ---
   const peerInstance = useRef<Peer | null>(null);
-  const callInstance = useRef<any>(null); 
+  const callInstance = useRef<any>(null);
+  const dataConnection = useRef<any>(null); // P2P data channel for text messages
   const myVideoTrack = useRef<MediaStreamTrack | null>(null); // Keep original camera track for when screenshare ends
   const remoteAudioRef = useRef<HTMLAudioElement>(null); // Global audio element
   const isMountedRef = useRef(true);
@@ -181,6 +188,12 @@ export default function App() {
         }
     });
 
+    // Handle incoming data connections for text messages
+    peer.on('connection', (conn) => {
+        log('Incoming data connection from: ' + conn.peer, 'webrtc');
+        setupDataConnection(conn);
+    });
+
     peerInstance.current = peer;
 
     // Presence Subscription
@@ -244,14 +257,51 @@ export default function App() {
     }
   };
 
+  const setupDataConnection = (conn: any) => {
+      dataConnection.current = conn;
+
+      conn.on('open', () => {
+          log('Data connection established', 'webrtc');
+      });
+
+      conn.on('data', (data: any) => {
+          // Receive text messages from remote peer
+          if (data.type === 'text-message') {
+              const newMessage: Message = {
+                  id: data.id,
+                  sender: data.sender,
+                  content: data.content,
+                  timestamp: data.timestamp,
+                  isAi: false
+              };
+              setMessages(prev => ({
+                  ...prev,
+                  [data.channelId]: [...(prev[data.channelId] || []), newMessage]
+              }));
+              log(`Received message from ${data.sender}: ${data.content}`, 'info');
+          }
+      });
+
+      conn.on('close', () => {
+          log('Data connection closed', 'webrtc');
+          dataConnection.current = null;
+      });
+
+      conn.on('error', (err: Error) => {
+          log(`Data connection error: ${err.message}`, 'error');
+      });
+  };
+
   const cleanupCall = () => {
       if (callInstance.current) callInstance.current.close();
+      if (dataConnection.current) dataConnection.current.close();
       if (myStream) myStream.getTracks().forEach(t => t.stop());
       setMyStream(null);
       setRemoteStream(null);
       setConnectionState(ConnectionState.DISCONNECTED);
       setActiveVoiceChannelId(null);
       setIsScreenSharing(false);
+      dataConnection.current = null;
       log("Call disconnected.", 'info');
   };
 
@@ -293,6 +343,10 @@ export default function App() {
           const stream = await getLocalStream();
           const call = peerInstance.current.call(remoteId, stream);
           setupCallEvents(call);
+
+          // Also establish data connection for text messages
+          const conn = peerInstance.current.connect(remoteId);
+          setupDataConnection(conn);
       } catch (err) {
           log("Failed to start call", 'error');
           setConnectionState(ConnectionState.ERROR);
@@ -503,6 +557,23 @@ export default function App() {
           id: Date.now().toString() + Math.random().toString(), sender, content: text, timestamp: Date.now(), isAi
       };
       setMessages(prev => ({ ...prev, [channelId]: [...(prev[channelId] || []), newMessage] }));
+
+      // Send message to remote peer via data connection (except AI messages)
+      if (!isAi && dataConnection.current && dataConnection.current.open) {
+          try {
+              dataConnection.current.send({
+                  type: 'text-message',
+                  channelId,
+                  id: newMessage.id,
+                  sender: newMessage.sender,
+                  content: newMessage.content,
+                  timestamp: newMessage.timestamp
+              });
+              log(`Sent message to remote peer: ${text}`, 'webrtc');
+          } catch (err: any) {
+              log(`Failed to send message: ${err.message}`, 'error');
+          }
+      }
   };
 
   const handleSaveProfile = (newProfile: UserProfile) => {
