@@ -6,6 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Pisscord is a private, peer-to-peer Discord clone built with React, TypeScript, Electron, and PeerJS. It enables direct P2P voice/video calling, text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
 
+**Current Version:** 1.0.10
+**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.0.10
+
 ## Key Architecture
 
 ### P2P Communication Layer
@@ -214,3 +217,47 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - Strict mode enabled
 - `noUnusedLocals` and `noUnusedParameters` disabled (intentional)
 - React JSX transform (no need to import React in TSX files)
+
+## Recent Changes (v1.0.9 - v1.0.10)
+
+### v1.0.10 (2025-12-06)
+- **Bugfix:** Fixed critical startup error - `createWindow` function needed `async` keyword for `await` usage
+
+### v1.0.9 (2025-12-06)
+- **Sound Effects:** Added audio feedback for user join/leave, mute/unmute, incoming/outgoing calls
+- **Toast Notifications:** Replaced browser alerts with clean toast notifications
+- **Context Menu:** Right-click anywhere for quick actions (copy peer ID, mute, settings, disconnect)
+- **Confirmation Modals:** Native-looking dialogs for important actions (incoming calls, disconnect)
+- **Dev Mode Improvements:** Auto-detect Vite dev server port (scans 5173-5180), better `app.isPackaged` detection
+
+### New Components Added
+- `components/Toast.tsx` - Toast notification system with auto-dismiss
+- `components/ContextMenu.tsx` - Right-click context menu with `useContextMenu` hook
+- `components/ConfirmModal.tsx` - Confirmation dialogs with callbacks
+- `services/sounds.ts` - Sound effects service with preloading and volume control
+
+### Sound Files (public/assets/)
+- `user_join_sound.mp3` / `user_leave_sound.mp3`
+- `mic_muted_sound.mp3` / `mic_unmuted_sound.mp3`
+- `incoming_call_sound.mp3` / `outgoing_call_sound.mp3`
+
+## Planned v1.1 Features (Firebase-Powered)
+
+### Priority Features
+1. **Offline Messages** - Store messages in Firebase when recipient offline, deliver when online
+2. **Friends/Contacts List** - Save favorite peer IDs with names
+3. **Call History** - Log calls in Firebase (who, when, duration)
+4. **User Profiles** - Avatars via Firebase Storage, custom colors, status
+
+### Firebase Free Tier Limits (Spark Plan)
+| Service | Free Limit |
+|---------|------------|
+| Realtime Database | 1 GB stored, 10 GB/month download |
+| Cloud Firestore | 1 GB stored, 50K reads/day, 20K writes/day |
+| Authentication | Unlimited users |
+| Cloud Storage | 5 GB stored, 1 GB/day download |
+| Cloud Functions | 2M invocations/month |
+
+### Current Firebase Usage
+- Presence system only (online users, status, in-call state)
+- Location: `services/firebase.ts`

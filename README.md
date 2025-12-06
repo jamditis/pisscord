@@ -1,6 +1,8 @@
 ![pisscord logo](https://i.imgur.com/vCz4AHQ.png)
 # Pisscord
 
+**Current Version:** v1.0.10 | [Download Latest](https://github.com/jamditis/pisscord/releases/latest)
+
 A private, peer-to-peer Discord clone for trusted groups with enterprise-grade voice/video calling, AI assistance, and real-time presence.
 
 ## 🚀 Features
