@@ -17,6 +17,7 @@ import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfi
 import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages, cleanupOldMessages, getPissbotConfig, PissbotConfig, checkForMOTD, sendJoinRequest, subscribeToJoinRequests, removeJoinRequest } from './services/firebase';
 import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
+import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService } from './services/platform';
 
 const APP_VERSION = "1.1.1";
 
@@ -195,12 +196,8 @@ export default function App() {
   const log = (message: string, type: 'info' | 'error' | 'webrtc' = 'info') => {
       const entry: AppLogs = { timestamp: Date.now(), type, message };
       setLogs(prev => [entry, ...prev].slice(0, 50));
-      console.log(`[${type.toUpperCase()}] ${message}`);
-      
-      // Log to file via Electron
-      if (window.electronAPI?.logToFile) {
-          window.electronAPI.logToFile(`[${type.toUpperCase()}] ${message}`);
-      }
+      // Use platform-agnostic logging (handles console + file logging on Electron)
+      LogService.log(type, message);
   };
 
   // --- LIFECYCLE: Updates & Peer Init ---
@@ -245,11 +242,9 @@ export default function App() {
         }
     });
 
-    // Setup Electron auto-updater listeners (if running in Electron)
-    if ((window as any).electronAPI) {
-      const electronAPI = (window as any).electronAPI;
-
-      electronAPI.onUpdateAvailable((data: any) => {
+    // Setup auto-updater listeners (Electron only - no-op on other platforms)
+    if (UpdateService.isSupported) {
+      UpdateService.onUpdateAvailable((data: any) => {
         log(`Update available: ${data.version}`, 'info');
         setUpdateInfo({
           url: '',
@@ -260,7 +255,7 @@ export default function App() {
         setShowUpdateModal(true);
       });
 
-      electronAPI.onUpdateDownloadProgress((data: any) => {
+      UpdateService.onUpdateProgress((data: any) => {
         log(`Downloading update: ${data.percent}%`, 'info');
         setUpdateInfo(prev => prev ? {
           ...prev,
@@ -269,7 +264,7 @@ export default function App() {
         } : null);
       });
 
-      electronAPI.onUpdateDownloaded((data: any) => {
+      UpdateService.onUpdateDownloaded((data: any) => {
         log(`Update downloaded: ${data.version}`, 'info');
         setUpdateInfo(prev => prev ? {
           ...prev,
@@ -278,7 +273,7 @@ export default function App() {
         } : null);
       });
 
-      electronAPI.onUpdateError((message: string) => {
+      UpdateService.onUpdateError((message: string) => {
         log(`Update error: ${message}`, 'error');
       });
     }
@@ -313,10 +308,8 @@ export default function App() {
             return;
         }
 
-        // Show the window before displaying the confirmation dialog
-        if (window.electronAPI?.showWindow) {
-            window.electronAPI.showWindow();
-        }
+        // Show the window before displaying the confirmation dialog (Electron only)
+        WindowService.showWindow();
 
         // Store pending call and show confirmation modal
         pendingCallRef.current = call;
@@ -701,11 +694,11 @@ export default function App() {
       // START SCREEN SHARE
       if (!isScreenSharing) {
           // Use Electron's desktopCapturer if available - show picker
-          if (window.electronAPI?.getDesktopSources) {
+          if (ScreenShareService.isSupported) {
               log("Using Electron desktopCapturer - fetching sources", 'webrtc');
               try {
-                  const sources = await window.electronAPI.getDesktopSources();
-                  if (sources.length === 0) {
+                  const sources = await ScreenShareService.getSources();
+                  if (!sources || sources.length === 0) {
                       toast.warning("No Sources", "No screen sources available to share.");
                       return;
                   }
@@ -716,8 +709,8 @@ export default function App() {
                   log(`Failed to get screen sources: ${err.message}`, 'error');
                   toast.error("Screen Share Error", `Failed to get screen sources: ${err.message}`);
               }
-          } else {
-              // Fallback to standard getDisplayMedia (has its own picker)
+          } else if (!Platform.isMobile) {
+              // Fallback to standard getDisplayMedia (has its own picker) - not on mobile
               try {
                   log("Using standard getDisplayMedia", 'webrtc');
                   const displayStream = await navigator.mediaDevices.getDisplayMedia({
@@ -732,6 +725,9 @@ export default function App() {
                       toast.error("Screen Share Failed", err.message);
                   }
               }
+          } else {
+              // Mobile - screen sharing not supported
+              toast.warning("Not Supported", "Screen sharing is not available on mobile devices.");
           }
       }
       // STOP SCREEN SHARE (Manual Click)
@@ -943,13 +939,13 @@ export default function App() {
       toast.success("Report Submitted", "Your issue has been posted to #issues.");
   };
 
-  const copyId = () => {
+  const copyId = async () => {
       if (myPeerId) {
-          // Use Electron clipboard API if available, otherwise fallback to navigator
-          if (window.electronAPI?.copyToClipboard) {
-              window.electronAPI.copyToClipboard(myPeerId);
-          } else {
-              navigator.clipboard.writeText(myPeerId);
+          // Use platform-agnostic clipboard service
+          await ClipboardService.write(myPeerId);
+          // Haptic feedback on mobile
+          if (Platform.isMobile) {
+              HapticsService.impact('light');
           }
           toast.success("Copied!", "Your Peer ID has been copied to clipboard.");
       }

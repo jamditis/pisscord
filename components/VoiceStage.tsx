@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { ConnectionState, UserProfile, PresenceUser } from '../types';
+import { ClipboardService, HapticsService, Platform } from '../services/platform';
 
 interface VoiceStageProps {
   myStream: MediaStream | null;
@@ -326,13 +327,11 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
                                  {myPeerId || 'Generating secure ID...'}
                              </div>
                              <button
-                                 onClick={() => {
+                                 onClick={async () => {
                                      if(myPeerId) {
-                                         // Use Electron clipboard API if available
-                                         if ((window as any).electronAPI?.copyToClipboard) {
-                                             (window as any).electronAPI.copyToClipboard(myPeerId);
-                                         } else {
-                                             navigator.clipboard.writeText(myPeerId);
+                                         await ClipboardService.write(myPeerId);
+                                         if (Platform.isMobile) {
+                                             HapticsService.impact('light');
                                          }
                                          onIdCopied?.();
                                      }

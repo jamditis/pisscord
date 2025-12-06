@@ -1,0 +1,141 @@
+/* Base styles */
+body {
+  background-color: #202225;
+  color: #dcddde;
+  overflow: hidden;
+  /* iOS safe area support */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background-color: #2f3136;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #202225;
+  border-radius: 4px;
+}
+
+/* Fix for text cursor visibility */
+input, textarea {
+  caret-color: white !important;
+  cursor: text !important;
+}
+input:focus, textarea:focus {
+  caret-color: white !important;
+}
+
+/* ============================================
+   MOBILE-SPECIFIC STYLES
+   ============================================ */
+
+/* Prevent text selection on mobile UI elements */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Larger touch targets on mobile */
+@media (max-width: 768px) {
+  /* Increase button tap areas */
+  button, .btn, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Make sidebar channels easier to tap */
+  .channel-item {
+    padding: 12px 8px;
+  }
+
+  /* Larger message input on mobile */
+  .message-input {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+    padding: 12px;
+  }
+
+  /* Hide scrollbars on mobile */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Smaller fonts for mobile sidebar */
+  .sidebar-text {
+    font-size: 14px;
+  }
+}
+
+/* iOS notch/Dynamic Island safe areas */
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Prevent rubber-banding on iOS */
+html, body {
+  overscroll-behavior: none;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Mobile landscape mode adjustments */
+@media (max-height: 500px) and (orientation: landscape) {
+  .voice-controls {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .sidebar {
+    width: 60px;
+  }
+}
+
+/* Capacitor-specific: hide status bar area on fullscreen */
+.capacitor-fullscreen {
+  padding-top: 0 !important;
+}
+
+/* Touch feedback */
+.touch-feedback:active {
+  opacity: 0.7;
+  transform: scale(0.98);
+  transition: all 0.1s ease;
+}
+
+/* Video tiles responsive grid for mobile */
+@media (max-width: 640px) {
+  .video-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .video-tile {
+    max-height: 40vh;
+  }
+}
+
+/* Keyboard handling - shrink content when keyboard is visible */
+.keyboard-visible .message-area {
+  max-height: calc(100vh - 300px);
+}
