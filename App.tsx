@@ -617,6 +617,21 @@ export default function App() {
       // Re-trigger stream if connected? Ideally yes, but for now user must reconnect.
   };
 
+  const handleCheckForUpdates = () => {
+      log("Manually checking for updates...", 'info');
+      checkForUpdates().then(update => {
+          if (update) {
+              setUpdateInfo(update);
+              setShowUpdateModal(true);
+              log(`Update available: ${update.latest}`, 'info');
+          } else {
+              log("You're already on the latest version!", 'info');
+          }
+      }).catch(err => {
+          log(`Update check failed: ${err.message}`, 'error');
+      });
+  };
+
   const copyId = () => {
       if (myPeerId) {
           navigator.clipboard.writeText(myPeerId);
@@ -641,12 +656,14 @@ export default function App() {
       )}
 
       {showSettingsModal && (
-          <UserSettingsModal 
+          <UserSettingsModal
             currentProfile={userProfile}
             currentDevices={deviceSettings}
             logs={logs}
+            appVersion={APP_VERSION}
             onSaveProfile={handleSaveProfile}
             onSaveDevices={handleSaveDevices}
+            onCheckForUpdates={handleCheckForUpdates}
             onClose={() => setShowSettingsModal(false)}
           />
       )}

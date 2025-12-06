@@ -5,17 +5,19 @@ interface UserSettingsModalProps {
   currentProfile: UserProfile;
   currentDevices: DeviceSettings;
   logs: AppLogs[];
+  appVersion: string;
   onSaveProfile: (newProfile: UserProfile) => void;
   onSaveDevices: (newDevices: DeviceSettings) => void;
+  onCheckForUpdates: () => void;
   onClose: () => void;
 }
 
 const COLORS = ['#5865F2', '#3ba55c', '#ed4245', '#faa61a', '#eb459e', '#00b0f4', '#a8a8a8'];
 
-export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({ 
-    currentProfile, currentDevices, logs, onSaveProfile, onSaveDevices, onClose 
+export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
+    currentProfile, currentDevices, logs, appVersion, onSaveProfile, onSaveDevices, onCheckForUpdates, onClose
 }) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'voice' | 'debug'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'voice' | 'debug' | 'about'>('profile');
   
   // Profile State
   const [displayName, setDisplayName] = useState(currentProfile.displayName);
@@ -71,11 +73,17 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 Voice & Video
             </button>
             <div className="border-t border-discord-muted/20 my-2"></div>
-            <button 
+            <button
                 onClick={() => setActiveTab('debug')}
                 className={`text-left px-3 py-2 rounded text-sm font-medium ${activeTab === 'debug' ? 'bg-discord-hover text-white' : 'text-discord-text hover:bg-discord-hover'}`}
             >
                 Debug Log
+            </button>
+            <button
+                onClick={() => setActiveTab('about')}
+                className={`text-left px-3 py-2 rounded text-sm font-medium ${activeTab === 'about' ? 'bg-discord-hover text-white' : 'text-discord-text hover:bg-discord-hover'}`}
+            >
+                About
             </button>
         </div>
 
@@ -85,6 +93,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 {activeTab === 'profile' && 'My Profile'}
                 {activeTab === 'voice' && 'Voice & Video Settings'}
                 {activeTab === 'debug' && 'Troubleshooting Logs'}
+                {activeTab === 'about' && 'About Pisscord'}
             </h2>
 
             <div className="flex-1 overflow-y-auto pr-4">
@@ -198,6 +207,50 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                     <span className="opacity-50">[{new Date(l.timestamp).toLocaleTimeString()}]</span> {l.message}
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* ABOUT TAB */}
+                {activeTab === 'about' && (
+                    <div className="space-y-6">
+                        <div className="text-center py-8">
+                            <div className="text-6xl mb-4">💧</div>
+                            <h3 className="text-2xl font-bold text-white mb-2">Pisscord</h3>
+                            <p className="text-discord-muted">P2P Discord Clone</p>
+                            <p className="text-discord-text mt-2">Version {appVersion}</p>
+                        </div>
+
+                        <div className="bg-discord-dark rounded-lg p-6 space-y-4">
+                            <div>
+                                <h4 className="text-white font-semibold mb-2">Features</h4>
+                                <ul className="text-discord-text text-sm space-y-1">
+                                    <li>✅ P2P voice/video calling</li>
+                                    <li>✅ Real-time text messaging</li>
+                                    <li>✅ Screen sharing</li>
+                                    <li>✅ Pissbot AI assistant</li>
+                                    <li>✅ Auto-updates</li>
+                                </ul>
+                            </div>
+
+                            <div className="pt-4 border-t border-discord-muted/20">
+                                <button
+                                    onClick={onCheckForUpdates}
+                                    className="w-full bg-discord-accent hover:bg-indigo-600 px-4 py-3 rounded text-white font-medium transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <i className="fas fa-sync-alt"></i>
+                                    Check for Updates
+                                </button>
+                            </div>
+
+                            <div className="text-xs text-discord-muted text-center">
+                                <p>Made with 💜 by JawnPiece Productions</p>
+                                <p className="mt-1">
+                                    <a href="https://github.com/jamditis/pisscord" target="_blank" rel="noopener noreferrer" className="text-discord-accent hover:underline">
+                                        GitHub Repository
+                                    </a>
+                                </p>
+                            </div>
                         </div>
                     </div>
                 )}
