@@ -14,7 +14,7 @@ function createWindow() {
     width: 1280,
     height: 720,
     backgroundColor: '#202225',
-    icon: path.join(__dirname, 'icon.ico'),
+    icon: path.join(__dirname, 'pisscord.ico'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -50,9 +50,9 @@ function createWindow() {
 
 function createTray() {
   let trayIcon;
-  const iconPath = path.join(__dirname, 'icon.ico');
+  const iconPath = path.join(__dirname, 'pisscord.ico');
 
-  // Try to load icon.ico first
+  // Try to load pisscord.ico first
   trayIcon = nativeImage.createFromPath(iconPath);
 
   // If icon doesn't exist, create a fallback from data URL (16x16 purple square)
