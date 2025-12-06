@@ -54,3 +54,19 @@ export interface AppLogs {
     type: 'info' | 'error' | 'webrtc';
     message: string;
 }
+
+// Electron API types
+declare global {
+  interface Window {
+    electronAPI?: {
+      downloadUpdate: () => void;
+      installUpdate: () => void;
+      showWindow: () => void;
+      onUpdateAvailable: (callback: (data: any) => void) => void;
+      onUpdateDownloadProgress: (callback: (data: any) => void) => void;
+      onUpdateDownloaded: (callback: (data: any) => void) => void;
+      onUpdateError: (callback: (message: string) => void) => void;
+      removeAllListeners: (channel: string) => void;
+    };
+  }
+}

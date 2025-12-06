@@ -167,6 +167,12 @@ export default function App() {
             return;
         }
 
+        // Show the window before displaying the confirmation dialog
+        // This ensures user can see and interact with the app
+        if (window.electronAPI?.showWindow) {
+            window.electronAPI.showWindow();
+        }
+
         if (window.confirm(`Incoming call from ${call.peer}. Accept?`)) {
             log('Answering incoming call...', 'webrtc');
             handleAcceptCall(call);

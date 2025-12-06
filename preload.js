@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Send messages to main process
   downloadUpdate: () => ipcRenderer.send('download-update'),
   installUpdate: () => ipcRenderer.send('install-update'),
+  showWindow: () => ipcRenderer.send('show-window'),
 
   // Receive messages from main process
   onUpdateAvailable: (callback) => {

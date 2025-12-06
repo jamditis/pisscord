@@ -37,29 +37,41 @@ function createWindow() {
     if (!app.isQuitting) {
       event.preventDefault();
       mainWindow.hide();
-      if (process.platform === 'win32') {
-         // Windows users expect clicking X to close if there's no tray, 
-         // but since we have a tray, we hide.
-      }
     }
     return false;
+  });
+
+  // Prevent window from being destroyed when hidden
+  mainWindow.on('closed', () => {
+    // Don't set mainWindow to null - we want to keep it alive in the tray
+    // mainWindow = null;
   });
 }
 
 function createTray() {
-  const iconPath = path.join(__dirname, 'icon.ico'); 
-  // In a real build, ensure you have a valid .ico or .png
+  const iconPath = path.join(__dirname, 'icon.ico');
   const trayIcon = nativeImage.createFromPath(iconPath);
-  
+
+  // Check if icon loaded successfully
+  if (trayIcon.isEmpty()) {
+    console.warn('Tray icon not found, using empty icon');
+  }
+
   tray = new Tray(trayIcon);
-  
+
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'Open Pisscord', click: () => mainWindow.show() },
+    { label: 'Open Pisscord', click: () => {
+        if (mainWindow) {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      }
+    },
     { type: 'separator' },
     { label: 'Quit', click: () => {
         app.isQuitting = true;
         app.quit();
-      } 
+      }
     }
   ]);
 
@@ -67,7 +79,10 @@ function createTray() {
   tray.setContextMenu(contextMenu);
 
   tray.on('click', () => {
-    mainWindow.show();
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
   });
 }
 
@@ -142,8 +157,30 @@ ipcMain.on('install-update', () => {
   autoUpdater.quitAndInstall(false, true); // (isSilent, isForceRunAfter)
 });
 
+// IPC handler to show and focus the window
+ipcMain.on('show-window', () => {
+  if (mainWindow) {
+    mainWindow.show();
+    mainWindow.focus();
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore();
+    }
+  }
+});
+
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    // We do NOT quit here, we stay in tray
+  // Don't quit the app when all windows are closed
+  // The app should stay running in the tray
+  // Only quit when user explicitly chooses "Quit" from tray menu
+});
+
+app.on('before-quit', () => {
+  app.isQuitting = true;
+});
+
+app.on('will-quit', () => {
+  // Clean up tray icon before quitting
+  if (tray) {
+    tray.destroy();
   }
 });
