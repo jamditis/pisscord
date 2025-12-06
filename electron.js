@@ -1,6 +1,22 @@
 const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, desktopCapturer, clipboard } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
+
+// Setup persistent logging
+const logFilePath = path.join(app.getPath('userData'), 'pisscord.log');
+
+function logToFile(message) {
+    const timestamp = new Date().toISOString();
+    const logMessage = `[${timestamp}] ${message}\n`;
+    fs.appendFile(logFilePath, logMessage, (err) => {
+        if (err) console.error('Failed to write to log file:', err);
+    });
+}
+
+logToFile(`App starting... Version: ${app.getVersion()}`);
+logToFile(`OS: ${os.platform()} ${os.release()} ${os.arch()}`);
 
 let mainWindow;
 let tray;
@@ -241,6 +257,11 @@ ipcMain.handle('get-desktop-sources', async () => {
 // IPC handler for clipboard
 ipcMain.on('copy-to-clipboard', (event, text) => {
   clipboard.writeText(text);
+});
+
+// IPC handler for file logging
+ipcMain.on('log-to-file', (event, message) => {
+  logToFile(message);
 });
 
 app.on('window-all-closed', () => {

@@ -69,6 +69,7 @@ declare global {
       onUpdateDownloaded: (callback: (data: any) => void) => void;
       onUpdateError: (callback: (message: string) => void) => void;
       removeAllListeners: (channel: string) => void;
+      logToFile: (message: string) => void;
     };
   }
 }

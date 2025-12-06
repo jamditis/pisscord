@@ -88,6 +88,12 @@ export default function App() {
   });
   const [onlineUsers, setOnlineUsers] = useState<PresenceUser[]>([]);
   const [logs, setLogs] = useState<AppLogs[]>([]);
+  
+  // Ref to hold current device settings for async callbacks (Stale Closure Fix)
+  const deviceSettingsRef = useRef(deviceSettings);
+  useEffect(() => {
+      deviceSettingsRef.current = deviceSettings;
+  }, [deviceSettings]);
 
   // --- STATE: Media ---
   const [myStream, setMyStream] = useState<MediaStream | null>(null);
@@ -114,9 +120,16 @@ export default function App() {
 
   const activeChannel = INITIAL_CHANNELS.find(c => c.id === activeChannelId) || INITIAL_CHANNELS[0];
 
+  // --- HELPERS ---
   const log = (message: string, type: 'info' | 'error' | 'webrtc' = 'info') => {
-      console.log(`[${type}] ${message}`);
-      setLogs(prev => [...prev.slice(-50), { timestamp: Date.now(), type, message }]);
+      const entry: AppLogs = { timestamp: Date.now(), type, message };
+      setLogs(prev => [entry, ...prev].slice(0, 50));
+      console.log(`[${type.toUpperCase()}] ${message}`);
+      
+      // Log to file via Electron
+      if (window.electronAPI?.logToFile) {
+          window.electronAPI.logToFile(`[${type.toUpperCase()}] ${message}`);
+      }
   };
 
   // --- LIFECYCLE: Updates & Peer Init ---
@@ -250,45 +263,13 @@ export default function App() {
   }, []);
 
   // --- AUDIO OUTPUT MANAGEMENT ---
+  // Effect to handle remote volume changes
   useEffect(() => {
-    if (remoteAudioRef.current && remoteStream) {
-        log(`Setting up remote audio: ${remoteStream.getAudioTracks().length} audio tracks`, 'webrtc');
-
-        // Log audio track details
-        remoteStream.getAudioTracks().forEach((track, i) => {
-            log(`  Audio track ${i}: ${track.label}, enabled=${track.enabled}, muted=${track.muted}`, 'webrtc');
-        });
-
-        remoteAudioRef.current.srcObject = remoteStream;
-        // Apply volume
-        remoteAudioRef.current.volume = remoteVolume / 100;
-
-        // Apply output device if supported
-        if (deviceSettings.audioOutputId && (remoteAudioRef.current as any).setSinkId) {
-            (remoteAudioRef.current as any).setSinkId(deviceSettings.audioOutputId)
-                .catch((e: any) => log(`Failed to set audio output: ${e.message}`, 'error'));
-        }
-
-        // Play audio with retry logic
-        const playAudio = async () => {
-            try {
-                await remoteAudioRef.current?.play();
-                log("✅ Remote audio playing successfully", 'webrtc');
-            } catch (e: any) {
-                log(`Audio play failed: ${e.message}. Will retry on user interaction.`, 'error');
-                // Add click listener to retry audio on user interaction
-                const retryPlay = () => {
-                    remoteAudioRef.current?.play()
-                        .then(() => {
-                            log("✅ Audio resumed after user interaction", 'webrtc');
-                            document.removeEventListener('click', retryPlay);
-                        })
-                        .catch(() => {});
-                };
-                document.addEventListener('click', retryPlay, { once: true });
-            }
-        };
-        playAudio();
+    if (remoteAudioRef.current) {
+        // Clamp volume to max 1.0 to prevent DOMException
+        remoteAudioRef.current.volume = Math.min(remoteVolume / 100, 1.0);
+        // If we support boosting > 100% later, we'll need a GainNode. 
+        // For now, >100% on slider just sets to max volume.
     }
   }, [remoteStream, deviceSettings.audioOutputId, remoteVolume]);
 
@@ -296,9 +277,10 @@ export default function App() {
   // --- MEDIA HELPERS ---
   const getLocalStream = async () => {
     log("=== Getting Local Media Stream ===", 'webrtc');
+    const currentSettings = deviceSettingsRef.current;
     const constraints = {
-        audio: deviceSettings.audioInputId ? { deviceId: { exact: deviceSettings.audioInputId } } : true,
-        video: deviceSettings.videoInputId ? { deviceId: { exact: deviceSettings.videoInputId } } : true,
+        audio: currentSettings.audioInputId ? { deviceId: { exact: currentSettings.audioInputId } } : true,
+        video: currentSettings.videoInputId ? { deviceId: { exact: currentSettings.videoInputId } } : true,
     };
     log(`Media constraints: ${JSON.stringify(constraints)}`, 'webrtc');
 
