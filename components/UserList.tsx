@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ConnectionState, PresenceUser } from '../types';
 
 interface UserListProps {
@@ -6,16 +6,54 @@ interface UserListProps {
   onlineUsers: PresenceUser[];
   myPeerId: string | null;
   onConnectToUser: (peerId: string) => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export const UserList: React.FC<UserListProps> = ({ connectionState, onlineUsers, myPeerId, onConnectToUser }) => {
+export const UserList: React.FC<UserListProps> = ({
+  connectionState,
+  onlineUsers,
+  myPeerId,
+  onConnectToUser,
+  isCollapsed = false,
+  onToggleCollapse
+}) => {
   // Filter out self from the main list
   const others = onlineUsers.filter(u => u.peerId !== myPeerId);
   const me = onlineUsers.find(u => u.peerId === myPeerId);
 
+  // Collapsed view - just a toggle button
+  if (isCollapsed) {
+    return (
+      <div className="bg-discord-sidebar flex flex-col items-center py-3 border-l border-discord-dark">
+        <button
+          onClick={onToggleCollapse}
+          className="w-10 h-10 rounded-full bg-discord-main hover:bg-discord-hover text-discord-text hover:text-white transition-colors flex items-center justify-center"
+          title="Show Users"
+        >
+          <i className="fas fa-users"></i>
+        </button>
+        <div className="mt-2 text-discord-muted text-xs font-bold">
+          {onlineUsers.length}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-60 bg-discord-sidebar hidden lg:flex flex-col p-3 border-l border-discord-dark">
-      
+    <div className="w-60 bg-discord-sidebar hidden lg:flex flex-col p-3 border-l border-discord-dark relative">
+
+      {/* Collapse button */}
+      {onToggleCollapse && (
+        <button
+          onClick={onToggleCollapse}
+          className="absolute top-3 right-3 w-6 h-6 rounded bg-discord-main hover:bg-discord-hover text-discord-muted hover:text-white transition-colors flex items-center justify-center z-10"
+          title="Hide Users"
+        >
+          <i className="fas fa-chevron-right text-xs"></i>
+        </button>
+      )}
+
       {/* ME */}
       {me && (
         <div className="mb-4">

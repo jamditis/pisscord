@@ -102,6 +102,10 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                   >
                     <i className="fas fa-volume-up mr-2 text-sm"></i>
                     <span className="font-medium truncate">{channel.name}</span>
+                    {/* Lock icon for approval-required channels */}
+                    {channel.requireApproval && (
+                      <i className="fas fa-lock ml-1 text-[10px] text-yellow-500" title="Approval required to join"></i>
+                    )}
                     {/* User count badge */}
                     {usersInChannel.length > 0 && (
                       <span className="ml-auto text-[10px] bg-discord-dark px-1.5 py-0.5 rounded-full text-discord-muted">

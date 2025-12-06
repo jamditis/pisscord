@@ -206,11 +206,92 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
       return 'grid-cols-2 md:grid-cols-3';
   };
 
+  // Render a video tile (reusable component)
+  const renderVideoTile = (
+    userId: string,
+    stream: MediaStream | null,
+    user: { displayName: string; color: string; photoURL?: string } | undefined,
+    isLocal: boolean,
+    isSpeaking: boolean,
+    isSpotlighted: boolean,
+    hasVideo: boolean,
+    isSmall: boolean = false
+  ) => (
+    <div
+      onClick={() => toggleSpotlight(userId)}
+      className={`relative bg-discord-dark rounded-lg overflow-hidden shadow-lg group cursor-pointer transition-all duration-300 border border-discord-sidebar ${
+        isSmall ? 'w-40 h-24 shrink-0' : 'w-full h-full'
+      }`}
+      style={{
+        boxShadow: isSpeaking ? '0 0 0 4px rgba(34, 197, 94, 0.75), 0 0 20px rgba(34, 197, 94, 0.3)' : undefined
+      }}
+    >
+      {hasVideo ? (
+        <video
+          ref={el => {
+            if (isLocal && myVideoRef.current !== el) {
+              (myVideoRef as any).current = el;
+            } else if (!isLocal && el) {
+              remoteVideoRefs.current.set(userId, el);
+            }
+          }}
+          autoPlay
+          playsInline
+          muted
+          className="w-full h-full object-cover"
+          style={{ transform: isLocal && !isScreenSharing ? 'scaleX(-1)' : 'none' }}
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center">
+          <div
+            className={`rounded-full flex items-center justify-center overflow-hidden ${isSmall ? 'w-12 h-12' : 'w-24 h-24'}`}
+            style={{
+              backgroundColor: user?.photoURL ? 'transparent' : (user?.color || '#5865F2'),
+              boxShadow: isSpeaking ? '0 0 0 4px rgba(34, 197, 94, 0.75), 0 0 20px rgba(34, 197, 94, 0.3)' : undefined
+            }}
+          >
+            {user?.photoURL ? (
+              <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <i className={`fas fa-user text-white ${isSmall ? 'text-xl' : 'text-4xl'}`}></i>
+            )}
+          </div>
+        </div>
+      )}
+      {isSpotlighted && (
+        <div className="absolute top-2 right-2 bg-discord-accent px-2 py-1 rounded text-white text-xs font-bold flex items-center">
+          <i className="fas fa-thumbtack mr-1"></i> Pinned
+        </div>
+      )}
+      <div className="absolute top-2 left-2 bg-black/60 px-2 py-1 rounded text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+        <i className="fas fa-mouse-pointer mr-1"></i> {isSpotlighted ? 'Unpin' : 'Click to pin'}
+      </div>
+      <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-white text-sm font-bold flex items-center">
+        {isLocal ? 'You' : (user?.displayName || userId.substring(0, 5) + '...')}
+        {isLocal && isScreenSharing && ' (Screen)'}
+        {isLocal && !isAudioEnabled && <i className="fas fa-microphone-slash ml-2 text-red-500 text-xs"></i>}
+        {isSpeaking && <i className="fas fa-volume-up ml-2 text-green-500 text-xs animate-pulse"></i>}
+      </div>
+    </div>
+  );
+
+  // Get all participants for rendering
+  const allParticipants = [
+    { id: 'self', stream: myStream, isLocal: true, isSpeaking: isLocalSpeaking, hasVideo: isVideoEnabled || isScreenSharing },
+    ...Array.from(remoteStreams.entries()).map(([peerId, stream]) => ({
+      id: peerId,
+      stream,
+      isLocal: false,
+      isSpeaking: remoteSpeaking.get(peerId) || false,
+      hasVideo: stream?.getVideoTracks().length > 0 && stream.getVideoTracks()[0].enabled
+    }))
+  ];
+
   return (
-    <div className="flex-1 bg-black flex flex-col relative overflow-hidden">
-      
-      {/* Main Stage Grid */}
-      <div className={`flex-1 p-4 grid ${getGridClass()} gap-4 items-center justify-center overflow-y-auto`}>
+    <div className="flex-1 bg-black flex flex-col relative overflow-hidden h-full">
+
+      {/* Main Stage - Flexbox layout */}
+      <div className="flex-1 p-4 flex flex-col gap-4 overflow-hidden">
         
         {/* Connection Overlay if disconnected */}
         {connectionState === ConnectionState.DISCONNECTED && (
@@ -296,121 +377,45 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
             </div>
         )}
 
-        {/* My Video Tile */}
-        <div
-          onClick={() => toggleSpotlight('self')}
-          className={`relative aspect-video bg-discord-dark rounded-lg overflow-hidden shadow-lg group cursor-pointer transition-all duration-300 ${
-            spotlightedUser === 'self'
-              ? 'col-span-full row-span-2 md:col-span-2'
-              : spotlightedUser && spotlightedUser !== 'self'
-                ? 'hidden md:block'
-                : ''
-          } ${isLocalSpeaking ? 'ring-4 ring-green-500 ring-opacity-75' : 'border border-discord-sidebar'}`}
-          style={{ minHeight: spotlightedUser === 'self' ? '400px' : '200px' }}
-        >
-           {isVideoEnabled || isScreenSharing ? (
-              <video
-                ref={myVideoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover transform"
-                style={{ transform: isScreenSharing ? 'none' : 'scaleX(-1)' }}
-              />
-           ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                  <div
-                      className={`rounded-full flex items-center justify-center overflow-hidden transition-all ${
-                        isLocalSpeaking ? 'ring-4 ring-green-500 ring-opacity-75' : ''
-                      } ${spotlightedUser === 'self' ? 'w-32 h-32' : 'w-24 h-24'}`}
-                      style={{ backgroundColor: userProfile.photoURL ? 'transparent' : userProfile.color }}
-                  >
-                      {userProfile.photoURL ? (
-                          <img src={userProfile.photoURL} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                          <i className={`fas fa-user text-white ${spotlightedUser === 'self' ? 'text-5xl' : 'text-4xl'}`}></i>
-                      )}
-                  </div>
-              </div>
-           )}
-           {/* Spotlight indicator */}
-           {spotlightedUser === 'self' && (
-             <div className="absolute top-2 right-2 bg-discord-accent px-2 py-1 rounded text-white text-xs font-bold flex items-center">
-               <i className="fas fa-thumbtack mr-1"></i> Pinned
-             </div>
-           )}
-           {/* Click to pin hint on hover */}
-           <div className="absolute top-2 left-2 bg-black/60 px-2 py-1 rounded text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-             <i className="fas fa-mouse-pointer mr-1"></i> {spotlightedUser === 'self' ? 'Unpin' : 'Click to pin'}
-           </div>
-           <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-white text-sm font-bold flex items-center">
-               You {isScreenSharing && '(Screen)'}
-               {!isAudioEnabled && <i className="fas fa-microphone-slash ml-2 text-red-500 text-xs"></i>}
-               {isLocalSpeaking && isAudioEnabled && <i className="fas fa-volume-up ml-2 text-green-500 text-xs animate-pulse"></i>}
-           </div>
-        </div>
-
-        {/* Remote Video Tiles */}
-        {connectionState === ConnectionState.CONNECTED && Array.from(remoteStreams.entries()).map(([peerId, stream]) => {
-          const remoteUser = getRemoteUser(peerId);
-          const isSpeaking = remoteSpeaking.get(peerId) || false;
-          const isSpotlighted = spotlightedUser === peerId;
-          const hasVideo = stream && stream.getVideoTracks().length > 0 && stream.getVideoTracks()[0].enabled;
-
-          return (
-            <div
-              key={peerId}
-              onClick={() => toggleSpotlight(peerId)}
-              className={`relative aspect-video bg-discord-dark rounded-lg overflow-hidden shadow-lg group cursor-pointer transition-all duration-300 ${
-                isSpotlighted
-                  ? 'col-span-full row-span-2 md:col-span-2'
-                  : spotlightedUser && !isSpotlighted
-                    ? 'hidden md:block'
-                    : ''
-              } ${isSpeaking ? 'ring-4 ring-green-500 ring-opacity-75' : 'border border-discord-sidebar'}`}
-              style={{ minHeight: isSpotlighted ? '400px' : '200px' }}
-            >
-               {hasVideo ? (
-                  <video
-                      ref={el => remoteVideoRefs.current.set(peerId, el)}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="w-full h-full object-cover"
-                  />
-               ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                      <div
-                          className={`rounded-full flex items-center justify-center overflow-hidden transition-all ${
-                            isSpeaking ? 'ring-4 ring-green-500 ring-opacity-75' : ''
-                          } ${isSpotlighted ? 'w-32 h-32' : 'w-24 h-24'}`}
-                          style={{ backgroundColor: remoteUser?.photoURL ? 'transparent' : (remoteUser?.color || '#5865F2') }}
-                      >
-                          {remoteUser?.photoURL ? (
-                              <img src={remoteUser.photoURL} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                              <i className={`fas fa-user text-white ${isSpotlighted ? 'text-5xl' : 'text-4xl'}`}></i>
-                          )}
-                      </div>
-                  </div>
-               )}
-               {/* Spotlight indicator */}
-               {isSpotlighted && (
-                 <div className="absolute top-2 right-2 bg-discord-accent px-2 py-1 rounded text-white text-xs font-bold flex items-center">
-                   <i className="fas fa-thumbtack mr-1"></i> Pinned
-                 </div>
-               )}
-               {/* Click to pin hint on hover */}
-               <div className="absolute top-2 left-2 bg-black/60 px-2 py-1 rounded text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                 <i className="fas fa-mouse-pointer mr-1"></i> {isSpotlighted ? 'Unpin' : 'Click to pin'}
-               </div>
-               <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-white text-sm font-bold flex items-center">
-                   {remoteUser?.displayName || peerId.substring(0,5) + '...'}
-                   {isSpeaking && <i className="fas fa-volume-up ml-2 text-green-500 text-xs animate-pulse"></i>}
-               </div>
+        {/* Spotlight Layout - when someone is pinned */}
+        {spotlightedUser ? (
+          <div className="flex-1 flex flex-col gap-4 min-h-0">
+            {/* Spotlighted user - takes most space */}
+            <div className="flex-1 min-h-0">
+              {(() => {
+                const p = allParticipants.find(x => x.id === spotlightedUser);
+                if (!p) return null;
+                const user = p.isLocal ? userProfile : getRemoteUser(p.id);
+                return renderVideoTile(p.id, p.stream, user, p.isLocal, p.isSpeaking, true, p.hasVideo, false);
+              })()}
             </div>
-          );
-        })}
+            {/* Other participants - small row at bottom */}
+            {allParticipants.filter(p => p.id !== spotlightedUser).length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pb-2 shrink-0">
+                {allParticipants.filter(p => p.id !== spotlightedUser).map(p => {
+                  const user = p.isLocal ? userProfile : getRemoteUser(p.id);
+                  return (
+                    <div key={p.id}>
+                      {renderVideoTile(p.id, p.stream, user, p.isLocal, p.isSpeaking, false, p.hasVideo, true)}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Grid Layout - normal view without spotlight */
+          <div className={`flex-1 grid gap-4 ${getGridClass()}`} style={{ alignContent: 'center' }}>
+            {allParticipants.map(p => {
+              const user = p.isLocal ? userProfile : getRemoteUser(p.id);
+              return (
+                <div key={p.id} className="aspect-video">
+                  {renderVideoTile(p.id, p.stream, user, p.isLocal, p.isSpeaking, false, p.hasVideo, false)}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Control Bar */}

@@ -12,22 +12,23 @@ import { ReportIssueModal } from './components/ReportIssueModal';
 import { ToastContainer, useToast } from './components/Toast';
 import { ConfirmModal } from './components/ConfirmModal';
 import { ContextMenu, useContextMenu } from './components/ContextMenu';
-import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs } from './types';
-import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages, cleanupOldMessages, getPissbotConfig, PissbotConfig, checkForMOTD } from './services/firebase';
+import { JoinRequestPanel } from './components/JoinRequestPanel';
+import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs, JoinRequest } from './types';
+import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages, cleanupOldMessages, getPissbotConfig, PissbotConfig, checkForMOTD, sendJoinRequest, subscribeToJoinRequests, removeJoinRequest } from './services/firebase';
 import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
 
-const APP_VERSION = "1.0.14";
+const APP_VERSION = "1.1.0";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
   { id: '1', name: 'general', type: ChannelType.TEXT },
   { id: '2', name: 'links', type: ChannelType.TEXT },
-  { id: '3', name: 'pissbot', type: ChannelType.AI },
   { id: '4', name: 'dev-updates', type: ChannelType.TEXT },
   { id: '5', name: 'issues', type: ChannelType.TEXT },
-  { id: 'voice-1', name: 'Voice Lounge', type: ChannelType.VOICE },
-  { id: 'voice-2', name: 'Gaming', type: ChannelType.VOICE },
+  { id: '3', name: 'pissbot', type: ChannelType.AI },
+  { id: 'voice-1', name: 'Voice Lounge', type: ChannelType.VOICE, requireApproval: false },
+  { id: 'voice-2', name: 'Gaming', type: ChannelType.VOICE, requireApproval: true },
 ];
 
 const generateName = () => {
@@ -75,6 +76,7 @@ export default function App() {
   
   // --- STATE: Data ---
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
+  const [pendingJoinRequests, setPendingJoinRequests] = useState<JoinRequest[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
       const saved = localStorage.getItem('pisscord_profile');
       if (saved) {
@@ -113,6 +115,9 @@ export default function App() {
   const [showScreenPicker, setShowScreenPicker] = useState(false);
   const [screenSources, setScreenSources] = useState<Array<{id: string, name: string, thumbnail: string}>>([]);
   const [updateInfo, setUpdateInfo] = useState<{url: string, latest: string, downloading?: boolean, progress?: number, ready?: boolean} | null>(null);
+
+  // --- UI STATE ---
+  const [isUserListCollapsed, setIsUserListCollapsed] = useState(false);
 
   // --- REFS ---
   const peerInstance = useRef<Peer | null>(null);
@@ -157,6 +162,34 @@ export default function App() {
           return () => unsubscribe();
       }
   }, [activeChannelId, activeChannel.type]);
+
+  // Subscribe to join requests when connected to an approval-required voice channel
+  useEffect(() => {
+      if (connectionState !== ConnectionState.CONNECTED || !activeVoiceChannelId) {
+          setPendingJoinRequests([]);
+          return;
+      }
+
+      const channel = INITIAL_CHANNELS.find(c => c.id === activeVoiceChannelId);
+      if (!channel?.requireApproval) {
+          setPendingJoinRequests([]);
+          return;
+      }
+
+      log(`Subscribing to join requests for ${channel.name}`, 'info');
+      const unsubscribe = subscribeToJoinRequests(activeVoiceChannelId, (requests) => {
+          // Filter out our own requests
+          const otherRequests = requests.filter(r => r.peerId !== myPeerId);
+          setPendingJoinRequests(otherRequests);
+
+          // Show toast for new requests
+          if (otherRequests.length > 0) {
+              playSound('call_incoming', false);
+          }
+      });
+
+      return () => unsubscribe();
+  }, [connectionState, activeVoiceChannelId, myPeerId]);
 
   // --- HELPERS ---
   const log = (message: string, type: 'info' | 'error' | 'webrtc' = 'info') => {
@@ -431,11 +464,35 @@ export default function App() {
   // --- CALL HANDLERS ---
   const joinVoiceChannel = async (channelId: string) => {
       log(`Joining voice channel: ${channelId}`, 'info');
-      
+
       if (activeVoiceChannelId === channelId && connectionState === ConnectionState.CONNECTED) return;
-      
+
       if (connectionState === ConnectionState.CONNECTED) {
           cleanupCall();
+      }
+
+      const channel = INITIAL_CHANNELS.find(c => c.id === channelId);
+      const peersInChannel = onlineUsers.filter(u => u.voiceChannelId === channelId && u.peerId !== myPeerId);
+
+      // Check if channel requires approval and has users in it
+      if (channel?.requireApproval && peersInChannel.length > 0) {
+          log(`Channel ${channel.name} requires approval. Sending join request...`, 'info');
+
+          // Send join request to Firebase
+          if (myPeerId) {
+              sendJoinRequest(channelId, {
+                  peerId: myPeerId,
+                  displayName: userProfile.displayName,
+                  photoURL: userProfile.photoURL,
+                  color: userProfile.color,
+                  channelId,
+                  timestamp: Date.now()
+              });
+          }
+
+          setActiveChannelId(channelId);
+          toast.info("Waiting for Approval", "Your request to join has been sent.");
+          return;
       }
 
       setActiveChannelId(channelId);
@@ -449,27 +506,45 @@ export default function App() {
       try {
           // Get stream once for all calls
           await getLocalStream();
-          
-          // Find peers to call
-          const peersInChannel = onlineUsers.filter(u => u.voiceChannelId === channelId && u.peerId !== myPeerId);
-          
+
           if (peersInChannel.length === 0) {
               log("No users in channel. Waiting...", 'info');
               setConnectionState(ConnectionState.CONNECTED);
-              toast.success("Joined Voice", "You are in the Voice Lounge.");
+              toast.success("Joined Voice", `You are in ${channel?.name || 'the channel'}.`);
               return;
           }
 
           toast.info("Joining...", `Connecting to ${peersInChannel.length} users...`);
-          
+
           // Initiate calls to all existing peers
           peersInChannel.forEach(peer => {
-             handleStartCall(peer.peerId); 
+             handleStartCall(peer.peerId);
           });
       } catch (err: any) {
           log(`Failed to join channel: ${err.message}`, 'error');
           setConnectionState(ConnectionState.ERROR);
       }
+  };
+
+  // Approve a join request
+  const handleApproveJoinRequest = (request: JoinRequest) => {
+      log(`Approving join request from ${request.displayName}`, 'info');
+
+      // Remove the request from Firebase
+      removeJoinRequest(request.channelId, request.peerId);
+
+      // The remote peer will receive an incoming call which will be auto-accepted
+      // because they're already "waiting" in the channel
+      handleStartCall(request.peerId);
+
+      toast.success("Approved", `${request.displayName} is joining the call.`);
+  };
+
+  // Deny a join request
+  const handleDenyJoinRequest = (request: JoinRequest) => {
+      log(`Denying join request from ${request.displayName}`, 'info');
+      removeJoinRequest(request.channelId, request.peerId);
+      toast.info("Denied", `${request.displayName}'s request was denied.`);
   };
 
   const handleAcceptCall = async (call: any) => {
@@ -826,7 +901,8 @@ export default function App() {
   const handleSaveProfile = (newProfile: UserProfile) => {
       setUserProfile(newProfile);
       localStorage.setItem('pisscord_profile', JSON.stringify(newProfile));
-      if (myPeerId) updatePresence(myPeerId, newProfile);
+      // Preserve voice channel when updating profile
+      if (myPeerId) updatePresence(myPeerId, newProfile, activeVoiceChannelId);
   };
 
   const handleSaveDevices = (newDevices: DeviceSettings) => {
@@ -1002,7 +1078,12 @@ export default function App() {
             onSelectChannel={(id) => {
                 const ch = INITIAL_CHANNELS.find(c => c.id === id);
                 if (ch?.type === ChannelType.VOICE) {
-                    joinVoiceChannel(id);
+                    // If already connected to this voice channel, just switch view (don't rejoin)
+                    if (activeVoiceChannelId === id && connectionState === ConnectionState.CONNECTED) {
+                        setActiveChannelId(id);
+                    } else {
+                        joinVoiceChannel(id);
+                    }
                 } else {
                     setActiveChannelId(id);
                 }
@@ -1026,26 +1107,45 @@ export default function App() {
       {/* MAIN VIEW AREA */}
       {/* Render Voice Stage if active channel is VOICE OR if we are just "viewing" the call */}
       {activeChannel.type === ChannelType.VOICE ? (
-         <VoiceStage
-            myStream={myStream}
-            remoteStreams={remoteStreams}
-            connectionState={connectionState}
-            onToggleVideo={toggleVideo}
-            onToggleAudio={toggleAudio}
-            onShareScreen={handleShareScreen}
-            onConnect={handleStartCall}
-            onDisconnect={cleanupCall}
-            isVideoEnabled={isVideoEnabled}
-            isAudioEnabled={isAudioEnabled}
-            isScreenSharing={isScreenSharing}
-            myPeerId={myPeerId}
-            userProfile={userProfile}
-            onlineUsers={onlineUsers}
-            onIdCopied={() => toast.success("Copied!", "Send this ID to your friend so they can call you.")}
-         />
+         <div className="flex-1 flex min-w-0">
+           <div className="flex-1 relative">
+             <VoiceStage
+                myStream={myStream}
+                remoteStreams={remoteStreams}
+                connectionState={connectionState}
+                onToggleVideo={toggleVideo}
+                onToggleAudio={toggleAudio}
+                onShareScreen={handleShareScreen}
+                onConnect={handleStartCall}
+                onDisconnect={cleanupCall}
+                isVideoEnabled={isVideoEnabled}
+                isAudioEnabled={isAudioEnabled}
+                isScreenSharing={isScreenSharing}
+                myPeerId={myPeerId}
+                userProfile={userProfile}
+                onlineUsers={onlineUsers}
+                onIdCopied={() => toast.success("Copied!", "Send this ID to your friend so they can call you.")}
+             />
+             {/* Join Request Panel - shown when there are pending requests */}
+             <JoinRequestPanel
+               requests={pendingJoinRequests}
+               onApprove={handleApproveJoinRequest}
+               onDeny={handleDenyJoinRequest}
+             />
+           </div>
+           {/* User list in voice channel - collapsible */}
+           <UserList
+              connectionState={connectionState}
+              onlineUsers={onlineUsers}
+              myPeerId={myPeerId}
+              onConnectToUser={handleStartCall}
+              isCollapsed={isUserListCollapsed}
+              onToggleCollapse={() => setIsUserListCollapsed(!isUserListCollapsed)}
+           />
+         </div>
       ) : (
          <div className="flex-1 flex min-w-0">
-             <ChatArea 
+             <ChatArea
                 channel={activeChannel}
                 messages={messages[activeChannel.id] || []}
                 onlineUsers={onlineUsers}
@@ -1053,11 +1153,13 @@ export default function App() {
                 onSendAIMessage={(text, response) => addMessage(activeChannel.id, response, 'Pissbot', true)}
                 onOpenReportModal={() => setShowReportModal(true)}
              />
-             <UserList 
-                connectionState={connectionState} 
-                onlineUsers={onlineUsers} 
+             <UserList
+                connectionState={connectionState}
+                onlineUsers={onlineUsers}
                 myPeerId={myPeerId}
                 onConnectToUser={handleStartCall}
+                isCollapsed={isUserListCollapsed}
+                onToggleCollapse={() => setIsUserListCollapsed(!isUserListCollapsed)}
              />
          </div>
       )}

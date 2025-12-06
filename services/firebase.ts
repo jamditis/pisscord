@@ -14,7 +14,7 @@ import {
   endAt
 } from "firebase/database";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
-import { UserProfile, PresenceUser } from "../types";
+import { UserProfile, PresenceUser, JoinRequest } from "../types";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAHXVi7SSSCOYQswb_MxeydAlNWq86XYXI",
@@ -237,7 +237,7 @@ export const cleanupOldMessages = async (channelIds: string[]) => {
   for (const channelId of channelIds) {
     const messagesRef = ref(db, `messages/${channelId}`);
     const oldMessagesQuery = query(messagesRef, orderByChild('timestamp'), endAt(cutoff));
-    
+
     try {
       const snapshot = await get(oldMessagesQuery);
       if (snapshot.exists()) {
@@ -258,3 +258,43 @@ export const cleanupOldMessages = async (channelIds: string[]) => {
     }
   }
 };
+
+// --- JOIN REQUESTS (for approval-required voice channels) ---
+
+// Send a join request to a voice channel
+export const sendJoinRequest = (channelId: string, request: JoinRequest) => {
+  const requestRef = ref(db, `joinRequests/${channelId}/${request.peerId}`);
+  set(requestRef, request);
+
+  // Auto-expire requests after 30 seconds
+  setTimeout(() => {
+    remove(requestRef).catch(() => {});
+  }, 30000);
+};
+
+// Subscribe to join requests for a channel (for users already in the channel)
+export const subscribeToJoinRequests = (
+  channelId: string,
+  onRequestsUpdate: (requests: JoinRequest[]) => void
+) => {
+  const requestsRef = ref(db, `joinRequests/${channelId}`);
+
+  return onValue(requestsRef, (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      const requestList = Object.values(data) as JoinRequest[];
+      onRequestsUpdate(requestList);
+    } else {
+      onRequestsUpdate([]);
+    }
+  });
+};
+
+// Remove a join request (after approval or denial)
+export const removeJoinRequest = (channelId: string, peerId: string) => {
+  const requestRef = ref(db, `joinRequests/${channelId}/${peerId}`);
+  remove(requestRef);
+};
+
+// Send approval response (via P2P data channel, not Firebase)
+// This is just a helper to clean up the request after approval/denial

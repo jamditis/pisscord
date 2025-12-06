@@ -47,6 +47,16 @@ export interface Channel {
   id: string;
   name: string;
   type: ChannelType;
+  requireApproval?: boolean; // If true, users must be approved to join voice channels
+}
+
+export interface JoinRequest {
+  peerId: string;
+  displayName: string;
+  photoURL?: string;
+  color: string;
+  channelId: string;
+  timestamp: number;
 }
 
 export enum ConnectionState {
