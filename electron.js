@@ -41,6 +41,15 @@ function createWindow() {
     autoHideMenuBar: true,
   });
 
+  // Enable screen capture permissions for getDisplayMedia
+  mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === 'media') {
+      callback(true); // Grant permission
+    } else {
+      callback(false);
+    }
+  });
+
   const startUrl = process.env.ELECTRON_START_URL || `file://${path.join(__dirname, 'dist/index.html')}`;
   
   if (process.env.NODE_ENV === 'development') {

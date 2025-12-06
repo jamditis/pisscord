@@ -62,6 +62,7 @@ declare global {
       downloadUpdate: () => void;
       installUpdate: () => void;
       showWindow: () => void;
+      getDesktopSources: () => Promise<Array<{id: string, name: string, thumbnail: any}>>;
       onUpdateAvailable: (callback: (data: any) => void) => void;
       onUpdateDownloadProgress: (callback: (data: any) => void) => void;
       onUpdateDownloaded: (callback: (data: any) => void) => void;

@@ -49,7 +49,7 @@ export default function App() {
   
   // --- STATE: Data ---
   const [messages, setMessages] = useState<Record<string, Message[]>>({
-      '1': [], '2': [], '3': [{ id: 'welcome-ai', sender: 'Gemini', content: 'Hello! I am your AI assistant.', timestamp: Date.now(), isAi: true }],
+      '1': [], '2': [], '3': [{ id: 'welcome-ai', sender: 'Pissbot', content: 'Hello! I am your AI assistant.', timestamp: Date.now(), isAi: true }],
   });
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
       const saved = localStorage.getItem('pisscord_profile');
@@ -416,10 +416,39 @@ export default function App() {
       if (!isScreenSharing) {
           try {
               log("Requesting screen share permission...", 'webrtc');
-              const displayStream = await navigator.mediaDevices.getDisplayMedia({
-                  video: true,
-                  audio: false
-              });
+
+              let displayStream: MediaStream;
+
+              // Use Electron's desktopCapturer if available
+              if (window.electronAPI?.getDesktopSources) {
+                  log("Using Electron desktopCapturer", 'webrtc');
+                  const sources = await window.electronAPI.getDesktopSources();
+
+                  if (sources.length === 0) {
+                      throw new Error("No screen sources available");
+                  }
+
+                  // Use the first source (entire screen)
+                  const sourceId = sources[0].id;
+                  log(`Selected source: ${sources[0].name}`, 'webrtc');
+
+                  displayStream = await navigator.mediaDevices.getUserMedia({
+                      audio: false,
+                      video: {
+                          mandatory: {
+                              chromeMediaSource: 'desktop',
+                              chromeMediaSourceId: sourceId
+                          }
+                      } as any
+                  });
+              } else {
+                  // Fallback to standard getDisplayMedia
+                  log("Using standard getDisplayMedia", 'webrtc');
+                  displayStream = await navigator.mediaDevices.getDisplayMedia({
+                      video: true,
+                      audio: false
+                  });
+              }
 
               log("Screen share permission granted", 'webrtc');
               const screenTrack = displayStream.getVideoTracks()[0];
@@ -677,7 +706,7 @@ export default function App() {
                 channel={activeChannel}
                 messages={messages[activeChannel.id] || []}
                 onSendMessage={(text) => addMessage(activeChannel.id, text, userProfile.displayName)}
-                onSendAIMessage={(text, response) => addMessage(activeChannel.id, response, 'Gemini', true)}
+                onSendAIMessage={(text, response) => addMessage(activeChannel.id, response, 'Pissbot', true)}
              />
              <UserList 
                 connectionState={connectionState} 

@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, desktopCapturer } = require('electron');
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -7,6 +7,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   downloadUpdate: () => ipcRenderer.send('download-update'),
   installUpdate: () => ipcRenderer.send('install-update'),
   showWindow: () => ipcRenderer.send('show-window'),
+
+  // Screen capture for Electron
+  getDesktopSources: async () => {
+    return await desktopCapturer.getSources({ types: ['window', 'screen'] });
+  },
 
   // Receive messages from main process
   onUpdateAvailable: (callback) => {
