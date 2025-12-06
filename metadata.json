@@ -1,0 +1,8 @@
+{
+  "name": "Pisscord",
+  "description": "A simplified, privacy-focused Discord alternative for small trusted groups (family/friends). Direct peer-to-peer communication without central servers, packaged as a standalone Windows executable.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
