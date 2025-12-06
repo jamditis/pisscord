@@ -1,6 +1,6 @@
 {
   "name": "pisscord",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Private P2P Discord Clone",
   "main": "electron.js",
   "author": "P2P User",
