@@ -10,7 +10,7 @@ import { UserSettingsModal } from './components/UserSettingsModal';
 import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs } from './types';
 import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence } from './services/firebase';
 
-const APP_VERSION = "1.0.4";
+const APP_VERSION = "1.0.5";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
