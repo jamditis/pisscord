@@ -20,8 +20,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onServerClick }) => {
       <div className="w-8 h-[2px] bg-discord-main rounded-lg my-1"></div>
 
       {/* The "One Server" */}
-      <div className="w-12 h-12 bg-discord-main rounded-[24px] hover:rounded-[16px] transition-all duration-200 cursor-pointer flex items-center justify-center group relative border-2 border-yellow-500">
-        <span className="text-white font-bold text-xs">PISS</span>
+      <div className="w-12 h-12 bg-discord-main rounded-[24px] hover:rounded-[16px] transition-all duration-200 cursor-pointer flex items-center justify-center group relative overflow-hidden">
+        <img src="/pisscord-dark.png" alt="Pisscord" className="w-10 h-10 object-contain" />
         <div className="absolute -left-4 h-10 w-1 bg-white rounded-r"></div>
       </div>
 
