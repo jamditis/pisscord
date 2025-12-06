@@ -9,6 +9,7 @@ export interface UserProfile {
   displayName: string;
   statusMessage: string;
   color: string;
+  photoURL?: string;
 }
 
 export interface DeviceSettings {
@@ -20,6 +21,7 @@ export interface DeviceSettings {
 export interface PresenceUser extends UserProfile {
   peerId: string;
   lastSeen: number;
+  voiceChannelId?: string;
 }
 
 export interface Message {
@@ -28,6 +30,11 @@ export interface Message {
   content: string;
   timestamp: number;
   isAi?: boolean;
+  attachment?: {
+    url: string;
+    type: 'image' | 'file';
+    name: string;
+  };
 }
 
 export enum ChannelType {
@@ -69,6 +76,7 @@ declare global {
       onUpdateDownloaded: (callback: (data: any) => void) => void;
       onUpdateError: (callback: (message: string) => void) => void;
       removeAllListeners: (channel: string) => void;
+      logToFile: (message: string) => void;
     };
   }
 }

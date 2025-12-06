@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Pisscord is a private, peer-to-peer Discord clone built with React, TypeScript, Electron, and PeerJS. It enables direct P2P voice/video calling, text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
 
-**Current Version:** 1.0.10
-**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.0.10
+**Current Version:** 1.0.11
+**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.0.11
 
 ## Key Architecture
 
@@ -218,7 +218,12 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - `noUnusedLocals` and `noUnusedParameters` disabled (intentional)
 - React JSX transform (no need to import React in TSX files)
 
-## Recent Changes (v1.0.9 - v1.0.10)
+## Recent Changes (v1.0.9 - v1.0.11)
+
+### v1.0.11 (2025-12-06)
+- **Bugfix:** Fixed version mismatch - APP_VERSION in App.tsx now syncs with package.json
+- **Feature:** Pissbot context now loaded from Firebase (editable without rebuilding)
+- **Firebase:** Added `/pissbot` config path for dynamic AI context
 
 ### v1.0.10 (2025-12-06)
 - **Bugfix:** Fixed critical startup error - `createWindow` function needed `async` keyword for `await` usage
@@ -259,5 +264,37 @@ Hardcoded in `services/firebase.ts` - production config already included.
 | Cloud Functions | 2M invocations/month |
 
 ### Current Firebase Usage
-- Presence system only (online users, status, in-call state)
+- Presence system (online users, status, in-call state)
+- System info (version checking for auto-updates)
+- **Pissbot config** (dynamic AI context - new in v1.0.11)
 - Location: `services/firebase.ts`
+
+### Pissbot Firebase Config
+
+Pissbot's AI context is now fetched from Firebase instead of being hardcoded. This allows updating the AI's knowledge without rebuilding the app.
+
+**Firebase Path:** `/pissbot`
+
+**Structure:**
+```json
+{
+  "systemPrompt": "Personality and role instructions",
+  "context": "App info, features, current version",
+  "patchNotes": "Recent version changes",
+  "documentation": "User guides and troubleshooting",
+  "lastUpdated": 1733513000000
+}
+```
+
+**To Update Pissbot:**
+1. Go to Firebase Console: https://console.firebase.google.com/project/pisscord-edbca/database/pisscord-edbca-default-rtdb/data/pissbot
+2. Edit any field directly in the console
+3. Changes take effect within 5 minutes (cache TTL)
+
+**Setup Script:** `node scripts/setup-pissbot-config.js` - Initializes or resets Pissbot config
+
+**Code Flow:**
+1. `geminiService.ts` calls `getPissbotConfig()` from firebase.ts
+2. Config is cached for 5 minutes to reduce Firebase reads
+3. If Firebase unavailable, falls back to minimal hardcoded prompt
+4. System instruction built from: systemPrompt + context + patchNotes + documentation

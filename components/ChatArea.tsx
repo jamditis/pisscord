@@ -1,18 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Message, Channel, ChannelType } from '../types';
 import { generateAIResponse } from '../services/geminiService';
+import { uploadFile } from '../services/firebase';
 
 interface ChatAreaProps {
   channel: Channel;
   messages: Message[];
-  onSendMessage: (text: string) => void;
+  onSendMessage: (text: string, attachment?: Message['attachment']) => void;
   onSendAIMessage: (text: string, response: string) => void;
+  onOpenReportModal?: () => void;
 }
 
-export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMessage, onSendAIMessage }) => {
+export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMessage, onSendAIMessage, onOpenReportModal }) => {
   const [inputValue, setInputValue] = useState('');
   const [isTypingAI, setIsTypingAI] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -33,8 +37,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMes
       if (channel.type === ChannelType.AI) {
         // AI Logic
         setIsTypingAI(true);
-        // Optimistically add user message via parent, but for AI chat we handle the pair logic
-        // We will call the parent to add the user message first
         onSendMessage(text); 
         
         try {
@@ -52,6 +54,29 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMes
     }
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const url = await uploadFile(file);
+      const type = file.type.startsWith('image/') ? 'image' : 'file';
+      onSendMessage('', {
+        url,
+        type,
+        name: file.name
+      });
+    } catch (error) {
+      console.error('Upload failed', error);
+      // Ideally show a toast here, but we'd need to pass toast prop or use a context
+      alert('File upload failed.'); 
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col bg-discord-main h-full min-w-0">
       {/* Channel Header */}
@@ -59,6 +84,16 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMes
         <i className={`mr-2 text-discord-muted text-xl ${channel.type === ChannelType.AI ? 'fas fa-robot' : 'fas fa-hashtag'}`}></i>
         <h3 className="font-bold text-white">{channel.name}</h3>
         {channel.type === ChannelType.AI && <span className="ml-2 text-xs bg-discord-accent text-white px-1 rounded">BOT</span>}
+        
+        {channel.id === '5' && (
+            <button 
+                onClick={onOpenReportModal}
+                className="ml-4 bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded transition-colors flex items-center"
+            >
+                <i className="fas fa-bug mr-2"></i> Report Issue
+            </button>
+        )}
+
         <div className="ml-auto flex items-center space-x-4 text-discord-muted text-lg">
            <i className="fas fa-bell hover:text-discord-text cursor-pointer"></i>
            <i className="fas fa-thumbtack hover:text-discord-text cursor-pointer"></i>
@@ -84,8 +119,12 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMes
         
         {messages.map((msg) => (
           <div key={msg.id} className="group flex hover:bg-discord-hover/30 -mx-4 px-4 py-1">
-            <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center mt-1 cursor-pointer hover:opacity-80 ${msg.isAi ? 'bg-discord-accent' : 'bg-gray-500'}`}>
-              {msg.isAi ? <i className="fas fa-robot text-white"></i> : <i className="fas fa-user text-white"></i>}
+            <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center mt-1 cursor-pointer hover:opacity-80 overflow-hidden ${msg.isAi ? 'bg-discord-accent' : 'bg-gray-500'}`}>
+              {msg.isAi ? (
+                  <i className="fas fa-robot text-white"></i>
+              ) : (
+                  <i className="fas fa-user text-white"></i>
+              )}
             </div>
             <div className="ml-4 flex-1 min-w-0">
               <div className="flex items-center">
@@ -98,8 +137,44 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMes
                 </span>
               </div>
               <div className="text-discord-text whitespace-pre-wrap break-words leading-relaxed">
-                {msg.content}
+                {msg.content.split(/(https?:\/\/[^\s]+)/g).map((part, i) => 
+                    part.match(/https?:\/\/[^\s]+/) ? (
+                        <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-discord-link hover:underline">
+                            {part}
+                        </a>
+                    ) : part
+                )}
               </div>
+              {/* Attachment Rendering */}
+              {msg.attachment && (
+                <div className="mt-2">
+                  {msg.attachment.type === 'image' ? (
+                    <a href={msg.attachment.url} target="_blank" rel="noopener noreferrer" className="block max-w-sm">
+                       <img 
+                         src={msg.attachment.url} 
+                         alt={msg.attachment.name} 
+                         className="rounded-lg max-h-80 border border-discord-dark cursor-zoom-in"
+                       />
+                    </a>
+                  ) : (
+                    <div className="flex items-center bg-discord-dark p-3 rounded max-w-sm border border-discord-sidebar">
+                      <i className="fas fa-file-download text-2xl text-discord-accent mr-3"></i>
+                      <div className="overflow-hidden">
+                        <div className="text-discord-link font-medium truncate" title={msg.attachment.name}>{msg.attachment.name}</div>
+                        <div className="text-xs text-discord-muted">Attachment</div>
+                      </div>
+                      <a 
+                        href={msg.attachment.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="ml-auto bg-discord-sidebar hover:bg-discord-hover p-2 rounded text-discord-muted hover:text-white transition-colors"
+                      >
+                        <i className="fas fa-download"></i>
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -114,9 +189,24 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMes
       {/* Input Area */}
       <div className="px-4 pb-6 pt-2 shrink-0">
         <div className="bg-discord-chat rounded-lg px-4 py-2.5 flex items-center shadow-sm border border-transparent focus-within:border-discord-accent/50 transition-colors">
-          <button className="text-discord-muted hover:text-discord-text mr-3 bg-discord-sidebar rounded-full w-6 h-6 flex items-center justify-center transition-colors">
-            <i className="fas fa-plus text-xs"></i>
+          
+          {/* Hidden File Input */}
+          <input 
+             type="file" 
+             ref={fileInputRef} 
+             onChange={handleFileSelect} 
+             className="hidden" 
+          />
+
+          <button 
+             onClick={() => fileInputRef.current?.click()}
+             disabled={isUploading}
+             className={`text-discord-muted hover:text-discord-text mr-3 bg-discord-sidebar rounded-full w-6 h-6 flex items-center justify-center transition-colors ${isUploading ? 'animate-pulse cursor-wait' : ''}`}
+             title="Upload File"
+          >
+            {isUploading ? <i className="fas fa-spinner fa-spin text-xs"></i> : <i className="fas fa-plus text-xs"></i>}
           </button>
+          
           <input
             type="text"
             className="bg-transparent border-none outline-none text-discord-text flex-1 placeholder-discord-muted"

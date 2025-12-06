@@ -183,10 +183,14 @@ export const ChannelList: React.FC<ChannelListProps> = ({
       <div className="bg-discord-dark p-2 flex flex-col shrink-0">
         <div className="flex items-center p-1 rounded hover:bg-discord-hover cursor-pointer group">
             <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold relative transition-colors"
-                style={{ backgroundColor: userProfile.color }}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold relative transition-colors overflow-hidden"
+                style={{ backgroundColor: userProfile.photoURL ? 'transparent' : userProfile.color }}
             >
-                <i className="fas fa-user"></i>
+                {userProfile.photoURL ? (
+                    <img src={userProfile.photoURL} alt="" className="w-full h-full object-cover" />
+                ) : (
+                    <i className="fas fa-user"></i>
+                )}
                 <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-discord-dark bg-green-500"></div>
             </div>
             <div className="ml-2 overflow-hidden flex-1">

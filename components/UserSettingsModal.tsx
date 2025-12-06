@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UserProfile, DeviceSettings, AppLogs } from '../types';
+import { uploadFile } from '../services/firebase';
 
 interface UserSettingsModalProps {
   currentProfile: UserProfile;
@@ -24,6 +25,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [displayName, setDisplayName] = useState(currentProfile.displayName);
   const [statusMessage, setStatusMessage] = useState(currentProfile.statusMessage);
   const [selectedColor, setSelectedColor] = useState(currentProfile.color);
+  const [photoURL, setPhotoURL] = useState(currentProfile.photoURL || '');
+  const [isUploading, setIsUploading] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Device State
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
@@ -40,7 +45,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     onSaveProfile({
         displayName: displayName || "Anonymous",
         statusMessage,
-        color: selectedColor
+        color: selectedColor,
+        photoURL
     });
     onSaveDevices({
         audioInputId,
@@ -49,6 +55,31 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     });
     onShowToast?.('success', 'Settings Saved', 'Your profile and device settings have been updated.');
     onClose();
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+        onShowToast?.('error', 'Invalid File', 'Please select an image file.');
+        return;
+    }
+
+    setIsUploading(true);
+    try {
+        const url = await uploadFile(file);
+        setPhotoURL(url);
+        onShowToast?.('success', 'Upload Complete', 'Avatar updated successfully!');
+    } catch (err: any) {
+        onShowToast?.('error', 'Upload Failed', err.message);
+    } finally {
+        setIsUploading(false);
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+      setPhotoURL('');
   };
 
   const handleCheckUpdates = () => {
@@ -108,17 +139,43 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 {/* PROFILE TAB */}
                 {activeTab === 'profile' && (
                     <div className="space-y-6">
-                        <div className="bg-discord-dark rounded-lg p-4 flex items-center shadow-inner">
+                        <div className="bg-discord-dark rounded-lg p-4 flex items-center shadow-inner relative overflow-hidden group">
+                            {/* Avatar Upload Overlay */}
+                            <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*" />
+                            
                             <div 
-                                className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg shrink-0"
+                                className="w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg shrink-0 relative overflow-hidden cursor-pointer border-4 border-discord-main hover:border-white transition-colors"
                                 style={{ backgroundColor: selectedColor }}
+                                onClick={() => fileInputRef.current?.click()}
                             >
-                                <i className="fas fa-user"></i>
+                                {photoURL ? (
+                                    <img src={photoURL} alt="Avatar" className="w-full h-full object-cover" />
+                                ) : (
+                                    <i className="fas fa-user"></i>
+                                )}
+                                {isUploading && (
+                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                        <i className="fas fa-spinner fa-spin"></i>
+                                    </div>
+                                )}
+                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                    <span className="text-[10px] uppercase font-bold">Change</span>
+                                </div>
                             </div>
-                            <div className="ml-4 overflow-hidden">
+
+                            <div className="ml-4 overflow-hidden flex-1">
                                 <div className="text-white font-bold text-lg">{displayName || "Your Name"}</div>
                                 <div className="text-discord-text text-sm">{statusMessage || "Custom status..."}</div>
                             </div>
+                            
+                            {photoURL && (
+                                <button 
+                                    onClick={handleRemoveAvatar}
+                                    className="absolute top-4 right-4 text-discord-muted hover:text-red-500 text-xs font-bold uppercase"
+                                >
+                                    Remove Avatar
+                                </button>
+                            )}
                         </div>
 
                         <div className="space-y-4">
@@ -143,7 +200,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-discord-muted uppercase mb-2">Avatar Color</label>
+                                <label className="block text-xs font-bold text-discord-muted uppercase mb-2">Avatar Color (Fallback)</label>
                                 <div className="flex gap-3 flex-wrap">
                                     {COLORS.map(color => (
                                         <button

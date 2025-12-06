@@ -14,6 +14,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Clipboard access (via main process IPC)
   copyToClipboard: (text) => ipcRenderer.send('copy-to-clipboard', text),
 
+  // File logging
+  logToFile: (message) => ipcRenderer.send('log-to-file', message),
+
   // Receive messages from main process
   onUpdateAvailable: (callback) => {
     ipcRenderer.on('update-available', (event, data) => callback(data));
