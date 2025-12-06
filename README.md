@@ -1,4 +1,5 @@
-![pisscord logo](https://i.imgur.com/vCz4AHQ.png)
+![pisscord logo](https://i.imgur.com/cecdoaM.jpeg)
+
 # Pisscord
 
 **Current Version:** v1.0.10 | [Download Latest](https://github.com/jamditis/pisscord/releases/latest)
