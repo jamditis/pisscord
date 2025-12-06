@@ -39,7 +39,7 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
     if (myVideoRef.current && myStream) {
       myVideoRef.current.srcObject = myStream;
     }
-  }, [myStream, isScreenSharing]); // Re-run if screen sharing changes the stream track
+  }, [myStream, isScreenSharing, isVideoEnabled]); // Re-run when video is toggled back on
 
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {

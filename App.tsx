@@ -217,15 +217,43 @@ export default function App() {
   // --- AUDIO OUTPUT MANAGEMENT ---
   useEffect(() => {
     if (remoteAudioRef.current && remoteStream) {
+        log(`Setting up remote audio: ${remoteStream.getAudioTracks().length} audio tracks`, 'webrtc');
+
+        // Log audio track details
+        remoteStream.getAudioTracks().forEach((track, i) => {
+            log(`  Audio track ${i}: ${track.label}, enabled=${track.enabled}, muted=${track.muted}`, 'webrtc');
+        });
+
         remoteAudioRef.current.srcObject = remoteStream;
         // Apply volume
         remoteAudioRef.current.volume = remoteVolume / 100;
+
         // Apply output device if supported
         if (deviceSettings.audioOutputId && (remoteAudioRef.current as any).setSinkId) {
             (remoteAudioRef.current as any).setSinkId(deviceSettings.audioOutputId)
                 .catch((e: any) => log(`Failed to set audio output: ${e.message}`, 'error'));
         }
-        remoteAudioRef.current.play().catch(e => log("Audio play failed (interaction needed?)", 'error'));
+
+        // Play audio with retry logic
+        const playAudio = async () => {
+            try {
+                await remoteAudioRef.current?.play();
+                log("✅ Remote audio playing successfully", 'webrtc');
+            } catch (e: any) {
+                log(`Audio play failed: ${e.message}. Will retry on user interaction.`, 'error');
+                // Add click listener to retry audio on user interaction
+                const retryPlay = () => {
+                    remoteAudioRef.current?.play()
+                        .then(() => {
+                            log("✅ Audio resumed after user interaction", 'webrtc');
+                            document.removeEventListener('click', retryPlay);
+                        })
+                        .catch(() => {});
+                };
+                document.addEventListener('click', retryPlay, { once: true });
+            }
+        };
+        playAudio();
     }
   }, [remoteStream, deviceSettings.audioOutputId, remoteVolume]);
 
@@ -243,6 +271,7 @@ export default function App() {
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         log(`✅ Got media stream with ${stream.getVideoTracks().length} video tracks and ${stream.getAudioTracks().length} audio tracks`, 'webrtc');
 
+        // Log video track details
         const videoTrack = stream.getVideoTracks()[0];
         if (videoTrack) {
             log(`Video track: ${videoTrack.id}, label: ${videoTrack.label}, enabled: ${videoTrack.enabled}`, 'webrtc');
@@ -250,6 +279,14 @@ export default function App() {
             log("✅ Stored camera track in myVideoTrack.current", 'webrtc');
         } else {
             log("⚠️ WARNING: No video track in stream!", 'error');
+        }
+
+        // Log audio track details
+        const audioTrack = stream.getAudioTracks()[0];
+        if (audioTrack) {
+            log(`Audio track: ${audioTrack.id}, label: ${audioTrack.label}, enabled: ${audioTrack.enabled}, muted: ${audioTrack.muted}`, 'webrtc');
+        } else {
+            log("⚠️ WARNING: No audio track in stream! Microphone may not be available.", 'error');
         }
 
         setMyStream(stream);
@@ -358,9 +395,22 @@ export default function App() {
 
   const setupCallEvents = (call: any) => {
       callInstance.current = call;
-      
+
       call.on('stream', (rStream: MediaStream) => {
-          log("Received remote stream", 'webrtc');
+          log("=== Received Remote Stream ===", 'webrtc');
+          log(`Remote stream has ${rStream.getVideoTracks().length} video tracks`, 'webrtc');
+          log(`Remote stream has ${rStream.getAudioTracks().length} audio tracks`, 'webrtc');
+
+          // Log details of each audio track
+          rStream.getAudioTracks().forEach((track, i) => {
+              log(`  Remote audio track ${i}: id=${track.id}, label="${track.label}", enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`, 'webrtc');
+          });
+
+          // Log details of each video track
+          rStream.getVideoTracks().forEach((track, i) => {
+              log(`  Remote video track ${i}: id=${track.id}, label="${track.label}", enabled=${track.enabled}, readyState=${track.readyState}`, 'webrtc');
+          });
+
           setRemoteStream(rStream);
           setConnectionState(ConnectionState.CONNECTED);
       });
@@ -657,7 +707,7 @@ export default function App() {
   return (
     <div className="flex w-full h-screen bg-discord-main text-discord-text overflow-hidden font-sans relative">
       {/* Global Audio Element for persistent audio across views */}
-      <audio ref={remoteAudioRef} className="hidden" />
+      <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
 
       {showUpdateModal && updateInfo && (
           <UpdateModal

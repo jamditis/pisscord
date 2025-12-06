@@ -30,12 +30,11 @@ About Pisscord:
 - Single instance lock to prevent duplicates
 - Customizable user profiles with persistent settings
 
-Latest Release (v1.0.5):
-- Fixed chat input that could only paste (added autofocus)
-- Fixed screen sharing NotSupportedError in Electron
-- Rebranded AI assistant from "Gemini" to "Pissbot"
-- Added Pisscord logo to sidebar
-- Improved API key configuration
+Latest Release (v1.0.6):
+- Fixed screen sharing with new source picker modal
+- Fixed Copy ID button with clipboard IPC
+- Fixed text cursor visibility in input fields
+- Improved audio playback reliability
 
 Known Limitations:
 - Single 1-on-1 connections only (no group calls yet)
