@@ -9,7 +9,10 @@
       "Bash(npm install:*)",
       "Bash(ls:*)",
       "Bash(curl:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(npm run dist:*)"
     ],
     "deny": [],
     "ask": []
