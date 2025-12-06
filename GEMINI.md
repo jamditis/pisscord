@@ -13,7 +13,7 @@ A private P2P Discord clone built for personal use. **Not malware** - it's a leg
 - Backend: Firebase Realtime Database (presence only)
 - AI: Google Gemini 2.5 Flash (Pissbot assistant)
 
-**Current Version:** 1.0.11
+**Current Version:** 1.0.12
 
 ## Project Structure
 
@@ -120,25 +120,25 @@ Create `.env.local` file in project root.
 ## Recent Session Context (Dec 6, 2025)
 
 ### What Was Done Today
-1. Fixed v1.0.10 not showing correct version (APP_VERSION was hardcoded to 1.0.9)
-2. Released v1.0.11 with fix
-3. Implemented dynamic Pissbot context via Firebase
-4. Created setup script for Pissbot config
-5. Updated all documentation
+1. **Released v1.0.12**: Major update with Group Calls, File Sharing, and Persistence.
+2. **Mesh Networking**: Refactored PeerJS logic to support multiple concurrent connections.
+3. **File Uploads**: Integrated Firebase Storage for sharing images/files in chat and setting avatars.
+4. **Message Persistence**: Switched from ephemeral P2P text to Firebase Realtime Database for chat history.
+5. **Bug Fixes**: Fixed volume crashes, one-way audio, and URL rendering.
 
 ### Files Modified Today
-- `App.tsx` - Updated APP_VERSION to 1.0.11
-- `package.json` - Bumped to 1.0.11
-- `services/firebase.ts` - Added `getPissbotConfig()` + caching
-- `services/geminiService.ts` - Now fetches context from Firebase
-- `scripts/setup-pissbot-config.js` - NEW file for Firebase setup
-- `CLAUDE.md` - Full update with v1.0.11 changes
+- `App.tsx` - Core logic for Mesh networking, Firebase messaging, and state management.
+- `components/VoiceStage.tsx` - Dynamic video grid for multiple peers.
+- `components/ChatArea.tsx` - File upload UI, URL rendering, avatar display.
+- `components/UserSettingsModal.tsx` - Avatar upload UI.
+- `services/firebase.ts` - Added Storage and Messaging services.
+- `types.ts` - Updated interfaces for Message attachments and Profile photos.
+- `package.json` - Bumped to 1.0.12.
 
 ### Open Items for Future Sessions
-- Group calls (currently 1-on-1 only)
-- Message persistence via Firebase
-- Friends/contacts list
-- Call history logging
+- Friends List / Contact Management.
+- Call History Logging.
+- Advanced Permissions/Roles.
 
 ## Architecture Decisions
 

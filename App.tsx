@@ -15,7 +15,7 @@ import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfi
 import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages } from './services/firebase';
 import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 
-const APP_VERSION = "1.0.11";
+const APP_VERSION = "1.0.12";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
