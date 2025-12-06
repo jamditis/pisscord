@@ -14,7 +14,10 @@
       "Bash(git stash:*)",
       "Bash(npm run dist:*)",
       "Bash(npm run electron:dev:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(git checkout:*)",
+      "Bash(gh pr create:*)",
+      "Bash(git branch:*)"
     ],
     "deny": [],
     "ask": []

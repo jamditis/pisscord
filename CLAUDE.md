@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Pisscord is a private, peer-to-peer Discord clone built with React, TypeScript, Electron, and PeerJS. It enables direct P2P voice/video calling, text chat, and AI assistance via Google's Gemini API, with presence tracking through Firebase Realtime Database.
+Pisscord is a private, peer-to-peer Discord clone built with React, TypeScript, Electron, and PeerJS. It enables direct P2P voice/video calling, text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
 
 ## Key Architecture
 
@@ -12,7 +12,9 @@ Pisscord is a private, peer-to-peer Discord clone built with React, TypeScript, 
 - **PeerJS** handles WebRTC signaling and peer-to-peer connections
 - Each user receives a unique peer ID on app initialization
 - Voice/video calls are established directly between peers (no relay server)
+- **P2P data channels** enable real-time text messaging between connected peers
 - Track replacement API (`RTCRtpSender.replaceTrack()`) enables screen sharing without reconnection
+- **Electron desktopCapturer** used for screen sharing in production builds (fallback to `getDisplayMedia` in browser)
 
 ### State Management
 - All state lives in `App.tsx` (no Redux/Context)
@@ -30,9 +32,12 @@ Pisscord is a private, peer-to-peer Discord clone built with React, TypeScript, 
 - Update system: Centralized version check against `system/latestVersion` in Firebase
 
 ### Electron Shell
-- `electron.js`: Simple wrapper with tray support
+- `electron.js`: Main process with tray support and auto-updater
+- **Single instance lock** prevents multiple app instances
 - Minimize-to-tray behavior (closing window hides, doesn't quit)
-- No IPC communication needed - React app runs with `nodeIntegration: true`
+- IPC bridge via `preload.js` for secure communication (context isolation enabled)
+- **Auto-updater** checks GitHub Releases for new versions every 4 hours
+- Screen capture permissions granted for `desktopCapturer` API
 
 ### Component Structure
 - `App.tsx`: Main state container and WebRTC orchestration
@@ -40,7 +45,7 @@ Pisscord is a private, peer-to-peer Discord clone built with React, TypeScript, 
 - `ChatArea.tsx`: Text/AI chat interface
 - `ChannelList.tsx`: Navigation + **persistent voice control panel** (shows when connected)
 - `UserList.tsx`: Online users sidebar with direct call buttons
-- `UserSettingsModal.tsx`: Tabbed settings (Profile, Voice & Video, Debug Log)
+- `UserSettingsModal.tsx`: Tabbed settings (Profile, Voice & Video, Debug Log, About with Check for Updates)
 - Modal components handle settings and updates
 
 ### Persistent Voice Architecture
@@ -109,7 +114,7 @@ npx tsc --noEmit         # Type check without emitting files
 - Volume preference persists in component state (resets to 100% on app restart)
 
 ### Settings Modal Architecture
-Three-tab system in `UserSettingsModal.tsx`:
+Four-tab system in `UserSettingsModal.tsx`:
 
 1. **Profile Tab**: Display name, status message, avatar color selection
 2. **Voice & Video Tab**:
@@ -120,15 +125,20 @@ Three-tab system in `UserSettingsModal.tsx`:
    - Real-time display of app logs from `logs` state array
    - Color-coded by type (info=green, error=red, webrtc=blue)
    - Timestamps and scrollable history (last 50 entries)
+4. **About Tab**:
+   - App version display
+   - Feature list
+   - "Check for Updates" button for manual update checks
+   - GitHub repository link
 
 ## Environment Configuration
 
-### Required for AI Features
+### Required for Pissbot AI Features
 Create `.env.local` with:
 ```
-VITE_API_KEY=your_google_gemini_api_key
+VITE_GEMINI_API_KEY=your_google_gemini_api_key
 ```
-Without this, AI channel will show error message.
+Without this, Pissbot (AI channel) will show error message. Pissbot uses Gemini 2.5 Flash model with comprehensive context about Pisscord features and limitations.
 
 ### Firebase Configuration
 Hardcoded in `services/firebase.ts` - production config already included.
@@ -137,7 +147,17 @@ Hardcoded in `services/firebase.ts` - production config already included.
 
 - `dist/`: Vite build output (HTML, JS, CSS bundles)
 - `dist/Pisscord Setup 1.0.X.exe`: Windows installer (created by electron-builder)
+- `dist/Pisscord Setup 1.0.X.exe.blockmap`: Update manifest for auto-updater
+- `public/`: Static assets copied to dist/ during build (logo images)
 - Clean `dist/` folder before building to avoid stale artifacts
+
+## Auto-Update System
+
+- Built with `electron-updater` package
+- Checks GitHub Releases for new versions
+- Manual check available via Settings → About → Check for Updates
+- Downloads updates in background, installs on app restart
+- Single instance lock prevents conflicts during updates
 
 ## TypeScript Configuration
 
