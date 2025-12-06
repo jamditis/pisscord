@@ -55,11 +55,17 @@ Users can be in a voice call while viewing text channels. Key separation:
 - `activeChannelId` = what channel they're *viewing*
 - `activeVoiceChannelId` = what voice channel they're *connected to*
 
-### 4. P2P = No Server Storage
-Messages are P2P only - they don't persist. When you disconnect, messages are gone.
+### 4. P2P = Mesh Networking
+Calls are now **Mesh (Many-to-Many)**.
+- `App.tsx` manages `remoteStreams` (Map) and `callsRef` (Map).
+- Joining a channel calls *everyone* currently in that channel.
+- Incoming calls while connected are auto-accepted (Mesh Join).
+- Messages are P2P only - they don't persist.
 
-### 5. Firebase is for Presence Only
-Firebase tracks who's online (peer IDs, display names, status). It does NOT store messages or calls.
+### 5. Firebase
+- **Presence:** Tracks online status + `voiceChannelId`.
+- **Storage:** Used for file uploads in chat (images/files).
+- **Config:** Pissbot AI context.
 
 ### 6. Pissbot Context from Firebase
 The AI (Pissbot) gets its system prompt from Firebase at `/pissbot`. Edit context without rebuilding:

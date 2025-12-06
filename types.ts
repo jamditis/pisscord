@@ -20,6 +20,7 @@ export interface DeviceSettings {
 export interface PresenceUser extends UserProfile {
   peerId: string;
   lastSeen: number;
+  voiceChannelId?: string;
 }
 
 export interface Message {
@@ -28,6 +29,11 @@ export interface Message {
   content: string;
   timestamp: number;
   isAi?: boolean;
+  attachment?: {
+    url: string;
+    type: 'image' | 'file';
+    name: string;
+  };
 }
 
 export enum ChannelType {

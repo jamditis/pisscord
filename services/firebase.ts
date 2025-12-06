@@ -8,6 +8,7 @@ import {
   onValue, 
   remove 
 } from "firebase/database";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { UserProfile, PresenceUser } from "../types";
 
 const firebaseConfig = {
@@ -23,9 +24,25 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const storage = getStorage(app);
 
 // Re-export type to avoid conflict
 export type { PresenceUser as OnlineUser };
+
+// File Upload Service
+export const uploadFile = async (file: File): Promise<string> => {
+  const filename = `${Date.now()}-${file.name}`;
+  const fileRef = storageRef(storage, `uploads/${filename}`);
+  
+  try {
+    const snapshot = await uploadBytes(fileRef, file);
+    const url = await getDownloadURL(snapshot.ref);
+    return url;
+  } catch (error) {
+    console.error("File upload failed:", error);
+    throw error;
+  }
+};
 
 export interface SystemInfo {
   latestVersion: string;
@@ -59,7 +76,8 @@ export const registerPresence = (peerId: string, profile: UserProfile) => {
     displayName: profile.displayName,
     statusMessage: profile.statusMessage,
     color: profile.color,
-    lastSeen: Date.now()
+    lastSeen: Date.now(),
+    voiceChannelId: null
   });
 
   // Automatically remove user when they disconnect (close app/lose internet)
@@ -67,14 +85,15 @@ export const registerPresence = (peerId: string, profile: UserProfile) => {
 };
 
 // Also export a way to update presence while online without reconnecting
-export const updatePresence = (peerId: string, profile: UserProfile) => {
+export const updatePresence = (peerId: string, profile: UserProfile, voiceChannelId: string | null = null) => {
     const userRef = ref(db, `users/${peerId}`);
     set(userRef, {
       peerId,
       displayName: profile.displayName,
       statusMessage: profile.statusMessage,
       color: profile.color,
-      lastSeen: Date.now()
+      lastSeen: Date.now(),
+      voiceChannelId
     });
     // Ensure disconnect handler is still active (it usually persists on the socket connection)
     onDisconnect(userRef).remove();
@@ -97,4 +116,44 @@ export const subscribeToUsers = (onUsersUpdate: (users: PresenceUser[]) => void)
 export const removePresence = (peerId: string) => {
   const userRef = ref(db, `users/${peerId}`);
   remove(userRef);
+};
+
+// Pissbot AI Configuration
+export interface PissbotConfig {
+  systemPrompt: string;
+  context: string;
+  patchNotes: string;
+  documentation: string;
+  lastUpdated: number;
+}
+
+// Cache for Pissbot config to avoid repeated fetches
+let pissbotConfigCache: PissbotConfig | null = null;
+let pissbotConfigCacheTime = 0;
+const PISSBOT_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+export const getPissbotConfig = async (): Promise<PissbotConfig | null> => {
+  // Return cached version if still valid
+  if (pissbotConfigCache && Date.now() - pissbotConfigCacheTime < PISSBOT_CACHE_TTL) {
+    return pissbotConfigCache;
+  }
+
+  try {
+    const pissbotRef = ref(db, 'pissbot');
+    const snapshot = await get(pissbotRef);
+    if (snapshot.exists()) {
+      pissbotConfigCache = snapshot.val() as PissbotConfig;
+      pissbotConfigCacheTime = Date.now();
+      return pissbotConfigCache;
+    }
+  } catch (error) {
+    console.error("Failed to fetch Pissbot config:", error);
+  }
+  return null;
+};
+
+// Clear Pissbot cache (useful for forcing refresh)
+export const clearPissbotCache = () => {
+  pissbotConfigCache = null;
+  pissbotConfigCacheTime = 0;
 };

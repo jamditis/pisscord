@@ -97,7 +97,7 @@ export default function App() {
 
   // --- STATE: Media ---
   const [myStream, setMyStream] = useState<MediaStream | null>(null);
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
@@ -112,10 +112,9 @@ export default function App() {
 
   // --- REFS ---
   const peerInstance = useRef<Peer | null>(null);
-  const callInstance = useRef<any>(null);
-  const dataConnection = useRef<any>(null); // P2P data channel for text messages
+  const callsRef = useRef<Map<string, any>>(new Map()); // Map of peerId -> MediaConnection
+  const dataConnectionsRef = useRef<Map<string, any>>(new Map()); // Map of peerId -> DataConnection
   const myVideoTrack = useRef<MediaStreamTrack | null>(null); // Keep original camera track for when screenshare ends
-  const remoteAudioRef = useRef<HTMLAudioElement>(null); // Global audio element
   const isMountedRef = useRef(true);
 
   const activeChannel = INITIAL_CHANNELS.find(c => c.id === activeChannelId) || INITIAL_CHANNELS[0];
@@ -206,10 +205,12 @@ export default function App() {
     });
 
     peer.on('call', async (call) => {
-        // If we are already connected, we reject
+        // MESH NETWORKING:
+        // If we are already connected to a voice channel, we assume incoming calls are from peers joining the channel.
+        // We auto-answer them to establish the mesh.
         if (connectionState === ConnectionState.CONNECTED) {
-            call.close(); // Busy
-            toast.info("Incoming Call Blocked", "You declined an incoming call while already connected.");
+            log(`Auto-answering incoming mesh call from ${call.peer}`, 'webrtc');
+            handleAcceptCall(call);
             return;
         }
 
@@ -263,19 +264,15 @@ export default function App() {
   }, []);
 
   // --- AUDIO OUTPUT MANAGEMENT ---
-  // Effect to handle remote volume changes
-  useEffect(() => {
-    if (remoteAudioRef.current) {
-        // Clamp volume to max 1.0 to prevent DOMException
-        remoteAudioRef.current.volume = Math.min(remoteVolume / 100, 1.0);
-        // If we support boosting > 100% later, we'll need a GainNode. 
-        // For now, >100% on slider just sets to max volume.
-    }
-  }, [remoteStream, deviceSettings.audioOutputId, remoteVolume]);
-
-
+  // Volume is now handled by individual audio elements in the render loop
+  
   // --- MEDIA HELPERS ---
   const getLocalStream = async () => {
+    // Return existing stream if active
+    if (myStream && myStream.active) {
+        return myStream;
+    }
+
     log("=== Getting Local Media Stream ===", 'webrtc');
     const currentSettings = deviceSettingsRef.current;
     const constraints = {
@@ -315,10 +312,11 @@ export default function App() {
   };
 
   const setupDataConnection = (conn: any) => {
-      dataConnection.current = conn;
+      const peerId = conn.peer;
+      dataConnectionsRef.current.set(peerId, conn);
 
       conn.on('open', () => {
-          log('Data connection established', 'webrtc');
+          log(`Data connection established with ${peerId}`, 'webrtc');
       });
 
       conn.on('data', (data: any) => {
@@ -329,7 +327,8 @@ export default function App() {
                   sender: data.sender,
                   content: data.content,
                   timestamp: data.timestamp,
-                  isAi: false
+                  isAi: false,
+                  attachment: data.attachment
               };
               setMessages(prev => ({
                   ...prev,
@@ -340,29 +339,83 @@ export default function App() {
       });
 
       conn.on('close', () => {
-          log('Data connection closed', 'webrtc');
-          dataConnection.current = null;
+          log(`Data connection closed with ${peerId}`, 'webrtc');
+          dataConnectionsRef.current.delete(peerId);
       });
 
       conn.on('error', (err: Error) => {
-          log(`Data connection error: ${err.message}`, 'error');
+          log(`Data connection error with ${peerId}: ${err.message}`, 'error');
+          dataConnectionsRef.current.delete(peerId);
       });
   };
 
   const cleanupCall = () => {
-      if (callInstance.current) callInstance.current.close();
-      if (dataConnection.current) dataConnection.current.close();
+      callsRef.current.forEach(call => call.close());
+      callsRef.current.clear();
+      
+      dataConnectionsRef.current.forEach(conn => conn.close());
+      dataConnectionsRef.current.clear();
+
       if (myStream) myStream.getTracks().forEach(t => t.stop());
+      
       setMyStream(null);
-      setRemoteStream(null);
+      setRemoteStreams(new Map());
       setConnectionState(ConnectionState.DISCONNECTED);
       setActiveVoiceChannelId(null);
       setIsScreenSharing(false);
-      dataConnection.current = null;
-      log("Call disconnected.", 'info');
+      
+      // Update presence to show not in voice
+      if (myPeerId) {
+          updatePresence(myPeerId, userProfile, null);
+      }
+      
+      log("Left voice channel.", 'info');
   };
 
   // --- CALL HANDLERS ---
+  const joinVoiceChannel = async (channelId: string) => {
+      log(`Joining voice channel: ${channelId}`, 'info');
+      
+      if (activeVoiceChannelId === channelId && connectionState === ConnectionState.CONNECTED) return;
+      
+      if (connectionState === ConnectionState.CONNECTED) {
+          cleanupCall();
+      }
+
+      setActiveChannelId(channelId);
+      setActiveVoiceChannelId(channelId);
+      setConnectionState(ConnectionState.CONNECTING);
+
+      if (myPeerId) {
+          updatePresence(myPeerId, userProfile, channelId);
+      }
+
+      try {
+          // Get stream once for all calls
+          await getLocalStream();
+          
+          // Find peers to call
+          const peersInChannel = onlineUsers.filter(u => u.voiceChannelId === channelId && u.peerId !== myPeerId);
+          
+          if (peersInChannel.length === 0) {
+              log("No users in channel. Waiting...", 'info');
+              setConnectionState(ConnectionState.CONNECTED);
+              toast.success("Joined Voice", "You are in the Voice Lounge.");
+              return;
+          }
+
+          toast.info("Joining...", `Connecting to ${peersInChannel.length} users...`);
+          
+          // Initiate calls to all existing peers
+          peersInChannel.forEach(peer => {
+             handleStartCall(peer.peerId); 
+          });
+      } catch (err: any) {
+          log(`Failed to join channel: ${err.message}`, 'error');
+          setConnectionState(ConnectionState.ERROR);
+      }
+  };
+
   const handleAcceptCall = async (call: any) => {
       setConnectionState(ConnectionState.CONNECTING);
       // Move user to voice channel view automatically
@@ -386,9 +439,13 @@ export default function App() {
       if (!peerInstance.current) return;
 
       const initiateCall = async () => {
-          setConnectionState(ConnectionState.CONNECTING);
+          // Only set connecting if we aren't already connected
+          if (connectionState !== ConnectionState.CONNECTED) {
+             setConnectionState(ConnectionState.CONNECTING);
+          }
+
           const voiceChan = INITIAL_CHANNELS.find(c => c.type === ChannelType.VOICE);
-          if (voiceChan) {
+          if (voiceChan && activeVoiceChannelId !== voiceChan.id) {
               setActiveChannelId(voiceChan.id);
               setActiveVoiceChannelId(voiceChan.id);
           }
@@ -398,74 +455,75 @@ export default function App() {
               const call = peerInstance.current!.call(remoteId, stream);
               setupCallEvents(call);
 
-              // Also establish data connection for text messages
+              // Also establish data connection
               const conn = peerInstance.current!.connect(remoteId);
               setupDataConnection(conn);
-              // Play outgoing call sound (looped while waiting)
-              playSound('call_outgoing', true);
-              toast.info("Calling...", "Waiting for peer to answer.");
+              
+              if (connectionState !== ConnectionState.CONNECTED) {
+                  playSound('call_outgoing', true);
+                  toast.info("Calling...", "Waiting for peer to answer.");
+              } else {
+                  toast.success("Calling...", `Adding ${remoteId} to the call.`);
+              }
           } catch (err) {
               log("Failed to start call", 'error');
-              toast.error("Call Failed", "Could not start call. Check your camera/microphone permissions.");
-              setConnectionState(ConnectionState.ERROR);
+              toast.error("Call Failed", "Could not start call.");
+              if (callsRef.current.size === 0) setConnectionState(ConnectionState.ERROR);
           }
       };
 
-      if (connectionState === ConnectionState.CONNECTED) {
-          setConfirmModal({
-              isOpen: true,
-              title: "Disconnect Current Call?",
-              message: "You're already in a call. Do you want to disconnect and start a new call?",
-              confirmText: "Disconnect & Call",
-              cancelText: "Stay Connected",
-              confirmStyle: 'danger',
-              onConfirm: () => {
-                  cleanupCall();
-                  setConfirmModal(prev => ({ ...prev, isOpen: false }));
-                  initiateCall();
-              }
-          });
-          return;
-      }
-
+      // In Mesh mode, we allow multiple calls. 
+      // If we are already connected, we just add another peer.
       initiateCall();
   };
 
   const setupCallEvents = (call: any) => {
-      callInstance.current = call;
+      const remotePeerId = call.peer;
+      callsRef.current.set(remotePeerId, call);
 
       call.on('stream', (rStream: MediaStream) => {
-          log("=== Received Remote Stream ===", 'webrtc');
-          log(`Remote stream has ${rStream.getVideoTracks().length} video tracks`, 'webrtc');
-          log(`Remote stream has ${rStream.getAudioTracks().length} audio tracks`, 'webrtc');
-
-          // Log details of each audio track
-          rStream.getAudioTracks().forEach((track, i) => {
-              log(`  Remote audio track ${i}: id=${track.id}, label="${track.label}", enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`, 'webrtc');
+          log(`=== Received Remote Stream from ${remotePeerId} ===`, 'webrtc');
+          
+          setRemoteStreams(prev => {
+              const newMap = new Map(prev);
+              newMap.set(remotePeerId, rStream);
+              return newMap;
           });
 
-          // Log details of each video track
-          rStream.getVideoTracks().forEach((track, i) => {
-              log(`  Remote video track ${i}: id=${track.id}, label="${track.label}", enabled=${track.enabled}, readyState=${track.readyState}`, 'webrtc');
-          });
-
-          setRemoteStream(rStream);
           setConnectionState(ConnectionState.CONNECTED);
-          stopLoopingSound(); // Stop outgoing/incoming call ringing
+          stopLoopingSound(); 
           playSound('user_join');
-          toast.success("Connected!", "You are now in a secure P2P call.");
       });
 
       call.on('close', () => {
-          log("Call closed by peer", 'info');
+          log(`Call closed by peer ${remotePeerId}`, 'info');
           playSound('user_leave');
-          cleanupCall();
-          toast.info("Call Ended", "The other user disconnected from the call.");
+          
+          // Remove this peer's stream and call
+          setRemoteStreams(prev => {
+              const newMap = new Map(prev);
+              newMap.delete(remotePeerId);
+              return newMap;
+          });
+          callsRef.current.delete(remotePeerId);
+          
+          if (callsRef.current.size === 0) {
+             // If everyone left, we are just alone in the channel.
+             // We DON'T disconnect ourselves.
+             toast.info("User Left", "You are the only one in the call.");
+          } else {
+              toast.info("User Left", "A user disconnected from the call.");
+          }
       });
 
       call.on('error', (err: any) => {
-          log(`Call Error: ${err.message}`, 'error');
-          cleanupCall();
+          log(`Call Error with ${remotePeerId}: ${err.message}`, 'error');
+          callsRef.current.delete(remotePeerId);
+          setRemoteStreams(prev => {
+              const newMap = new Map(prev);
+              newMap.delete(remotePeerId);
+              return newMap;
+          });
       });
   };
 
@@ -495,7 +553,7 @@ export default function App() {
       log("=== Screen Share Button Clicked ===", 'webrtc');
 
       // Debug: Check prerequisites
-      if (!callInstance.current) {
+      if (callsRef.current.size === 0) {
           log("ERROR: No active call instance!", 'error');
           toast.warning("No Active Call", "Please connect to a call first before sharing your screen.");
           return;
@@ -592,39 +650,42 @@ export default function App() {
       }
 
       log(`Screen track: ${screenTrack.id}, label: ${screenTrack.label}`, 'webrtc');
+      
+      // Iterate over all active calls and replace the track
+      let replacedCount = 0;
+      
+      for (const [peerId, call] of callsRef.current.entries()) {
+          if (!call.peerConnection) {
+              log(`WARN: No peerConnection for ${peerId}`, 'error');
+              continue;
+          }
 
-      // Check if we have peerConnection
-      if (!callInstance.current?.peerConnection) {
-          log("ERROR: No peerConnection on call instance!", 'error');
-          toast.error("Connection Error", "Peer connection not established. Try reconnecting.");
+          const senders = call.peerConnection.getSenders();
+          const videoSender = senders.find((s: RTCRtpSender) => s.track?.kind === 'video');
+
+          if (videoSender) {
+              try {
+                  await videoSender.replaceTrack(screenTrack);
+                  replacedCount++;
+              } catch(e) {
+                  log(`Failed to replace track for ${peerId}`, 'error');
+              }
+          }
+      }
+
+      if (replacedCount === 0) {
+          log("ERROR: Could not replace tracks for any peer", 'error');
+          toast.error("Screen Share Failed", "Could not share screen with peers.");
           screenTrack.stop();
           return;
       }
 
-      // IMPORTANT: Find the sender for video and replace track
-      const senders = callInstance.current.peerConnection.getSenders();
-      log(`Found ${senders.length} RTP senders`, 'webrtc');
-
-      const videoSender = senders.find((s: RTCRtpSender) => s.track?.kind === 'video');
-
-      if (!videoSender) {
-          log("ERROR: No video sender found!", 'error');
-          toast.error("Video Error", "No video track in call. Try reconnecting.");
-          screenTrack.stop();
-          return;
-      }
-
-      log(`Video sender found: current track = ${videoSender.track?.id}`, 'webrtc');
-      log("Replacing camera track with screen track...", 'webrtc');
-
-      await videoSender.replaceTrack(screenTrack);
-      log("✅ Track replaced successfully!", 'webrtc');
+      log(`✅ Replaced tracks for ${replacedCount} peers`, 'webrtc');
 
       setIsScreenSharing(true);
 
       // Update local preview
       const audioTracks = myStream!.getAudioTracks();
-      log(`Creating new stream with screen + ${audioTracks.length} audio tracks`, 'webrtc');
       const newStream = new MediaStream([screenTrack, ...audioTracks]);
       setMyStream(newStream);
 
@@ -639,21 +700,6 @@ export default function App() {
       try {
           log("Stopping screen share...", 'webrtc');
 
-          if (!callInstance.current?.peerConnection) {
-              log("ERROR: No peerConnection!", 'error');
-              setIsScreenSharing(false);
-              return;
-          }
-
-          const senders = callInstance.current.peerConnection.getSenders();
-          const videoSender = senders.find((s: RTCRtpSender) => s.track?.kind === 'video');
-
-          if (!videoSender) {
-              log("ERROR: No video sender found when stopping!", 'error');
-              setIsScreenSharing(false);
-              return;
-          }
-
           if (!myVideoTrack.current) {
               log("ERROR: No camera track to revert to!", 'error');
               toast.error("Camera Error", "Lost reference to camera. Try reconnecting.");
@@ -662,16 +708,26 @@ export default function App() {
           }
 
           log("Swapping Screen -> Camera", 'webrtc');
+          
+          // Revert tracks for all peers
+          for (const [peerId, call] of callsRef.current.entries()) {
+              if (!call.peerConnection) continue;
 
-          // Stop the screen track to release resource
-          const currentScreenTrack = videoSender.track;
-          if (currentScreenTrack) {
-              log(`Stopping screen track: ${currentScreenTrack.id}`, 'webrtc');
-              currentScreenTrack.stop();
+              const senders = call.peerConnection.getSenders();
+              const videoSender = senders.find((s: RTCRtpSender) => s.track?.kind === 'video');
+
+              if (videoSender) {
+                   // Stop the screen track (but strictly speaking we should only stop it once, effectively handled by the fact it's the same track object)
+                   // Actually we should stop the screen track *after* replacing?
+                   await videoSender.replaceTrack(myVideoTrack.current);
+              }
           }
-
-          log(`Replacing with camera track: ${myVideoTrack.current.id}`, 'webrtc');
-          await videoSender.replaceTrack(myVideoTrack.current);
+          
+          // Stop the screen track in the current stream if it exists
+          const currentVideoTrack = myStream?.getVideoTracks()[0];
+          if (currentVideoTrack && currentVideoTrack.label !== myVideoTrack.current.label) {
+              currentVideoTrack.stop();
+          }
 
           const audioTracks = myStream?.getAudioTracks() || [];
           const revertedStream = new MediaStream([myVideoTrack.current, ...audioTracks]);
@@ -686,27 +742,32 @@ export default function App() {
   };
 
   // --- UI ACTIONS ---
-  const addMessage = (channelId: string, text: string, sender: string, isAi: boolean = false) => {
+  const addMessage = (channelId: string, text: string, sender: string, isAi: boolean = false, attachment?: Message['attachment']) => {
       const newMessage: Message = {
-          id: Date.now().toString() + Math.random().toString(), sender, content: text, timestamp: Date.now(), isAi
+          id: Date.now().toString() + Math.random().toString(), sender, content: text, timestamp: Date.now(), isAi, attachment
       };
       setMessages(prev => ({ ...prev, [channelId]: [...(prev[channelId] || []), newMessage] }));
 
-      // Send message to remote peer via data connection (except AI messages)
-      if (!isAi && dataConnection.current && dataConnection.current.open) {
-          try {
-              dataConnection.current.send({
-                  type: 'text-message',
-                  channelId,
-                  id: newMessage.id,
-                  sender: newMessage.sender,
-                  content: newMessage.content,
-                  timestamp: newMessage.timestamp
-              });
-              log(`Sent message to remote peer: ${text}`, 'webrtc');
-          } catch (err: any) {
-              log(`Failed to send message: ${err.message}`, 'error');
-          }
+      // Send message to ALL remote peers via data connection (except AI messages)
+      if (!isAi && dataConnectionsRef.current.size > 0) {
+          dataConnectionsRef.current.forEach((conn) => {
+              if (conn.open) {
+                  try {
+                      conn.send({
+                          type: 'text-message',
+                          channelId,
+                          id: newMessage.id,
+                          sender: newMessage.sender,
+                          content: newMessage.content,
+                          timestamp: newMessage.timestamp,
+                          attachment: newMessage.attachment
+                      });
+                  } catch (err: any) {
+                      log(`Failed to send message to ${conn.peer}: ${err.message}`, 'error');
+                  }
+              }
+          });
+          log(`Broadcasted message: ${text}`, 'webrtc');
       }
   };
 
@@ -801,8 +862,26 @@ export default function App() {
       className="flex w-full h-screen bg-discord-main text-discord-text overflow-hidden font-sans relative"
       onContextMenu={handleContextMenu}
     >
-      {/* Global Audio Element for persistent audio across views */}
-      <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
+      {/* Global Audio Elements for persistent audio across views */}
+      {Array.from(remoteStreams.entries()).map(([peerId, stream]) => (
+          <audio 
+            key={peerId}
+            ref={el => {
+                if (el) {
+                    el.srcObject = stream;
+                    el.volume = Math.min(remoteVolume / 100, 1.0);
+                    // If we have a specific output device, set it
+                    if ((el as any).setSinkId && deviceSettings.audioOutputId) {
+                        (el as any).setSinkId(deviceSettings.audioOutputId)
+                            .catch((e: any) => console.error("Failed to set audio output", e));
+                    }
+                }
+            }}
+            autoPlay 
+            playsInline 
+            className="hidden" 
+          />
+      ))}
 
       {showUpdateModal && updateInfo && (
           <UpdateModal
@@ -846,10 +925,8 @@ export default function App() {
             activeChannelId={activeChannelId}
             onSelectChannel={(id) => {
                 const ch = INITIAL_CHANNELS.find(c => c.id === id);
-                // If it's a voice channel, we set it as active view AND try to connect if not connected
                 if (ch?.type === ChannelType.VOICE) {
-                    setActiveChannelId(id);
-                    // We don't auto-connect logic here, simpler to let user init call via UI in VoiceStage
+                    joinVoiceChannel(id);
                 } else {
                     setActiveChannelId(id);
                 }
@@ -875,7 +952,7 @@ export default function App() {
       {activeChannel.type === ChannelType.VOICE ? (
          <VoiceStage
             myStream={myStream}
-            remoteStream={remoteStream}
+            remoteStreams={remoteStreams}
             connectionState={connectionState}
             onToggleVideo={toggleVideo}
             onToggleAudio={toggleAudio}
@@ -893,7 +970,7 @@ export default function App() {
              <ChatArea 
                 channel={activeChannel}
                 messages={messages[activeChannel.id] || []}
-                onSendMessage={(text) => addMessage(activeChannel.id, text, userProfile.displayName)}
+                onSendMessage={(text, attachment) => addMessage(activeChannel.id, text, userProfile.displayName, false, attachment)}
                 onSendAIMessage={(text, response) => addMessage(activeChannel.id, response, 'Pissbot', true)}
              />
              <UserList 

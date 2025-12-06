@@ -3,7 +3,7 @@ import { ConnectionState } from '../types';
 
 interface VoiceStageProps {
   myStream: MediaStream | null;
-  remoteStream: MediaStream | null;
+  remoteStreams: Map<string, MediaStream>;
   connectionState: ConnectionState;
   onToggleVideo: () => void;
   onToggleAudio: () => void;
@@ -19,7 +19,7 @@ interface VoiceStageProps {
 
 export const VoiceStage: React.FC<VoiceStageProps> = ({
   myStream,
-  remoteStream,
+  remoteStreams,
   connectionState,
   onToggleVideo,
   onToggleAudio,
@@ -33,21 +33,27 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
   onIdCopied
 }) => {
   const myVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const [remoteIdInput, setRemoteIdInput] = useState('');
+  
+  // Map to store refs for each remote video
+  const remoteVideoRefs = useRef<Map<string, HTMLVideoElement | null>>(new Map());
 
-  // Effect to attach streams to video elements
+  // Effect to attach local stream
   useEffect(() => {
     if (myVideoRef.current && myStream) {
       myVideoRef.current.srcObject = myStream;
     }
-  }, [myStream, isScreenSharing, isVideoEnabled]); // Re-run when video is toggled back on
+  }, [myStream, isScreenSharing, isVideoEnabled]);
 
+  // Effect to attach remote streams
   useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
-    }
-  }, [remoteStream]);
+    remoteStreams.forEach((stream, peerId) => {
+        const el = remoteVideoRefs.current.get(peerId);
+        if (el && el.srcObject !== stream) {
+            el.srcObject = stream;
+        }
+    });
+  }, [remoteStreams]);
 
   const handleConnectSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,11 +62,20 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
     }
   };
 
+  // Calculate grid columns based on participant count (myself + remotes)
+  const totalParticipants = 1 + remoteStreams.size;
+  const getGridClass = () => {
+      if (totalParticipants <= 1) return 'grid-cols-1';
+      if (totalParticipants <= 2) return 'grid-cols-1 md:grid-cols-2';
+      if (totalParticipants <= 4) return 'grid-cols-2 md:grid-cols-2';
+      return 'grid-cols-2 md:grid-cols-3';
+  };
+
   return (
     <div className="flex-1 bg-black flex flex-col relative overflow-hidden">
       
       {/* Main Stage Grid */}
-      <div className="flex-1 p-4 grid grid-cols-1 md:grid-cols-2 gap-4 items-center justify-center">
+      <div className={`flex-1 p-4 grid ${getGridClass()} gap-4 items-center justify-center overflow-y-auto`}>
         
         {/* Connection Overlay if disconnected */}
         {connectionState === ConnectionState.DISCONNECTED && (
@@ -147,7 +162,7 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
         )}
 
         {/* My Video Tile */}
-        <div className="relative aspect-video bg-discord-dark rounded-lg overflow-hidden shadow-lg border border-discord-sidebar group">
+        <div className="relative aspect-video bg-discord-dark rounded-lg overflow-hidden shadow-lg border border-discord-sidebar group min-h-[200px]">
            {isVideoEnabled || isScreenSharing ? (
               <video 
                 ref={myVideoRef} 
@@ -170,11 +185,17 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
            </div>
         </div>
 
-        {/* Remote Video Tile */}
-        {connectionState === ConnectionState.CONNECTED && (
-          <div className="relative aspect-video bg-discord-dark rounded-lg overflow-hidden shadow-lg border border-discord-sidebar">
-             {remoteStream && remoteStream.getVideoTracks().length > 0 ? (
-                <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+        {/* Remote Video Tiles */}
+        {connectionState === ConnectionState.CONNECTED && Array.from(remoteStreams.entries()).map(([peerId, stream]) => (
+          <div key={peerId} className="relative aspect-video bg-discord-dark rounded-lg overflow-hidden shadow-lg border border-discord-sidebar min-h-[200px]">
+             {stream && stream.getVideoTracks().length > 0 ? (
+                <video 
+                    ref={el => remoteVideoRefs.current.set(peerId, el)}
+                    autoPlay 
+                    playsInline
+                    muted // Muted because App.tsx handles audio globally
+                    className="w-full h-full object-cover" 
+                />
              ) : (
                 <div className="w-full h-full flex items-center justify-center animate-pulse">
                     <div className="w-24 h-24 rounded-full bg-green-600 flex items-center justify-center">
@@ -183,10 +204,10 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
                 </div>
              )}
              <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-white text-sm font-bold">
-                 Friend
+                 {peerId.substring(0,5)}...
              </div>
           </div>
-        )}
+        ))}
       </div>
 
       {/* Control Bar */}
