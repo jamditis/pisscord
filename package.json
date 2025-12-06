@@ -42,7 +42,8 @@
         "repo": "pisscord",
         "private": false
       }
-    ]
+    ],
+    "generateUpdatesFilesForAllChannels": true
   },
   "dependencies": {
     "@google/genai": "*",
