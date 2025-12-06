@@ -27,7 +27,7 @@ if (!gotTheLock) {
 autoUpdater.autoDownload = false; // Don't auto-download, ask user first
 autoUpdater.autoInstallOnAppQuit = true; // Auto-install when app closes
 
-function createWindow() {
+async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 720,
