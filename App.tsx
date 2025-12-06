@@ -12,7 +12,7 @@ import { ToastContainer, useToast } from './components/Toast';
 import { ConfirmModal } from './components/ConfirmModal';
 import { ContextMenu, useContextMenu } from './components/ContextMenu';
 import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs } from './types';
-import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence } from './services/firebase';
+import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages } from './services/firebase';
 import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 
 const APP_VERSION = "1.0.11";
@@ -69,9 +69,7 @@ export default function App() {
   const pendingCallRef = useRef<any>(null);
   
   // --- STATE: Data ---
-  const [messages, setMessages] = useState<Record<string, Message[]>>({
-      '1': [], '2': [], '3': [{ id: 'welcome-ai', sender: 'Pissbot', content: 'Hello! I am your AI assistant.', timestamp: Date.now(), isAi: true }],
-  });
+  const [messages, setMessages] = useState<Record<string, Message[]>>({});
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
       const saved = localStorage.getItem('pisscord_profile');
       if (saved) {
@@ -118,6 +116,20 @@ export default function App() {
   const isMountedRef = useRef(true);
 
   const activeChannel = INITIAL_CHANNELS.find(c => c.id === activeChannelId) || INITIAL_CHANNELS[0];
+
+  // --- SUBSCRIPTIONS ---
+  useEffect(() => {
+      // Subscribe to messages for the active channel
+      if (activeChannel.type !== ChannelType.VOICE) {
+          const unsubscribe = subscribeToMessages(activeChannelId, (newMessages) => {
+              setMessages(prev => ({
+                  ...prev,
+                  [activeChannelId]: newMessages as Message[]
+              }));
+          });
+          return () => unsubscribe();
+      }
+  }, [activeChannelId, activeChannel.type]);
 
   // --- HELPERS ---
   const log = (message: string, type: 'info' | 'error' | 'webrtc' = 'info') => {
@@ -321,20 +333,10 @@ export default function App() {
 
       conn.on('data', (data: any) => {
           // Receive text messages from remote peer
-          if (data.type === 'text-message') {
-              const newMessage: Message = {
-                  id: data.id,
-                  sender: data.sender,
-                  content: data.content,
-                  timestamp: data.timestamp,
-                  isAi: false,
-                  attachment: data.attachment
-              };
-              setMessages(prev => ({
-                  ...prev,
-                  [data.channelId]: [...(prev[data.channelId] || []), newMessage]
-              }));
-              log(`Received message from ${data.sender}: ${data.content}`, 'info');
+          // DEPRECATED: Chat is now handled via Firebase Persistence.
+          // Keeping this hook for future P2P features (e.g. typing indicators, game state)
+          if (data.type === 'ping') {
+              log(`Ping from ${conn.peer}`, 'webrtc');
           }
       });
 
@@ -744,31 +746,24 @@ export default function App() {
   // --- UI ACTIONS ---
   const addMessage = (channelId: string, text: string, sender: string, isAi: boolean = false, attachment?: Message['attachment']) => {
       const newMessage: Message = {
-          id: Date.now().toString() + Math.random().toString(), sender, content: text, timestamp: Date.now(), isAi, attachment
+          id: Date.now().toString() + Math.random().toString(), 
+          sender, 
+          content: text, 
+          timestamp: Date.now(), 
+          isAi, 
+          attachment,
+          // Add avatar to message for persistence
+          // Note: We'd need to update Message type to support avatarURL if we want to persist it.
+          // For now, we rely on UserList lookup or just don't persist avatar in message (it will show generic/lookup).
+          // Actually, let's check if we can add it.
       };
-      setMessages(prev => ({ ...prev, [channelId]: [...(prev[channelId] || []), newMessage] }));
-
-      // Send message to ALL remote peers via data connection (except AI messages)
-      if (!isAi && dataConnectionsRef.current.size > 0) {
-          dataConnectionsRef.current.forEach((conn) => {
-              if (conn.open) {
-                  try {
-                      conn.send({
-                          type: 'text-message',
-                          channelId,
-                          id: newMessage.id,
-                          sender: newMessage.sender,
-                          content: newMessage.content,
-                          timestamp: newMessage.timestamp,
-                          attachment: newMessage.attachment
-                      });
-                  } catch (err: any) {
-                      log(`Failed to send message to ${conn.peer}: ${err.message}`, 'error');
-                  }
-              }
-          });
-          log(`Broadcasted message: ${text}`, 'webrtc');
-      }
+      
+      // If it's Pissbot, we just add it locally for now? 
+      // No, Pissbot messages should also be persisted if we want history.
+      // But Pissbot logic is client-side. If I persist it, everyone will see my Pissbot interaction?
+      // Yes, if it's a public channel. That's fine.
+      
+      sendMessage(channelId, newMessage);
   };
 
   const handleSaveProfile = (newProfile: UserProfile) => {

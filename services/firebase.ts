@@ -6,7 +6,10 @@ import {
   set, 
   onDisconnect, 
   onValue, 
-  remove 
+  remove,
+  push,
+  query,
+  limitToLast
 } from "firebase/database";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { UserProfile, PresenceUser } from "../types";
@@ -156,4 +159,27 @@ export const getPissbotConfig = async (): Promise<PissbotConfig | null> => {
 export const clearPissbotCache = () => {
   pissbotConfigCache = null;
   pissbotConfigCacheTime = 0;
+};
+
+// --- MESSAGING ---
+export const sendMessage = (channelId: string, message: any) => {
+  const messagesRef = ref(db, `messages/${channelId}`);
+  const newMessageRef = push(messagesRef);
+  set(newMessageRef, message);
+};
+
+export const subscribeToMessages = (channelId: string, onMessageUpdate: (messages: any[]) => void) => {
+  const messagesRef = ref(db, `messages/${channelId}`);
+  // Limit to last 100 messages to prevent lag
+  const recentMessagesQuery = query(messagesRef, limitToLast(100));
+  
+  return onValue(recentMessagesQuery, (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      const messageList = Object.values(data);
+      onMessageUpdate(messageList);
+    } else {
+      onMessageUpdate([]);
+    }
+  });
 };
