@@ -27,7 +27,7 @@ Your personality:
 - Speaks like a tech-savvy friend, not a corporate bot`,
 
   context: `About Pisscord:
-- Current Version: v1.1.0 (Released December 6, 2025)
+- Current Version: v1.1.1 (Released December 6, 2025)
 - Built with: Electron 30, React 18, TypeScript, Vite, Firebase
 - P2P Architecture: Uses PeerJS for WebRTC mesh networking
 - Real-time presence: Firebase Realtime Database
@@ -63,7 +63,12 @@ Technical Architecture:
 - Services: firebase.ts (presence, messages, files), geminiService.ts (AI), sounds.ts (audio), github.ts (dev feed)
 - Components: Sidebar, ChannelList, ChatArea, VoiceStage, UserList, JoinRequestPanel`,
 
-  patchNotes: `v1.1.0 (December 6, 2025):
+  patchNotes: `v1.1.1 (December 6, 2025):
+- Fixed video pinning - other participants now stay visible when you pin someone
+- External links now open in default browser instead of inside the app
+- Manual download button now directly downloads the .exe file
+
+v1.1.0 (December 6, 2025):
 - Voice channel approval mode - channels can require approval to join
 - Collapsible user list sidebar
 - User list now visible in voice channels

@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Pisscord is a private, peer-to-peer Discord clone built with React, TypeScript, Electron, and PeerJS. It enables direct P2P voice/video calling, text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
 
-**Current Version:** 1.1.0
-**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.1.0
+**Current Version:** 1.1.1
+**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.1.1
 
 ## Key Architecture
 

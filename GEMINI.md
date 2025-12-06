@@ -13,7 +13,7 @@ A private P2P Discord clone built for personal use. **Not malware** - it's a leg
 - Backend: Firebase Realtime Database + Storage
 - AI: Google Gemini 2.5 Flash (Pissbot assistant)
 
-**Current Version:** 1.1.0
+**Current Version:** 1.1.1
 
 ## Project Structure
 
@@ -119,28 +119,31 @@ Create `.env.local` file in project root.
 
 ## Recent Session Context (Dec 6, 2025)
 
-### v1.0.14 Changes (Latest Session)
+### v1.1.1 Changes (Latest)
+1. **Fixed Video Pinning**: Other participants now stay visible when you pin someone's video
+2. **External Links in Browser**: Links now open in default browser instead of in-app
+3. **Direct Download Button**: Manual download in update popup links directly to .exe file
+
+### v1.1.0 Changes
+1. **Voice Channel Approval Mode**: Channels can require approval to join (Gaming channel)
+2. **Collapsible User List**: Click to collapse/expand user sidebar
+3. **User List in Voice Calls**: Now visible alongside voice stage
+4. **Fixed View Switching**: Returning to voice channel no longer forces rejoin
+5. **Fixed Speaking Indicator**: No longer causes video tile layout shifts
+6. **Simplified Sidebar**: Removed "Add Server" button, Pisscord logo as home
+
+### v1.0.14 Changes
 1. **Video Spotlight**: Click any video tile to pin/maximize during calls
-2. **Speaking Indicator**: Green ring around avatars when user is speaking (audio activity detection)
-3. **Markdown Chat**: Full Discord-style markdown rendering (bold, italic, code, headers, lists, links)
+2. **Speaking Indicator**: Green ring around avatars when user is speaking
+3. **Markdown Chat**: Full Discord-style markdown rendering
 4. **Voice Channel Users**: Users now appear nested under voice channels in sidebar
-5. **Bug Fixes**: Fixed bug report submission error (Firebase undefined values), added manual download fallback for auto-updater
+5. **Bug Fixes**: Fixed bug report submission, added manual download fallback
 6. **Second Voice Channel**: Added "Gaming" voice channel
-7. **Profile Picture Sync**: Fixed photoURL not being synced to Firebase presence
 
-### Files Modified in v1.0.14
-- `components/VoiceStage.tsx` - Audio activity detection, video spotlight/pin
-- `components/ChatArea.tsx` - Markdown rendering
-- `components/ChannelList.tsx` - Users nested under voice channels
-- `components/UpdateModal.tsx` - Manual download fallback
-- `services/firebase.ts` - photoURL sync, image resizer helper
-- `App.tsx` - Fixed undefined attachment bug, added Gaming channel
-
-### v1.0.13 Changes (Earlier Today)
-1. **Released v1.0.12 & v1.0.13**: Massive feature rollout.
-2. **Community Features**: Added `#issues` for bug reporting and `#dev-updates` for live commit feeds.
-3. **Maintenance Tools**: Implemented MOTD system, Pissbot update notifications, and 14-day message retention.
-4. **Core Upgrades**: Mesh networking (group calls), file sharing, and profile pictures.
+### v1.0.13 Changes
+1. **Community Features**: Added `#issues` for bug reporting and `#dev-updates` for live commit feeds
+2. **Maintenance Tools**: MOTD system, Pissbot update notifications, 14-day message retention
+3. **Core Upgrades**: Mesh networking (group calls), file sharing, and profile pictures
 
 ### Open Items for Future Sessions
 - Mobile App (React Native / Expo)
