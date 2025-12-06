@@ -27,3 +27,11 @@ build
 # Misc
 nul
 src/
+
+# Capacitor native projects (generated locally)
+ios/
+android/
+
+# Capacitor plugin builds
+capacitor-cordova-android-plugins/
+capacitor-cordova-ios-plugins/

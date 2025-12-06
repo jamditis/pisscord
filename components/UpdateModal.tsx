@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform, UpdateService, LinkService } from '../services/platform';
 
 interface UpdateModalProps {
   latestVersion: string;
@@ -17,14 +18,15 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
   ready = false,
   onClose
 }) => {
-  const isElectron = !!(window as any).electronAPI;
+  // Only show auto-update UI on Electron, hide entirely on mobile
+  const supportsAutoUpdate = UpdateService.isSupported;
 
   const handleDownload = () => {
-    if (isElectron) {
-      console.log('[UPDATE] User clicked download, calling electronAPI.downloadUpdate()');
-      (window as any).electronAPI.downloadUpdate();
+    if (supportsAutoUpdate) {
+      console.log('[UPDATE] User clicked download, calling UpdateService.downloadUpdate()');
+      UpdateService.downloadUpdate();
     } else if (downloadUrl) {
-      window.open(downloadUrl, '_blank');
+      LinkService.openExternal(downloadUrl);
     }
   };
 
@@ -32,14 +34,19 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
   const handleManualDownload = () => {
     // Direct download URL to the .exe file (no need to navigate GitHub's confusing UI)
     const directDownloadUrl = `https://github.com/jamditis/pisscord/releases/download/v${latestVersion}/Pisscord.Setup.${latestVersion}.exe`;
-    window.open(directDownloadUrl, '_blank');
+    LinkService.openExternal(directDownloadUrl);
   };
 
   const handleInstall = () => {
-    if (isElectron) {
-      (window as any).electronAPI.installUpdate();
+    if (supportsAutoUpdate) {
+      UpdateService.installUpdate();
     }
   };
+
+  // Don't show update modal on mobile - updates come from app stores
+  if (Platform.isMobile) {
+    return null;
+  }
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="bg-discord-sidebar w-full max-w-md rounded-lg shadow-2xl border border-discord-green relative overflow-hidden">
@@ -102,9 +109,9 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                       className="bg-discord-green hover:bg-green-600 text-white font-bold py-3 rounded transition-all flex items-center justify-center"
                     >
                       <i className="fas fa-download mr-2"></i>
-                      {isElectron ? 'Download in Background' : 'Download Update'}
+                      {supportsAutoUpdate ? 'Download in Background' : 'Download Update'}
                     </button>
-                    {isElectron && (
+                    {supportsAutoUpdate && (
                       <button
                         onClick={handleManualDownload}
                         className="bg-discord-main hover:bg-discord-hover text-discord-text font-medium py-2 rounded transition-all flex items-center justify-center text-sm"

@@ -9,7 +9,12 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "electron:dev": "concurrently \"cross-env BROWSER=none npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
-    "dist": "npm run build && electron-builder --win --x64"
+    "dist": "npm run build && electron-builder --win --x64",
+    "cap:sync": "npm run build && npx cap sync",
+    "cap:ios": "npx cap open ios",
+    "cap:android": "npx cap open android",
+    "cap:add:ios": "npx cap add ios",
+    "cap:add:android": "npx cap add android"
   },
   "build": {
     "appId": "com.pisscord.app",
@@ -46,6 +51,13 @@
     "generateUpdatesFilesForAllChannels": true
   },
   "dependencies": {
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/app": "^7.1.0",
+    "@capacitor/clipboard": "^7.0.2",
+    "@capacitor/core": "^7.4.4",
+    "@capacitor/haptics": "^7.0.2",
+    "@capacitor/ios": "^7.4.4",
+    "@capacitor/status-bar": "^7.0.3",
     "@google/genai": "*",
     "electron-updater": "^6.6.2",
     "firebase": "^10.8.0",
@@ -54,6 +66,7 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.4.4",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
     "@vitejs/plugin-react": "^4.2.1",
