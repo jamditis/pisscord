@@ -1,3 +1,4 @@
+![pisscord logo](https://i.imgur.com/vCz4AHQ.png)
 # Pisscord
 
 A private, peer-to-peer Discord clone for trusted groups with enterprise-grade voice/video calling, AI assistance, and real-time presence.
