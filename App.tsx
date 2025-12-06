@@ -357,11 +357,9 @@ export default function App() {
           try {
               log("Requesting screen share permission...", 'webrtc');
               const displayStream = await navigator.mediaDevices.getDisplayMedia({
-                  video: {
-                      cursor: "always"
-                  },
+                  video: true,
                   audio: false
-              });
+              } as any);
 
               log("Screen share permission granted", 'webrtc');
               const screenTrack = displayStream.getVideoTracks()[0];
