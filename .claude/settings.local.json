@@ -24,7 +24,8 @@
       "Bash(npx tsc:*)",
       "Bash(dir:*)",
       "Bash(gh release view:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(node scripts/setup-pissbot-config.js:*)"
     ],
     "deny": [],
     "ask": []
