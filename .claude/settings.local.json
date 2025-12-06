@@ -17,7 +17,13 @@
       "Bash(npm run build:*)",
       "Bash(git checkout:*)",
       "Bash(gh pr create:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(git tag:*)",
+      "Bash(gh release create:*)",
+      "Bash(gh release upload:*)",
+      "Bash(npx tsc:*)",
+      "Bash(dir:*)",
+      "Bash(gh release view:*)"
     ],
     "deny": [],
     "ask": []

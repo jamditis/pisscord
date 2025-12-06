@@ -181,6 +181,33 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - `fix/` - Bug fixes (e.g., `fix/audio-playback`)
 - `release/` - Release preparation (e.g., `release/v1.0.8`)
 
+## Release Workflow
+
+**IMPORTANT: Follow these steps for every new release.**
+
+1. **Build the release**:
+   ```bash
+   npm run dist
+   ```
+
+2. **Create and push git tag**:
+   ```bash
+   git tag v1.0.X
+   git push origin v1.0.X
+   ```
+
+3. **Create GitHub release**:
+   ```bash
+   gh release create v1.0.X --title "Pisscord v1.0.X" --notes "Release notes here"
+   gh release upload v1.0.X "dist/Pisscord Setup 1.0.X.exe" "dist/latest.yml"
+   ```
+
+4. **Update the website** (REQUIRED for every release):
+   - Location: `@website/index.html`
+   - Update version number displayed
+   - Update download link to new release
+   - Update changelog if applicable
+
 ## TypeScript Configuration
 
 - Target: ES2020 with bundler module resolution
