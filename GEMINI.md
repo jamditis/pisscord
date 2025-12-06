@@ -10,10 +10,10 @@ A private P2P Discord clone built for personal use. **Not malware** - it's a leg
 - Frontend: React 18 + TypeScript + Vite
 - Desktop: Electron 30
 - P2P: PeerJS (WebRTC wrapper)
-- Backend: Firebase Realtime Database (presence only)
+- Backend: Firebase Realtime Database + Storage
 - AI: Google Gemini 2.5 Flash (Pissbot assistant)
 
-**Current Version:** 1.0.12
+**Current Version:** 1.0.13
 
 ## Project Structure
 
@@ -120,25 +120,23 @@ Create `.env.local` file in project root.
 ## Recent Session Context (Dec 6, 2025)
 
 ### What Was Done Today
-1. **Released v1.0.12**: Major update with Group Calls, File Sharing, and Persistence.
-2. **Mesh Networking**: Refactored PeerJS logic to support multiple concurrent connections.
-3. **File Uploads**: Integrated Firebase Storage for sharing images/files in chat and setting avatars.
-4. **Message Persistence**: Switched from ephemeral P2P text to Firebase Realtime Database for chat history.
-5. **Bug Fixes**: Fixed volume crashes, one-way audio, and URL rendering.
+1. **Released v1.0.12 & v1.0.13**: Massive feature rollout.
+2. **Community Features**: Added `#issues` for bug reporting and `#dev-updates` for live commit feeds.
+3. **Maintenance Tools**: Implemented MOTD system, Pissbot update notifications, and 14-day message retention.
+4. **Core Upgrades**: Mesh networking (group calls), file sharing, and profile pictures.
 
 ### Files Modified Today
-- `App.tsx` - Core logic for Mesh networking, Firebase messaging, and state management.
-- `components/VoiceStage.tsx` - Dynamic video grid for multiple peers.
-- `components/ChatArea.tsx` - File upload UI, URL rendering, avatar display.
-- `components/UserSettingsModal.tsx` - Avatar upload UI.
-- `services/firebase.ts` - Added Storage and Messaging services.
-- `types.ts` - Updated interfaces for Message attachments and Profile photos.
-- `package.json` - Bumped to 1.0.12.
+- `App.tsx` - Integrated new services (GitHub, MOTD, Retention).
+- `services/github.ts` - Fetcher for Releases and Events.
+- `components/ReportIssueModal.tsx` - UI for bug reporting.
+- `components/ChatArea.tsx` - Added "Report Issue" button logic.
+- `services/firebase.ts` - Added cleanup logic and MOTD checker.
+- `package.json` - Bumped to 1.0.13.
 
 ### Open Items for Future Sessions
-- Friends List / Contact Management.
-- Call History Logging.
-- Advanced Permissions/Roles.
+- Mobile App (React Native / Expo).
+- End-to-End Encryption for DMs.
+- Custom Emojis.
 
 ## Architecture Decisions
 

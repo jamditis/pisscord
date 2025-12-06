@@ -17,7 +17,7 @@ import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, up
 import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
 
-const APP_VERSION = "1.0.12";
+const APP_VERSION = "1.0.13";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
