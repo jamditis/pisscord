@@ -8,9 +8,10 @@ interface ChatAreaProps {
   messages: Message[];
   onSendMessage: (text: string, attachment?: Message['attachment']) => void;
   onSendAIMessage: (text: string, response: string) => void;
+  onOpenReportModal?: () => void;
 }
 
-export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMessage, onSendAIMessage }) => {
+export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMessage, onSendAIMessage, onOpenReportModal }) => {
   const [inputValue, setInputValue] = useState('');
   const [isTypingAI, setIsTypingAI] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -83,6 +84,16 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMes
         <i className={`mr-2 text-discord-muted text-xl ${channel.type === ChannelType.AI ? 'fas fa-robot' : 'fas fa-hashtag'}`}></i>
         <h3 className="font-bold text-white">{channel.name}</h3>
         {channel.type === ChannelType.AI && <span className="ml-2 text-xs bg-discord-accent text-white px-1 rounded">BOT</span>}
+        
+        {channel.id === '5' && (
+            <button 
+                onClick={onOpenReportModal}
+                className="ml-4 bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-3 py-1.5 rounded transition-colors flex items-center"
+            >
+                <i className="fas fa-bug mr-2"></i> Report Issue
+            </button>
+        )}
+
         <div className="ml-auto flex items-center space-x-4 text-discord-muted text-lg">
            <i className="fas fa-bell hover:text-discord-text cursor-pointer"></i>
            <i className="fas fa-thumbtack hover:text-discord-text cursor-pointer"></i>

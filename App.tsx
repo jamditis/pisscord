@@ -8,6 +8,7 @@ import { UserList } from './components/UserList';
 import { UpdateModal } from './components/UpdateModal';
 import { UserSettingsModal } from './components/UserSettingsModal';
 import { ScreenPickerModal } from './components/ScreenPickerModal';
+import { ReportIssueModal } from './components/ReportIssueModal';
 import { ToastContainer, useToast } from './components/Toast';
 import { ConfirmModal } from './components/ConfirmModal';
 import { ContextMenu, useContextMenu } from './components/ContextMenu';
@@ -24,6 +25,7 @@ const INITIAL_CHANNELS: Channel[] = [
   { id: '2', name: 'links', type: ChannelType.TEXT },
   { id: '3', name: 'pissbot', type: ChannelType.AI },
   { id: '4', name: 'dev-updates', type: ChannelType.TEXT },
+  { id: '5', name: 'issues', type: ChannelType.TEXT },
   { id: 'voice-1', name: 'Voice Lounge', type: ChannelType.VOICE },
 ];
 
@@ -106,6 +108,7 @@ export default function App() {
   // --- MODALS ---
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [showScreenPicker, setShowScreenPicker] = useState(false);
   const [screenSources, setScreenSources] = useState<Array<{id: string, name: string, thumbnail: string}>>([]);
   const [updateInfo, setUpdateInfo] = useState<{url: string, latest: string, downloading?: boolean, progress?: number, ready?: boolean} | null>(null);
@@ -813,6 +816,20 @@ export default function App() {
       });
   };
 
+  const handleReportIssue = (title: string, description: string, type: 'BUG' | 'FEATURE', screenshotUrl?: string) => {
+      const content = `**[${type}] ${title}**\n${description}`;
+      // Use the addMessage function to post to '5' (issues channel)
+      // We can attach the screenshot as an attachment
+      addMessage(
+          '5', 
+          content, 
+          userProfile.displayName, 
+          false, 
+          screenshotUrl ? { url: screenshotUrl, type: 'image', name: 'screenshot.png' } : undefined
+      );
+      toast.success("Report Submitted", "Your issue has been posted to #issues.");
+  };
+
   const copyId = () => {
       if (myPeerId) {
           // Use Electron clipboard API if available, otherwise fallback to navigator
@@ -920,6 +937,14 @@ export default function App() {
           />
       )}
 
+      {showReportModal && (
+          <ReportIssueModal
+            onClose={() => setShowReportModal(false)}
+            onSubmit={handleReportIssue}
+            onShowToast={(type, title, message) => toast[type](title, message)}
+          />
+      )}
+
       {showScreenPicker && (
           <ScreenPickerModal
             sources={screenSources}
@@ -986,6 +1011,7 @@ export default function App() {
                 messages={messages[activeChannel.id] || []}
                 onSendMessage={(text, attachment) => addMessage(activeChannel.id, text, userProfile.displayName, false, attachment)}
                 onSendAIMessage={(text, response) => addMessage(activeChannel.id, response, 'Pissbot', true)}
+                onOpenReportModal={() => setShowReportModal(true)}
              />
              <UserList 
                 connectionState={connectionState} 
