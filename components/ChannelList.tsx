@@ -17,6 +17,7 @@ interface ChannelListProps {
   onToggleVideo?: () => void;
   remoteVolume?: number;
   onVolumeChange?: (volume: number) => void;
+  onShowToast?: (type: 'success' | 'error' | 'info' | 'warning', title: string, message?: string) => void;
 }
 
 export const ChannelList: React.FC<ChannelListProps> = ({
@@ -34,7 +35,8 @@ export const ChannelList: React.FC<ChannelListProps> = ({
   onToggleAudio,
   onToggleVideo,
   remoteVolume = 100,
-  onVolumeChange
+  onVolumeChange,
+  onShowToast
 }) => {
   const [showVolumeSlider, setShowVolumeSlider] = React.useState(false);
   return (
@@ -109,7 +111,10 @@ export const ChannelList: React.FC<ChannelListProps> = ({
               <div className="text-white text-xs truncate">Voice Lounge</div>
             </div>
             <button
-              onClick={onDisconnect}
+              onClick={() => {
+                onDisconnect?.();
+                onShowToast?.('info', 'Disconnected', 'You left the voice channel.');
+              }}
               className="text-white hover:text-red-500 p-1.5 rounded hover:bg-discord-hover transition-colors"
               title="Disconnect"
             >
@@ -120,7 +125,10 @@ export const ChannelList: React.FC<ChannelListProps> = ({
           {/* Voice Controls */}
           <div className="flex items-center space-x-2 relative">
             <button
-              onClick={onToggleAudio}
+              onClick={() => {
+                onToggleAudio?.();
+                onShowToast?.('info', isAudioEnabled ? 'Muted' : 'Unmuted', isAudioEnabled ? 'Your microphone is now muted.' : 'Your microphone is now on.');
+              }}
               className={`flex-1 p-2 rounded text-xs font-medium transition-all ${isAudioEnabled ? 'bg-discord-main hover:bg-discord-hover text-white' : 'bg-red-500 text-white'}`}
               title={isAudioEnabled ? 'Mute' : 'Unmute'}
             >
@@ -129,7 +137,10 @@ export const ChannelList: React.FC<ChannelListProps> = ({
             </button>
 
             <button
-              onClick={onToggleVideo}
+              onClick={() => {
+                onToggleVideo?.();
+                onShowToast?.('info', isVideoEnabled ? 'Camera Off' : 'Camera On', isVideoEnabled ? 'Your camera is now off.' : 'Your camera is now on.');
+              }}
               className={`flex-1 p-2 rounded text-xs font-medium transition-all ${isVideoEnabled ? 'bg-discord-main hover:bg-discord-hover text-white' : 'bg-red-500 text-white'}`}
               title={isVideoEnabled ? 'Stop Video' : 'Start Video'}
             >

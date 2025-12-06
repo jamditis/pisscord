@@ -10,12 +10,13 @@ interface UserSettingsModalProps {
   onSaveDevices: (newDevices: DeviceSettings) => void;
   onCheckForUpdates: () => void;
   onClose: () => void;
+  onShowToast?: (type: 'success' | 'error' | 'info' | 'warning', title: string, message?: string) => void;
 }
 
 const COLORS = ['#5865F2', '#3ba55c', '#ed4245', '#faa61a', '#eb459e', '#00b0f4', '#a8a8a8'];
 
 export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
-    currentProfile, currentDevices, logs, appVersion, onSaveProfile, onSaveDevices, onCheckForUpdates, onClose
+    currentProfile, currentDevices, logs, appVersion, onSaveProfile, onSaveDevices, onCheckForUpdates, onClose, onShowToast
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'voice' | 'debug' | 'about'>('profile');
   
@@ -46,7 +47,13 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         audioOutputId,
         videoInputId
     });
+    onShowToast?.('success', 'Settings Saved', 'Your profile and device settings have been updated.');
     onClose();
+  };
+
+  const handleCheckUpdates = () => {
+    onShowToast?.('info', 'Checking for Updates', 'Looking for newer versions...');
+    onCheckForUpdates();
   };
 
   const audioInputs = devices.filter(d => d.kind === 'audioinput');
@@ -235,7 +242,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
                             <div className="pt-4 border-t border-discord-muted/20">
                                 <button
-                                    onClick={onCheckForUpdates}
+                                    onClick={handleCheckUpdates}
                                     className="w-full bg-discord-accent hover:bg-indigo-600 px-4 py-3 rounded text-white font-medium transition-colors flex items-center justify-center gap-2"
                                 >
                                     <i className="fas fa-sync-alt"></i>

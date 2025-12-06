@@ -50,13 +50,34 @@ function createWindow() {
     }
   });
 
-  const startUrl = process.env.ELECTRON_START_URL || `file://${path.join(__dirname, 'dist/index.html')}`;
-  
-  if (process.env.NODE_ENV === 'development') {
-      mainWindow.loadURL('http://localhost:5173');
+  // Detect dev mode
+  const isDev = !app.isPackaged;
+
+  if (isDev) {
+      // In development, try to find the Vite dev server on common ports
+      const tryPorts = [5173, 5174, 5175, 5176, 5177, 5178, 5179, 5180];
+      let loaded = false;
+
+      for (const port of tryPorts) {
+          try {
+              await mainWindow.loadURL(`http://localhost:${port}`);
+              console.log(`Loaded from port ${port}`);
+              loaded = true;
+              break;
+          } catch (e) {
+              console.log(`Port ${port} not available, trying next...`);
+          }
+      }
+
+      if (!loaded) {
+          console.error('Could not connect to Vite dev server');
+          mainWindow.loadFile(path.join(__dirname, 'dist/index.html'));
+      }
+
       mainWindow.webContents.openDevTools();
   } else {
-      mainWindow.loadURL(startUrl);
+      // In production, load from built files
+      mainWindow.loadFile(path.join(__dirname, 'dist/index.html'));
   }
 
   // Handle minimize to tray

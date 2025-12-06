@@ -14,6 +14,7 @@ interface VoiceStageProps {
   isAudioEnabled: boolean;
   isScreenSharing: boolean;
   myPeerId: string | null;
+  onIdCopied?: () => void;
 }
 
 export const VoiceStage: React.FC<VoiceStageProps> = ({
@@ -28,7 +29,8 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
   isVideoEnabled,
   isAudioEnabled,
   isScreenSharing,
-  myPeerId
+  myPeerId,
+  onIdCopied
 }) => {
   const myVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -90,7 +92,7 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
                                          } else {
                                              navigator.clipboard.writeText(myPeerId);
                                          }
-                                         alert("ID Copied! Send this to your friend.");
+                                         onIdCopied?.();
                                      }
                                  }}
                                  className="bg-discord-main hover:bg-discord-sidebar text-white px-3 rounded border border-black/20 transition-colors"

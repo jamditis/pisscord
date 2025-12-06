@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Peer from 'peerjs';
 import { Sidebar } from './components/Sidebar';
 import { ChannelList } from './components/ChannelList';
@@ -8,10 +8,14 @@ import { UserList } from './components/UserList';
 import { UpdateModal } from './components/UpdateModal';
 import { UserSettingsModal } from './components/UserSettingsModal';
 import { ScreenPickerModal } from './components/ScreenPickerModal';
+import { ToastContainer, useToast } from './components/Toast';
+import { ConfirmModal } from './components/ConfirmModal';
+import { ContextMenu, useContextMenu } from './components/ContextMenu';
 import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs } from './types';
 import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence } from './services/firebase';
+import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 
-const APP_VERSION = "1.0.6";
+const APP_VERSION = "1.0.9";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
@@ -42,11 +46,27 @@ const DEFAULT_DEVICES: DeviceSettings = {
 export default function App() {
   // --- STATE: UI & Navigation ---
   const [activeChannelId, setActiveChannelId] = useState<string>('1'); // What channel we are LOOKING at
-  
+
   // --- STATE: Connection ---
   const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.DISCONNECTED);
   const [activeVoiceChannelId, setActiveVoiceChannelId] = useState<string | null>(null); // What channel we are CONNECTED to
   const [myPeerId, setMyPeerId] = useState<string | null>(null);
+
+  // --- TOAST, CONFIRM & CONTEXT MENU ---
+  const toast = useToast();
+  const { contextMenu, showContextMenu, hideContextMenu } = useContextMenu();
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    confirmStyle?: 'danger' | 'primary';
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
+  // Pending call state for incoming call confirmation
+  const pendingCallRef = useRef<any>(null);
   
   // --- STATE: Data ---
   const [messages, setMessages] = useState<Record<string, Message[]>>({
@@ -102,6 +122,9 @@ export default function App() {
   // --- LIFECYCLE: Updates & Peer Init ---
   useEffect(() => {
     isMountedRef.current = true;
+
+    // Preload sound effects
+    preloadSounds();
 
     // Check Updates (both Firebase and Electron auto-updater)
     checkForUpdates(APP_VERSION).then(update => {
@@ -164,31 +187,43 @@ export default function App() {
     peer.on('error', (err) => {
         log(`PeerJS Error: ${err.type} - ${err.message}`, 'error');
         if (err.type === 'peer-unavailable') {
-            alert("Could not connect. Peer unavailable.");
+            toast.error("Connection Failed", "Peer unavailable. They may have disconnected.");
             cleanupCall();
         }
     });
 
     peer.on('call', async (call) => {
-        // Auto-answer or prompt? For simplicity, we auto-answer if not busy, or prompt
-        // If we are already connected, we reject or replace?
+        // If we are already connected, we reject
         if (connectionState === ConnectionState.CONNECTED) {
             call.close(); // Busy
+            toast.info("Incoming Call Blocked", "You declined an incoming call while already connected.");
             return;
         }
 
         // Show the window before displaying the confirmation dialog
-        // This ensures user can see and interact with the app
         if (window.electronAPI?.showWindow) {
             window.electronAPI.showWindow();
         }
 
-        if (window.confirm(`Incoming call from ${call.peer}. Accept?`)) {
-            log('Answering incoming call...', 'webrtc');
-            handleAcceptCall(call);
-        } else {
-            call.close();
-        }
+        // Store pending call and show confirmation modal
+        pendingCallRef.current = call;
+        // Play incoming call sound (looped)
+        playSound('call_incoming', true);
+        setConfirmModal({
+            isOpen: true,
+            title: "Incoming Call",
+            message: `Someone is calling you. Accept the call?`,
+            confirmText: "Accept",
+            cancelText: "Decline",
+            confirmStyle: 'primary',
+            onConfirm: () => {
+                log('Answering incoming call...', 'webrtc');
+                stopLoopingSound(); // Stop the ringing
+                handleAcceptCall(pendingCallRef.current);
+                pendingCallRef.current = null;
+                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+            }
+        });
     });
 
     // Handle incoming data connections for text messages
@@ -367,30 +402,51 @@ export default function App() {
 
   const handleStartCall = async (remoteId: string) => {
       if (!peerInstance.current) return;
+
+      const initiateCall = async () => {
+          setConnectionState(ConnectionState.CONNECTING);
+          const voiceChan = INITIAL_CHANNELS.find(c => c.type === ChannelType.VOICE);
+          if (voiceChan) {
+              setActiveChannelId(voiceChan.id);
+              setActiveVoiceChannelId(voiceChan.id);
+          }
+
+          try {
+              const stream = await getLocalStream();
+              const call = peerInstance.current!.call(remoteId, stream);
+              setupCallEvents(call);
+
+              // Also establish data connection for text messages
+              const conn = peerInstance.current!.connect(remoteId);
+              setupDataConnection(conn);
+              // Play outgoing call sound (looped while waiting)
+              playSound('call_outgoing', true);
+              toast.info("Calling...", "Waiting for peer to answer.");
+          } catch (err) {
+              log("Failed to start call", 'error');
+              toast.error("Call Failed", "Could not start call. Check your camera/microphone permissions.");
+              setConnectionState(ConnectionState.ERROR);
+          }
+      };
+
       if (connectionState === ConnectionState.CONNECTED) {
-          if(!window.confirm("Disconnect current call?")) return;
-          cleanupCall();
+          setConfirmModal({
+              isOpen: true,
+              title: "Disconnect Current Call?",
+              message: "You're already in a call. Do you want to disconnect and start a new call?",
+              confirmText: "Disconnect & Call",
+              cancelText: "Stay Connected",
+              confirmStyle: 'danger',
+              onConfirm: () => {
+                  cleanupCall();
+                  setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                  initiateCall();
+              }
+          });
+          return;
       }
 
-      setConnectionState(ConnectionState.CONNECTING);
-      const voiceChan = INITIAL_CHANNELS.find(c => c.type === ChannelType.VOICE);
-      if (voiceChan) {
-          setActiveChannelId(voiceChan.id);
-          setActiveVoiceChannelId(voiceChan.id);
-      }
-
-      try {
-          const stream = await getLocalStream();
-          const call = peerInstance.current.call(remoteId, stream);
-          setupCallEvents(call);
-
-          // Also establish data connection for text messages
-          const conn = peerInstance.current.connect(remoteId);
-          setupDataConnection(conn);
-      } catch (err) {
-          log("Failed to start call", 'error');
-          setConnectionState(ConnectionState.ERROR);
-      }
+      initiateCall();
   };
 
   const setupCallEvents = (call: any) => {
@@ -413,11 +469,16 @@ export default function App() {
 
           setRemoteStream(rStream);
           setConnectionState(ConnectionState.CONNECTED);
+          stopLoopingSound(); // Stop outgoing/incoming call ringing
+          playSound('user_join');
+          toast.success("Connected!", "You are now in a secure P2P call.");
       });
 
       call.on('close', () => {
           log("Call closed by peer", 'info');
+          playSound('user_leave');
           cleanupCall();
+          toast.info("Call Ended", "The other user disconnected from the call.");
       });
 
       call.on('error', (err: any) => {
@@ -443,6 +504,7 @@ export default function App() {
           if (audTrack) {
               audTrack.enabled = !audTrack.enabled;
               setIsAudioEnabled(audTrack.enabled);
+              playSound(audTrack.enabled ? 'unmute' : 'mute');
           }
       }
   };
@@ -453,13 +515,13 @@ export default function App() {
       // Debug: Check prerequisites
       if (!callInstance.current) {
           log("ERROR: No active call instance!", 'error');
-          alert("Error: No active call. Please connect to a call first.");
+          toast.warning("No Active Call", "Please connect to a call first before sharing your screen.");
           return;
       }
 
       if (!myStream) {
           log("ERROR: No local stream!", 'error');
-          alert("Error: No local media stream.");
+          toast.error("No Media Stream", "Could not access your media devices.");
           return;
       }
 
@@ -473,7 +535,7 @@ export default function App() {
               try {
                   const sources = await window.electronAPI.getDesktopSources();
                   if (sources.length === 0) {
-                      alert("No screen sources available");
+                      toast.warning("No Sources", "No screen sources available to share.");
                       return;
                   }
                   log(`Found ${sources.length} screen sources`, 'webrtc');
@@ -481,7 +543,7 @@ export default function App() {
                   setShowScreenPicker(true);
               } catch (err: any) {
                   log(`Failed to get screen sources: ${err.message}`, 'error');
-                  alert(`Failed to get screen sources: ${err.message}`);
+                  toast.error("Screen Share Error", `Failed to get screen sources: ${err.message}`);
               }
           } else {
               // Fallback to standard getDisplayMedia (has its own picker)
@@ -492,10 +554,11 @@ export default function App() {
                       audio: false
                   });
                   await startScreenShareWithStream(displayStream);
+                  toast.success("Screen Sharing", "You are now sharing your screen.");
               } catch (err: any) {
                   log(`Screen share error: ${err.name} - ${err.message}`, 'error');
                   if (err.name !== 'AbortError') {
-                      alert(`Screen share failed: ${err.message}`);
+                      toast.error("Screen Share Failed", err.message);
                   }
               }
           }
@@ -531,9 +594,9 @@ export default function App() {
           log(`Screen share error: ${err.name} - ${err.message}`, 'error');
           // Provide more helpful error message for common Windows capture issues
           if (err.message?.includes('not capturable') || err.name === 'NotReadableError') {
-              alert(`Cannot capture "${source.name}". This window may be protected or using hardware acceleration. Try sharing "Entire Screen" instead, or try a different application window.`);
+              toast.error("Cannot Capture Window", `"${source.name}" may be protected or using hardware acceleration. Try sharing "Entire Screen" instead.`);
           } else {
-              alert(`Screen share failed: ${err.message}`);
+              toast.error("Screen Share Failed", err.message);
           }
       }
   };
@@ -551,7 +614,7 @@ export default function App() {
       // Check if we have peerConnection
       if (!callInstance.current?.peerConnection) {
           log("ERROR: No peerConnection on call instance!", 'error');
-          alert("Error: Peer connection not established.");
+          toast.error("Connection Error", "Peer connection not established. Try reconnecting.");
           screenTrack.stop();
           return;
       }
@@ -564,7 +627,7 @@ export default function App() {
 
       if (!videoSender) {
           log("ERROR: No video sender found!", 'error');
-          alert("Error: No video track in call. Try reconnecting.");
+          toast.error("Video Error", "No video track in call. Try reconnecting.");
           screenTrack.stop();
           return;
       }
@@ -611,7 +674,7 @@ export default function App() {
 
           if (!myVideoTrack.current) {
               log("ERROR: No camera track to revert to!", 'error');
-              alert("Error: Lost reference to camera. Try reconnecting.");
+              toast.error("Camera Error", "Lost reference to camera. Try reconnecting.");
               setIsScreenSharing(false);
               return;
           }
@@ -684,11 +747,14 @@ export default function App() {
               setUpdateInfo(update);
               setShowUpdateModal(true);
               log(`Update available: ${update.latest}`, 'info');
+              toast.success("Update Available", `Version ${update.latest} is ready to download!`);
           } else {
               log("You're already on the latest version!", 'info');
+              toast.success("Up to Date", `You're running the latest version (${APP_VERSION}).`);
           }
       }).catch(err => {
           log(`Update check failed: ${err.message}`, 'error');
+          toast.error("Update Check Failed", err.message);
       });
   };
 
@@ -700,12 +766,59 @@ export default function App() {
           } else {
               navigator.clipboard.writeText(myPeerId);
           }
-          alert("ID Copied!");
+          toast.success("Copied!", "Your Peer ID has been copied to clipboard.");
       }
   };
 
+  // Global right-click handler
+  const handleContextMenu = (e: React.MouseEvent) => {
+    // Only show context menu if we're not clicking on an input, textarea, or element with its own context menu
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      return; // Let default context menu show for text inputs
+    }
+
+    showContextMenu(e, [
+      {
+        label: 'Copy Peer ID',
+        icon: 'fa-copy',
+        onClick: copyId,
+        disabled: !myPeerId
+      },
+      { label: '', onClick: () => {}, divider: true },
+      {
+        label: isAudioEnabled ? 'Mute' : 'Unmute',
+        icon: isAudioEnabled ? 'fa-microphone-slash' : 'fa-microphone',
+        onClick: toggleAudio,
+        disabled: connectionState !== ConnectionState.CONNECTED
+      },
+      {
+        label: isVideoEnabled ? 'Turn Off Camera' : 'Turn On Camera',
+        icon: isVideoEnabled ? 'fa-video-slash' : 'fa-video',
+        onClick: toggleVideo,
+        disabled: connectionState !== ConnectionState.CONNECTED
+      },
+      { label: '', onClick: () => {}, divider: true },
+      {
+        label: 'Settings',
+        icon: 'fa-cog',
+        onClick: () => setShowSettingsModal(true)
+      },
+      {
+        label: 'Disconnect',
+        icon: 'fa-phone-slash',
+        onClick: cleanupCall,
+        danger: true,
+        disabled: connectionState !== ConnectionState.CONNECTED
+      }
+    ]);
+  };
+
   return (
-    <div className="flex w-full h-screen bg-discord-main text-discord-text overflow-hidden font-sans relative">
+    <div
+      className="flex w-full h-screen bg-discord-main text-discord-text overflow-hidden font-sans relative"
+      onContextMenu={handleContextMenu}
+    >
       {/* Global Audio Element for persistent audio across views */}
       <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
 
@@ -730,6 +843,7 @@ export default function App() {
             onSaveDevices={handleSaveDevices}
             onCheckForUpdates={handleCheckForUpdates}
             onClose={() => setShowSettingsModal(false)}
+            onShowToast={(type, title, message) => toast[type](title, message)}
           />
       )}
 
@@ -770,13 +884,14 @@ export default function App() {
             onToggleVideo={toggleVideo}
             remoteVolume={remoteVolume}
             onVolumeChange={setRemoteVolume}
+            onShowToast={(type, title, message) => toast[type](title, message)}
           />
       </div>
       
       {/* MAIN VIEW AREA */}
       {/* Render Voice Stage if active channel is VOICE OR if we are just "viewing" the call */}
       {activeChannel.type === ChannelType.VOICE ? (
-         <VoiceStage 
+         <VoiceStage
             myStream={myStream}
             remoteStream={remoteStream}
             connectionState={connectionState}
@@ -789,6 +904,7 @@ export default function App() {
             isAudioEnabled={isAudioEnabled}
             isScreenSharing={isScreenSharing}
             myPeerId={myPeerId}
+            onIdCopied={() => toast.success("Copied!", "Send this ID to your friend so they can call you.")}
          />
       ) : (
          <div className="flex-1 flex min-w-0">
@@ -805,6 +921,39 @@ export default function App() {
                 onConnectToUser={handleStartCall}
              />
          </div>
+      )}
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toast.toasts} onDismiss={toast.dismissToast} />
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        cancelText={confirmModal.cancelText}
+        confirmStyle={confirmModal.confirmStyle}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => {
+            // If there's a pending call, close it
+            if (pendingCallRef.current) {
+                stopLoopingSound(); // Stop the ringing
+                pendingCallRef.current.close();
+                pendingCallRef.current = null;
+            }
+            setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        }}
+      />
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          items={contextMenu.items}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={hideContextMenu}
+        />
       )}
     </div>
   );
