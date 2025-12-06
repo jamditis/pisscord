@@ -16,7 +16,7 @@ const APP_VERSION = "1.0.5";
 const INITIAL_CHANNELS: Channel[] = [
   { id: '1', name: 'general', type: ChannelType.TEXT },
   { id: '2', name: 'links', type: ChannelType.TEXT },
-  { id: '3', name: 'gemini-ai', type: ChannelType.AI },
+  { id: '3', name: 'pissbot', type: ChannelType.AI },
   { id: 'voice-1', name: 'Voice Lounge', type: ChannelType.VOICE },
 ];
 
