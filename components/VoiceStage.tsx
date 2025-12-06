@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ConnectionState } from '../types';
+import { ConnectionState, UserProfile, PresenceUser } from '../types';
 
 interface VoiceStageProps {
   myStream: MediaStream | null;
@@ -14,6 +14,8 @@ interface VoiceStageProps {
   isAudioEnabled: boolean;
   isScreenSharing: boolean;
   myPeerId: string | null;
+  userProfile: UserProfile;
+  onlineUsers: PresenceUser[];
   onIdCopied?: () => void;
 }
 
@@ -30,6 +32,8 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
   isAudioEnabled,
   isScreenSharing,
   myPeerId,
+  userProfile,
+  onlineUsers,
   onIdCopied
 }) => {
   const myVideoRef = useRef<HTMLVideoElement>(null);
@@ -61,6 +65,9 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
         onConnect(remoteIdInput.trim());
     }
   };
+
+  // Helper to get remote user profile
+  const getRemoteUser = (peerId: string) => onlineUsers.find(u => u.peerId === peerId);
 
   // Calculate grid columns based on participant count (myself + remotes)
   const totalParticipants = 1 + remoteStreams.size;
@@ -174,8 +181,15 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
               />
            ) : (
               <div className="w-full h-full flex items-center justify-center">
-                  <div className="w-24 h-24 rounded-full bg-discord-accent flex items-center justify-center">
-                      <i className="fas fa-user text-4xl text-white"></i>
+                  <div 
+                      className="w-24 h-24 rounded-full flex items-center justify-center overflow-hidden"
+                      style={{ backgroundColor: userProfile.photoURL ? 'transparent' : userProfile.color }}
+                  >
+                      {userProfile.photoURL ? (
+                          <img src={userProfile.photoURL} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                          <i className="fas fa-user text-4xl text-white"></i>
+                      )}
                   </div>
               </div>
            )}
@@ -186,28 +200,38 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
         </div>
 
         {/* Remote Video Tiles */}
-        {connectionState === ConnectionState.CONNECTED && Array.from(remoteStreams.entries()).map(([peerId, stream]) => (
-          <div key={peerId} className="relative aspect-video bg-discord-dark rounded-lg overflow-hidden shadow-lg border border-discord-sidebar min-h-[200px]">
-             {stream && stream.getVideoTracks().length > 0 ? (
-                <video 
-                    ref={el => remoteVideoRefs.current.set(peerId, el)}
-                    autoPlay 
-                    playsInline
-                    muted // Muted because App.tsx handles audio globally
-                    className="w-full h-full object-cover" 
-                />
-             ) : (
-                <div className="w-full h-full flex items-center justify-center animate-pulse">
-                    <div className="w-24 h-24 rounded-full bg-green-600 flex items-center justify-center">
-                        <i className="fas fa-user text-4xl text-white"></i>
-                    </div>
-                </div>
-             )}
-             <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-white text-sm font-bold">
-                 {peerId.substring(0,5)}...
-             </div>
-          </div>
-        ))}
+        {connectionState === ConnectionState.CONNECTED && Array.from(remoteStreams.entries()).map(([peerId, stream]) => {
+          const remoteUser = getRemoteUser(peerId);
+          return (
+            <div key={peerId} className="relative aspect-video bg-discord-dark rounded-lg overflow-hidden shadow-lg border border-discord-sidebar min-h-[200px]">
+               {stream && stream.getVideoTracks().length > 0 ? (
+                  <video 
+                      ref={el => remoteVideoRefs.current.set(peerId, el)}
+                      autoPlay 
+                      playsInline
+                      muted // Muted because App.tsx handles audio globally
+                      className="w-full h-full object-cover" 
+                  />
+               ) : (
+                  <div className="w-full h-full flex items-center justify-center animate-pulse">
+                      <div 
+                          className="w-24 h-24 rounded-full flex items-center justify-center overflow-hidden"
+                          style={{ backgroundColor: remoteUser?.photoURL ? 'transparent' : (remoteUser?.color || '#5865F2') }}
+                      >
+                          {remoteUser?.photoURL ? (
+                              <img src={remoteUser.photoURL} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                              <i className="fas fa-user text-4xl text-white"></i>
+                          )}
+                      </div>
+                  </div>
+               )}
+               <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-white text-sm font-bold">
+                   {remoteUser?.displayName || peerId.substring(0,5) + '...'}
+               </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Control Bar */}

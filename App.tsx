@@ -963,6 +963,8 @@ export default function App() {
             isAudioEnabled={isAudioEnabled}
             isScreenSharing={isScreenSharing}
             myPeerId={myPeerId}
+            userProfile={userProfile}
+            onlineUsers={onlineUsers}
             onIdCopied={() => toast.success("Copied!", "Send this ID to your friend so they can call you.")}
          />
       ) : (

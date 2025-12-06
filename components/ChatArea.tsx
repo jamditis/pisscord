@@ -108,8 +108,12 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMes
         
         {messages.map((msg) => (
           <div key={msg.id} className="group flex hover:bg-discord-hover/30 -mx-4 px-4 py-1">
-            <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center mt-1 cursor-pointer hover:opacity-80 ${msg.isAi ? 'bg-discord-accent' : 'bg-gray-500'}`}>
-              {msg.isAi ? <i className="fas fa-robot text-white"></i> : <i className="fas fa-user text-white"></i>}
+            <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center mt-1 cursor-pointer hover:opacity-80 overflow-hidden ${msg.isAi ? 'bg-discord-accent' : 'bg-gray-500'}`}>
+              {msg.isAi ? (
+                  <i className="fas fa-robot text-white"></i>
+              ) : (
+                  <i className="fas fa-user text-white"></i>
+              )}
             </div>
             <div className="ml-4 flex-1 min-w-0">
               <div className="flex items-center">

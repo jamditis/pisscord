@@ -9,6 +9,7 @@ export interface UserProfile {
   displayName: string;
   statusMessage: string;
   color: string;
+  photoURL?: string;
 }
 
 export interface DeviceSettings {

@@ -25,10 +25,14 @@ export const UserList: React.FC<UserListProps> = ({ connectionState, onlineUsers
             <div className="flex items-center p-2 rounded bg-discord-hover/50 cursor-default opacity-100">
                 <div className="relative">
                     <div 
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-white"
-                        style={{ backgroundColor: me.color || '#5865F2' }}
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white overflow-hidden"
+                        style={{ backgroundColor: me.photoURL ? 'transparent' : (me.color || '#5865F2') }}
                     >
-                        <i className="fas fa-user"></i>
+                        {me.photoURL ? (
+                            <img src={me.photoURL} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                            <i className="fas fa-user"></i>
+                        )}
                     </div>
                     <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-discord-sidebar rounded-full"></div>
                 </div>
@@ -61,11 +65,20 @@ export const UserList: React.FC<UserListProps> = ({ connectionState, onlineUsers
           >
              <div className="relative">
                  <div 
-                    className="w-8 h-8 group-hover:bg-discord-green transition-colors rounded-full flex items-center justify-center text-white"
-                    style={{ backgroundColor: user.color || '#72767d' }}
+                    className="w-8 h-8 group-hover:bg-discord-green transition-colors rounded-full flex items-center justify-center text-white overflow-hidden"
+                    style={{ backgroundColor: user.photoURL ? 'transparent' : (user.color || '#72767d') }}
                  >
-                     <i className="fas fa-phone-alt text-xs opacity-0 group-hover:opacity-100 absolute"></i>
-                     <i className="fas fa-user text-sm group-hover:opacity-0 transition-opacity"></i>
+                     {user.photoURL ? (
+                         <>
+                            <img src={user.photoURL} alt="" className="w-full h-full object-cover group-hover:opacity-20" />
+                            <i className="fas fa-phone-alt text-xs opacity-0 group-hover:opacity-100 absolute z-10 text-white"></i>
+                         </>
+                     ) : (
+                         <>
+                            <i className="fas fa-phone-alt text-xs opacity-0 group-hover:opacity-100 absolute"></i>
+                            <i className="fas fa-user text-sm group-hover:opacity-0 transition-opacity"></i>
+                         </>
+                     )}
                  </div>
                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-discord-sidebar rounded-full"></div>
              </div>
