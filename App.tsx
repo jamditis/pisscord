@@ -619,7 +619,7 @@ export default function App() {
 
   const handleCheckForUpdates = () => {
       log("Manually checking for updates...", 'info');
-      checkForUpdates().then(update => {
+      checkForUpdates(APP_VERSION).then(update => {
           if (update) {
               setUpdateInfo(update);
               setShowUpdateModal(true);
