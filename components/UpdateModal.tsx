@@ -28,10 +28,11 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
     }
   };
 
-  // Fallback to manual download if auto-update fails
+  // Fallback to manual download if auto-update fails - direct link to exe
   const handleManualDownload = () => {
-    const releaseUrl = `https://github.com/jamditis/pisscord/releases/tag/v${latestVersion}`;
-    window.open(releaseUrl, '_blank');
+    // Direct download URL to the .exe file (no need to navigate GitHub's confusing UI)
+    const directDownloadUrl = `https://github.com/jamditis/pisscord/releases/download/v${latestVersion}/Pisscord.Setup.${latestVersion}.exe`;
+    window.open(directDownloadUrl, '_blank');
   };
 
   const handleInstall = () => {

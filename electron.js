@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, desktopCapturer, clipboard } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, desktopCapturer, clipboard, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
@@ -95,6 +95,27 @@ async function createWindow() {
       // In production, load from built files
       mainWindow.loadFile(path.join(__dirname, 'dist/index.html'));
   }
+
+  // Intercept navigation to external links and open in default browser
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const parsedUrl = new URL(url);
+    const currentUrl = mainWindow.webContents.getURL();
+
+    // Allow navigation within the app (localhost or file://)
+    if (currentUrl.startsWith('http://localhost') || currentUrl.startsWith('file://')) {
+      // If navigating away from app, open in external browser
+      if (!url.startsWith('http://localhost') && !url.startsWith('file://')) {
+        event.preventDefault();
+        shell.openExternal(url);
+      }
+    }
+  });
+
+  // Handle new window requests (e.g., target="_blank" links)
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' }; // Prevent new Electron window
+  });
 
   // Handle minimize to tray
   mainWindow.on('close', (event) => {
@@ -262,6 +283,19 @@ ipcMain.on('copy-to-clipboard', (event, text) => {
 // IPC handler for file logging
 ipcMain.on('log-to-file', (event, message) => {
   logToFile(message);
+});
+
+// IPC handler for opening external links in default browser
+ipcMain.on('open-external', (event, url) => {
+  // Validate URL to prevent security issues
+  try {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
+      shell.openExternal(url);
+    }
+  } catch (err) {
+    console.error('Invalid URL:', url);
+  }
 });
 
 app.on('window-all-closed', () => {

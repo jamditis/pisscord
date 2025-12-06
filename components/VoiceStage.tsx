@@ -206,6 +206,23 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
       return 'grid-cols-2 md:grid-cols-3';
   };
 
+  // Set video ref and attach stream
+  const setVideoRef = useCallback((el: HTMLVideoElement | null, userId: string, stream: MediaStream | null, isLocal: boolean) => {
+    if (!el) return;
+
+    if (isLocal) {
+      (myVideoRef as any).current = el;
+      if (stream && el.srcObject !== stream) {
+        el.srcObject = stream;
+      }
+    } else {
+      remoteVideoRefs.current.set(userId, el);
+      if (stream && el.srcObject !== stream) {
+        el.srcObject = stream;
+      }
+    }
+  }, []);
+
   // Render a video tile (reusable component)
   const renderVideoTile = (
     userId: string,
@@ -228,13 +245,7 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
     >
       {hasVideo ? (
         <video
-          ref={el => {
-            if (isLocal && myVideoRef.current !== el) {
-              (myVideoRef as any).current = el;
-            } else if (!isLocal && el) {
-              remoteVideoRefs.current.set(userId, el);
-            }
-          }}
+          ref={el => setVideoRef(el, userId, stream, isLocal)}
           autoPlay
           playsInline
           muted
@@ -381,10 +392,14 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
         {spotlightedUser ? (
           <div className="flex-1 flex flex-col gap-4 min-h-0">
             {/* Spotlighted user - takes most space */}
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0" key={`spotlight-${spotlightedUser}`}>
               {(() => {
                 const p = allParticipants.find(x => x.id === spotlightedUser);
-                if (!p) return null;
+                if (!p) {
+                  // User left, clear spotlight
+                  setSpotlightedUser(null);
+                  return null;
+                }
                 const user = p.isLocal ? userProfile : getRemoteUser(p.id);
                 return renderVideoTile(p.id, p.stream, user, p.isLocal, p.isSpeaking, true, p.hasVideo, false);
               })()}
@@ -395,7 +410,7 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
                 {allParticipants.filter(p => p.id !== spotlightedUser).map(p => {
                   const user = p.isLocal ? userProfile : getRemoteUser(p.id);
                   return (
-                    <div key={p.id}>
+                    <div key={`small-${p.id}`}>
                       {renderVideoTile(p.id, p.stream, user, p.isLocal, p.isSpeaking, false, p.hasVideo, true)}
                     </div>
                   );
@@ -409,7 +424,7 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
             {allParticipants.map(p => {
               const user = p.isLocal ? userProfile : getRemoteUser(p.id);
               return (
-                <div key={p.id} className="aspect-video">
+                <div key={`grid-${p.id}`} className="aspect-video">
                   {renderVideoTile(p.id, p.stream, user, p.isLocal, p.isSpeaking, false, p.hasVideo, false)}
                 </div>
               );

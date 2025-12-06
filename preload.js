@@ -17,6 +17,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // File logging
   logToFile: (message) => ipcRenderer.send('log-to-file', message),
 
+  // Open external URL in default browser
+  openExternal: (url) => ipcRenderer.send('open-external', url),
+
   // Receive messages from main process
   onUpdateAvailable: (callback) => {
     ipcRenderer.on('update-available', (event, data) => callback(data));
