@@ -14,7 +14,8 @@ export type SoundEffect =
 // Get base path for assets - works in both dev and production Electron
 const getBasePath = () => {
   // In Electron, we need to handle both dev (localhost) and prod (file://) modes
-  const base = import.meta.env.BASE_URL || './';
+  // @ts-ignore - Vite injects BASE_URL at build time
+  const base = (import.meta as any).env?.BASE_URL || './';
   return base.endsWith('/') ? base : base + '/';
 };
 
