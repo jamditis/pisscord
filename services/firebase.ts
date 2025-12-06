@@ -9,7 +9,9 @@ import {
   remove,
   push,
   query,
-  limitToLast
+  limitToLast,
+  orderByChild,
+  endAt
 } from "firebase/database";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { UserProfile, PresenceUser } from "../types";
@@ -68,6 +70,16 @@ export const checkForUpdates = async (currentVersion: string): Promise<{ hasUpda
     console.error("Update check failed", error);
   }
   return null;
+};
+
+export const checkForMOTD = async (): Promise<string | null> => {
+    try {
+        const motdRef = ref(db, 'system/motd');
+        const snapshot = await get(motdRef);
+        return snapshot.exists() ? snapshot.val() : null;
+    } catch (e) {
+        return null;
+    }
 };
 
 export const registerPresence = (peerId: string, profile: UserProfile) => {
@@ -182,4 +194,34 @@ export const subscribeToMessages = (channelId: string, onMessageUpdate: (message
       onMessageUpdate([]);
     }
   });
+};
+
+// Enforce 14-day message retention
+export const cleanupOldMessages = async (channelIds: string[]) => {
+  const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+  const cutoff = Date.now() - FOURTEEN_DAYS_MS;
+
+  for (const channelId of channelIds) {
+    const messagesRef = ref(db, `messages/${channelId}`);
+    const oldMessagesQuery = query(messagesRef, orderByChild('timestamp'), endAt(cutoff));
+    
+    try {
+      const snapshot = await get(oldMessagesQuery);
+      if (snapshot.exists()) {
+        const updates: Record<string, null> = {};
+        snapshot.forEach((child) => {
+          if (child.key) updates[child.key] = null;
+        });
+        // Bulk delete
+        // Note: update() with null deletes keys, but ref should be parent.
+        // Iterate and remove is safer for now.
+        snapshot.forEach((child) => {
+           remove(child.ref);
+        });
+        console.log(`Cleaned up ${snapshot.size} old messages in channel ${channelId}`);
+      }
+    } catch (error) {
+      console.error(`Failed to cleanup messages for ${channelId}:`, error);
+    }
+  }
 };

@@ -13,9 +13,9 @@ import { ToastContainer, useToast } from './components/Toast';
 import { ConfirmModal } from './components/ConfirmModal';
 import { ContextMenu, useContextMenu } from './components/ContextMenu';
 import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs } from './types';
-import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages } from './services/firebase';
+import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages, cleanupOldMessages, getPissbotConfig, PissbotConfig, checkForMOTD } from './services/firebase';
 import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
-import { fetchGitHubReleases } from './services/github';
+import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
 
 const APP_VERSION = "1.0.12";
 
@@ -126,14 +126,26 @@ export default function App() {
   useEffect(() => {
       // Subscribe to messages for the active channel
       if (activeChannel.id === '4') {
-          // Dev Updates Channel - Fetch from GitHub
-          fetchGitHubReleases().then(msgs => {
+          // Dev Updates Channel - Fetch from GitHub (Releases + Events)
+          Promise.all([fetchGitHubReleases(), fetchGitHubEvents()]).then(([releases, events]) => {
+              const allMessages = [...releases, ...events].sort((a, b) => a.timestamp - b.timestamp);
+              
+              // Add Roadmap as a pinned message (fake timestamp)
+              const roadmapMessage: Message = {
+                  id: 'roadmap',
+                  sender: 'System',
+                  content: "# 🗺️ Roadmap\n\n- [x] Group Calls\n- [x] File Sharing\n- [x] Profile Pictures\n- [ ] Mobile App\n- [ ] Encrypted DMs\n\n*Updates every commit.*",
+                  timestamp: Date.now(), // Always at bottom? Or top? 
+                  // If we want it at top, set timestamp 0. If bottom, Date.now().
+                  // Actually, let's just put it in the list.
+                  isAi: false
+              };
+
               setMessages(prev => ({
                   ...prev,
-                  '4': msgs
+                  '4': [...allMessages, roadmapMessage]
               }));
           });
-          // No subscription needed as it's a pull-once (cached)
       } else if (activeChannel.type !== ChannelType.VOICE) {
           const unsubscribe = subscribeToMessages(activeChannelId, (newMessages) => {
               setMessages(prev => ({
@@ -164,11 +176,38 @@ export default function App() {
     // Preload sound effects
     preloadSounds();
 
+    // Cleanup old messages (14-day retention)
+    const textChannels = INITIAL_CHANNELS.filter(c => c.type === ChannelType.TEXT || c.type === ChannelType.AI).map(c => c.id);
+    cleanupOldMessages(textChannels);
+
     // Check Updates (both Firebase and Electron auto-updater)
     checkForUpdates(APP_VERSION).then(update => {
         if (update?.hasUpdate) {
             setUpdateInfo({ url: update.url, latest: update.latest });
             setShowUpdateModal(true);
+        }
+    });
+
+    // Check Pissbot Updates
+    getPissbotConfig().then(config => {
+        if (config) {
+            const lastKnown = localStorage.getItem('pissbot_last_updated');
+            if (lastKnown && Number(lastKnown) < config.lastUpdated) {
+                toast.info("🧠 Brain Upgrade", "Pissbot has been updated with new knowledge!");
+                // Maybe post to dev channel?
+            }
+            localStorage.setItem('pissbot_last_updated', config.lastUpdated.toString());
+        }
+    });
+
+    // Check MOTD
+    checkForMOTD().then(motd => {
+        if (motd) {
+            const lastMotd = localStorage.getItem('pisscord_motd');
+            if (lastMotd !== motd) {
+                toast.info("📢 Announcement", motd);
+                localStorage.setItem('pisscord_motd', motd);
+            }
         }
     });
 
