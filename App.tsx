@@ -68,6 +68,7 @@ export default function App() {
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [remoteVolume, setRemoteVolume] = useState<number>(100);
   
   // --- MODALS ---
   const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -157,6 +158,8 @@ export default function App() {
   useEffect(() => {
     if (remoteAudioRef.current && remoteStream) {
         remoteAudioRef.current.srcObject = remoteStream;
+        // Apply volume
+        remoteAudioRef.current.volume = remoteVolume / 100;
         // Apply output device if supported
         if (deviceSettings.audioOutputId && (remoteAudioRef.current as any).setSinkId) {
             (remoteAudioRef.current as any).setSinkId(deviceSettings.audioOutputId)
@@ -164,7 +167,7 @@ export default function App() {
         }
         remoteAudioRef.current.play().catch(e => log("Audio play failed (interaction needed?)", 'error'));
     }
-  }, [remoteStream, deviceSettings.audioOutputId]);
+  }, [remoteStream, deviceSettings.audioOutputId, remoteVolume]);
 
 
   // --- MEDIA HELPERS ---
@@ -387,9 +390,9 @@ export default function App() {
       
       {/* CHANNEL LIST + VOICE CONTROLS */}
       <div className="flex flex-col h-full bg-discord-sidebar w-60">
-          <ChannelList 
-            channels={INITIAL_CHANNELS} 
-            activeChannelId={activeChannelId} 
+          <ChannelList
+            channels={INITIAL_CHANNELS}
+            activeChannelId={activeChannelId}
             onSelectChannel={(id) => {
                 const ch = INITIAL_CHANNELS.find(c => c.id === id);
                 // If it's a voice channel, we set it as active view AND try to connect if not connected
@@ -405,22 +408,14 @@ export default function App() {
             userProfile={userProfile}
             onCopyId={copyId}
             onOpenSettings={() => setShowSettingsModal(true)}
+            onDisconnect={cleanupCall}
+            isAudioEnabled={isAudioEnabled}
+            isVideoEnabled={isVideoEnabled}
+            onToggleAudio={toggleAudio}
+            onToggleVideo={toggleVideo}
+            remoteVolume={remoteVolume}
+            onVolumeChange={setRemoteVolume}
           />
-
-          {/* Persistent Voice Control Panel (If Connected) */}
-          {connectionState === ConnectionState.CONNECTED && (
-             <div className="bg-discord-dark/80 p-2 border-t border-discord-dark flex items-center justify-between">
-                 <div className="overflow-hidden">
-                    <div className="text-green-500 text-xs font-bold uppercase">Voice Connected</div>
-                    <div className="text-white text-xs truncate">Voice Lounge</div>
-                 </div>
-                 <div className="flex items-center space-x-1">
-                    <button onClick={cleanupCall} className="text-white hover:text-red-500 p-1" title="Disconnect">
-                        <i className="fas fa-phone-slash"></i>
-                    </button>
-                 </div>
-             </div>
-          )}
       </div>
       
       {/* MAIN VIEW AREA */}
