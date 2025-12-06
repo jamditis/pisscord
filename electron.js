@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, desktopCapturer, clipboard } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 
@@ -201,6 +201,25 @@ ipcMain.on('show-window', () => {
       mainWindow.restore();
     }
   }
+});
+
+// IPC handler for screen capture sources
+ipcMain.handle('get-desktop-sources', async () => {
+  const sources = await desktopCapturer.getSources({
+    types: ['window', 'screen'],
+    thumbnailSize: { width: 300, height: 200 },
+    fetchWindowIcons: true
+  });
+  return sources.map(source => ({
+    id: source.id,
+    name: source.name,
+    thumbnail: source.thumbnail.toDataURL()
+  }));
+});
+
+// IPC handler for clipboard
+ipcMain.on('copy-to-clipboard', (event, text) => {
+  clipboard.writeText(text);
 });
 
 app.on('window-all-closed', () => {

@@ -81,10 +81,15 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
                              <div className="flex-1 bg-discord-main border border-black/20 rounded px-3 py-2 text-white font-mono text-sm truncate select-all">
                                  {myPeerId || 'Generating secure ID...'}
                              </div>
-                             <button 
+                             <button
                                  onClick={() => {
                                      if(myPeerId) {
-                                         navigator.clipboard.writeText(myPeerId); 
+                                         // Use Electron clipboard API if available
+                                         if ((window as any).electronAPI?.copyToClipboard) {
+                                             (window as any).electronAPI.copyToClipboard(myPeerId);
+                                         } else {
+                                             navigator.clipboard.writeText(myPeerId);
+                                         }
                                          alert("ID Copied! Send this to your friend.");
                                      }
                                  }}

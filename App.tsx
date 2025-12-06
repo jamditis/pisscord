@@ -7,10 +7,11 @@ import { VoiceStage } from './components/VoiceStage';
 import { UserList } from './components/UserList';
 import { UpdateModal } from './components/UpdateModal';
 import { UserSettingsModal } from './components/UserSettingsModal';
+import { ScreenPickerModal } from './components/ScreenPickerModal';
 import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs } from './types';
 import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence } from './services/firebase';
 
-const APP_VERSION = "1.0.5";
+const APP_VERSION = "1.0.6";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
@@ -79,6 +80,8 @@ export default function App() {
   // --- MODALS ---
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showScreenPicker, setShowScreenPicker] = useState(false);
+  const [screenSources, setScreenSources] = useState<Array<{id: string, name: string, thumbnail: string}>>([]);
   const [updateInfo, setUpdateInfo] = useState<{url: string, latest: string, downloading?: boolean, progress?: number, ready?: boolean} | null>(null);
 
   // --- REFS ---
@@ -414,169 +417,176 @@ export default function App() {
 
       // START SCREEN SHARE
       if (!isScreenSharing) {
-          try {
-              log("Requesting screen share permission...", 'webrtc');
-
-              let displayStream: MediaStream;
-
-              // Use Electron's desktopCapturer if available
-              if (window.electronAPI?.getDesktopSources) {
-                  log("Using Electron desktopCapturer", 'webrtc');
+          // Use Electron's desktopCapturer if available - show picker
+          if (window.electronAPI?.getDesktopSources) {
+              log("Using Electron desktopCapturer - fetching sources", 'webrtc');
+              try {
                   const sources = await window.electronAPI.getDesktopSources();
-
                   if (sources.length === 0) {
-                      throw new Error("No screen sources available");
+                      alert("No screen sources available");
+                      return;
                   }
-
-                  // Use the first source (entire screen)
-                  const sourceId = sources[0].id;
-                  log(`Selected source: ${sources[0].name}`, 'webrtc');
-
-                  displayStream = await navigator.mediaDevices.getUserMedia({
-                      audio: false,
-                      video: {
-                          mandatory: {
-                              chromeMediaSource: 'desktop',
-                              chromeMediaSourceId: sourceId
-                          }
-                      } as any
-                  });
-              } else {
-                  // Fallback to standard getDisplayMedia
+                  log(`Found ${sources.length} screen sources`, 'webrtc');
+                  setScreenSources(sources);
+                  setShowScreenPicker(true);
+              } catch (err: any) {
+                  log(`Failed to get screen sources: ${err.message}`, 'error');
+                  alert(`Failed to get screen sources: ${err.message}`);
+              }
+          } else {
+              // Fallback to standard getDisplayMedia (has its own picker)
+              try {
                   log("Using standard getDisplayMedia", 'webrtc');
-                  displayStream = await navigator.mediaDevices.getDisplayMedia({
+                  const displayStream = await navigator.mediaDevices.getDisplayMedia({
                       video: true,
                       audio: false
                   });
-              }
-
-              log("Screen share permission granted", 'webrtc');
-              const screenTrack = displayStream.getVideoTracks()[0];
-
-              if (!screenTrack) {
-                  log("ERROR: No screen track received!", 'error');
-                  return;
-              }
-
-              log(`Screen track: ${screenTrack.id}, label: ${screenTrack.label}`, 'webrtc');
-
-              // Check if we have peerConnection
-              if (!callInstance.current.peerConnection) {
-                  log("ERROR: No peerConnection on call instance!", 'error');
-                  alert("Error: Peer connection not established.");
-                  return;
-              }
-
-              // IMPORTANT: Find the sender for video and replace track
-              const senders = callInstance.current.peerConnection.getSenders();
-              log(`Found ${senders.length} RTP senders`, 'webrtc');
-
-              const videoSender = senders.find((s: RTCRtpSender) => s.track?.kind === 'video');
-
-              if (!videoSender) {
-                  log("ERROR: No video sender found! Senders:", 'error');
-                  senders.forEach((s: RTCRtpSender, i: number) => {
-                      log(`  Sender ${i}: kind=${s.track?.kind}, id=${s.track?.id}`, 'error');
-                  });
-                  alert("Error: No video track in call. Try reconnecting.");
-                  screenTrack.stop();
-                  return;
-              }
-
-              log(`Video sender found: current track = ${videoSender.track?.id}`, 'webrtc');
-              log("Replacing camera track with screen track...", 'webrtc');
-
-              await videoSender.replaceTrack(screenTrack);
-              log("✅ Track replaced successfully!", 'webrtc');
-
-              setIsScreenSharing(true);
-
-              // Update local preview
-              const audioTracks = myStream.getAudioTracks();
-              log(`Creating new stream with screen + ${audioTracks.length} audio tracks`, 'webrtc');
-              const newStream = new MediaStream([screenTrack, ...audioTracks]);
-              setMyStream(newStream);
-
-              // Handle Stop Sharing via Browser UI
-              screenTrack.onended = async () => {
-                  log("Screen share ended via browser UI", 'webrtc');
-                  if (myVideoTrack.current) {
-                      log("Reverting to camera track...", 'webrtc');
-                      try {
-                          await videoSender.replaceTrack(myVideoTrack.current);
-                          const revertedStream = new MediaStream([myVideoTrack.current, ...audioTracks]);
-                          setMyStream(revertedStream);
-                          setIsScreenSharing(false);
-                          log("✅ Reverted to camera successfully", 'webrtc');
-                      } catch (err: any) {
-                          log(`ERROR reverting to camera: ${err.message}`, 'error');
-                      }
-                  } else {
-                      log("ERROR: No camera track stored in myVideoTrack.current!", 'error');
+                  await startScreenShareWithStream(displayStream);
+              } catch (err: any) {
+                  log(`Screen share error: ${err.name} - ${err.message}`, 'error');
+                  if (err.name !== 'AbortError') {
+                      alert(`Screen share failed: ${err.message}`);
                   }
-              };
-          } catch (err: any) {
-              log(`Screen share error: ${err.name} - ${err.message}`, 'error');
-
-              if (err.name === 'NotAllowedError') {
-                  log("User denied screen share permission", 'error');
-              } else if (err.name === 'NotFoundError') {
-                  log("No screen sharing source available", 'error');
-              } else if (err.name === 'AbortError') {
-                  log("User cancelled screen share selection", 'error');
-              } else {
-                  log(`Unknown error: ${JSON.stringify(err)}`, 'error');
               }
-
-              alert(`Screen share failed: ${err.message}`);
           }
       }
       // STOP SCREEN SHARE (Manual Click)
       else {
-          try {
-              log("Stopping screen share manually...", 'webrtc');
+          await stopScreenShare();
+      }
+  };
 
-              if (!callInstance.current.peerConnection) {
-                  log("ERROR: No peerConnection!", 'error');
-                  return;
-              }
+  const handleScreenSourceSelect = async (source: {id: string, name: string, thumbnail: string}) => {
+      log(`User selected source: ${source.name} (${source.id})`, 'webrtc');
+      setShowScreenPicker(false);
 
-              const senders = callInstance.current.peerConnection.getSenders();
-              const videoSender = senders.find((s: RTCRtpSender) => s.track?.kind === 'video');
-
-              if (!videoSender) {
-                  log("ERROR: No video sender found when stopping!", 'error');
-                  return;
-              }
-
-              if (!myVideoTrack.current) {
-                  log("ERROR: No camera track to revert to!", 'error');
-                  alert("Error: Lost reference to camera. Try reconnecting.");
-                  return;
-              }
-
-              log("Swapping Screen -> Camera", 'webrtc');
-
-              // Stop the screen track to release resource
-              const currentScreenTrack = videoSender.track;
-              if (currentScreenTrack) {
-                  log(`Stopping screen track: ${currentScreenTrack.id}`, 'webrtc');
-                  currentScreenTrack.stop();
-              }
-
-              log(`Replacing with camera track: ${myVideoTrack.current.id}`, 'webrtc');
-              await videoSender.replaceTrack(myVideoTrack.current);
-
-              const audioTracks = myStream.getAudioTracks();
-              const revertedStream = new MediaStream([myVideoTrack.current, ...audioTracks]);
-              setMyStream(revertedStream);
-              setIsScreenSharing(false);
-
-              log("✅ Stopped screen share successfully", 'webrtc');
-          } catch (err: any) {
-              log(`ERROR stopping screen share: ${err.message}`, 'error');
-              alert(`Failed to stop screen share: ${err.message}`);
+      try {
+          const displayStream = await navigator.mediaDevices.getUserMedia({
+              audio: false,
+              video: {
+                  mandatory: {
+                      chromeMediaSource: 'desktop',
+                      chromeMediaSourceId: source.id,
+                      minWidth: 640,
+                      maxWidth: 1920,
+                      minHeight: 480,
+                      maxHeight: 1080,
+                      minFrameRate: 5,
+                      maxFrameRate: 30
+                  }
+              } as any
+          });
+          await startScreenShareWithStream(displayStream);
+      } catch (err: any) {
+          log(`Screen share error: ${err.name} - ${err.message}`, 'error');
+          // Provide more helpful error message for common Windows capture issues
+          if (err.message?.includes('not capturable') || err.name === 'NotReadableError') {
+              alert(`Cannot capture "${source.name}". This window may be protected or using hardware acceleration. Try sharing "Entire Screen" instead, or try a different application window.`);
+          } else {
+              alert(`Screen share failed: ${err.message}`);
           }
+      }
+  };
+
+  const startScreenShareWithStream = async (displayStream: MediaStream) => {
+      const screenTrack = displayStream.getVideoTracks()[0];
+
+      if (!screenTrack) {
+          log("ERROR: No screen track received!", 'error');
+          return;
+      }
+
+      log(`Screen track: ${screenTrack.id}, label: ${screenTrack.label}`, 'webrtc');
+
+      // Check if we have peerConnection
+      if (!callInstance.current?.peerConnection) {
+          log("ERROR: No peerConnection on call instance!", 'error');
+          alert("Error: Peer connection not established.");
+          screenTrack.stop();
+          return;
+      }
+
+      // IMPORTANT: Find the sender for video and replace track
+      const senders = callInstance.current.peerConnection.getSenders();
+      log(`Found ${senders.length} RTP senders`, 'webrtc');
+
+      const videoSender = senders.find((s: RTCRtpSender) => s.track?.kind === 'video');
+
+      if (!videoSender) {
+          log("ERROR: No video sender found!", 'error');
+          alert("Error: No video track in call. Try reconnecting.");
+          screenTrack.stop();
+          return;
+      }
+
+      log(`Video sender found: current track = ${videoSender.track?.id}`, 'webrtc');
+      log("Replacing camera track with screen track...", 'webrtc');
+
+      await videoSender.replaceTrack(screenTrack);
+      log("✅ Track replaced successfully!", 'webrtc');
+
+      setIsScreenSharing(true);
+
+      // Update local preview
+      const audioTracks = myStream!.getAudioTracks();
+      log(`Creating new stream with screen + ${audioTracks.length} audio tracks`, 'webrtc');
+      const newStream = new MediaStream([screenTrack, ...audioTracks]);
+      setMyStream(newStream);
+
+      // Handle Stop Sharing via Browser UI
+      screenTrack.onended = async () => {
+          log("Screen share ended via browser UI", 'webrtc');
+          await stopScreenShare();
+      };
+  };
+
+  const stopScreenShare = async () => {
+      try {
+          log("Stopping screen share...", 'webrtc');
+
+          if (!callInstance.current?.peerConnection) {
+              log("ERROR: No peerConnection!", 'error');
+              setIsScreenSharing(false);
+              return;
+          }
+
+          const senders = callInstance.current.peerConnection.getSenders();
+          const videoSender = senders.find((s: RTCRtpSender) => s.track?.kind === 'video');
+
+          if (!videoSender) {
+              log("ERROR: No video sender found when stopping!", 'error');
+              setIsScreenSharing(false);
+              return;
+          }
+
+          if (!myVideoTrack.current) {
+              log("ERROR: No camera track to revert to!", 'error');
+              alert("Error: Lost reference to camera. Try reconnecting.");
+              setIsScreenSharing(false);
+              return;
+          }
+
+          log("Swapping Screen -> Camera", 'webrtc');
+
+          // Stop the screen track to release resource
+          const currentScreenTrack = videoSender.track;
+          if (currentScreenTrack) {
+              log(`Stopping screen track: ${currentScreenTrack.id}`, 'webrtc');
+              currentScreenTrack.stop();
+          }
+
+          log(`Replacing with camera track: ${myVideoTrack.current.id}`, 'webrtc');
+          await videoSender.replaceTrack(myVideoTrack.current);
+
+          const audioTracks = myStream?.getAudioTracks() || [];
+          const revertedStream = new MediaStream([myVideoTrack.current, ...audioTracks]);
+          setMyStream(revertedStream);
+          setIsScreenSharing(false);
+
+          log("✅ Stopped screen share successfully", 'webrtc');
+      } catch (err: any) {
+          log(`ERROR stopping screen share: ${err.message}`, 'error');
+          setIsScreenSharing(false);
       }
   };
 
@@ -634,7 +644,12 @@ export default function App() {
 
   const copyId = () => {
       if (myPeerId) {
-          navigator.clipboard.writeText(myPeerId);
+          // Use Electron clipboard API if available, otherwise fallback to navigator
+          if (window.electronAPI?.copyToClipboard) {
+              window.electronAPI.copyToClipboard(myPeerId);
+          } else {
+              navigator.clipboard.writeText(myPeerId);
+          }
           alert("ID Copied!");
       }
   };
@@ -665,6 +680,14 @@ export default function App() {
             onSaveDevices={handleSaveDevices}
             onCheckForUpdates={handleCheckForUpdates}
             onClose={() => setShowSettingsModal(false)}
+          />
+      )}
+
+      {showScreenPicker && (
+          <ScreenPickerModal
+            sources={screenSources}
+            onSelect={handleScreenSourceSelect}
+            onClose={() => setShowScreenPicker(false)}
           />
       )}
 
