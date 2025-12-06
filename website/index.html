@@ -1,0 +1,1921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PISSCORD - Talk Shit, Privately</title>
+    <link rel="icon" type="image/png" href="../public/pisscord-dark.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --void: #0a0a0f;
+            --abyss: #12121a;
+            --surface: #1a1a26;
+            --elevated: #252533;
+            --muted: #4a4a5a;
+            --text: #e8e8f0;
+            --text-dim: #9898a8;
+
+            --piss-yellow: #f0e130;
+            --piss-gold: #ffd700;
+            --angry-purple: #8b5cf6;
+            --electric-violet: #a855f7;
+            --hot-pink: #ec4899;
+            --neon-cyan: #22d3ee;
+            --sick-green: #84cc16;
+
+            --glow-yellow: rgba(240, 225, 48, 0.4);
+            --glow-purple: rgba(139, 92, 246, 0.4);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--void);
+            color: var(--text);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Noise texture overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Scanlines */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.1) 0px,
+                rgba(0, 0, 0, 0.1) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+            pointer-events: none;
+            z-index: 9998;
+            opacity: 0.3;
+        }
+
+        /* Selections */
+        ::selection {
+            background: var(--piss-yellow);
+            color: var(--void);
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            background: linear-gradient(to bottom, var(--void), transparent);
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 1.4rem;
+            color: var(--piss-yellow);
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .nav-logo img {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            border: 2px solid var(--piss-yellow);
+            box-shadow: 0 0 20px var(--glow-yellow);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 3rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--piss-yellow);
+            transition: width 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: var(--piss-yellow);
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        .nav-cta {
+            background: var(--piss-yellow);
+            color: var(--void);
+            padding: 12px 24px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+            transition: all 0.3s;
+        }
+
+        .nav-cta:hover {
+            background: var(--text);
+            transform: translate(-2px, -2px);
+            box-shadow: 4px 4px 0 var(--piss-yellow);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            align-items: center;
+            padding: 0 6rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .hero-bg-gradient {
+            position: absolute;
+            width: 800px;
+            height: 800px;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.4;
+        }
+
+        .hero-bg-gradient.yellow {
+            background: var(--piss-yellow);
+            top: -200px;
+            right: -200px;
+            animation: pulse-slow 8s ease-in-out infinite;
+        }
+
+        .hero-bg-gradient.purple {
+            background: var(--angry-purple);
+            bottom: -300px;
+            left: -200px;
+            animation: pulse-slow 8s ease-in-out infinite 4s;
+        }
+
+        @keyframes pulse-slow {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.2); opacity: 0.5; }
+        }
+
+        .hero-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(240, 225, 48, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(240, 225, 48, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            perspective: 1000px;
+            transform: rotateX(60deg);
+            transform-origin: top;
+            mask-image: linear-gradient(to bottom, black, transparent 80%);
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--surface);
+            border: 1px solid var(--angry-purple);
+            padding: 8px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--electric-violet);
+            margin-bottom: 2rem;
+            animation: flicker 3s infinite;
+        }
+
+        .hero-badge::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--sick-green);
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            92% { opacity: 1; }
+            93% { opacity: 0.8; }
+            94% { opacity: 1; }
+            96% { opacity: 0.9; }
+            97% { opacity: 1; }
+        }
+
+        .hero-title {
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 5.5rem;
+            line-height: 0.95;
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+        }
+
+        .hero-title .yellow {
+            color: var(--piss-yellow);
+            text-shadow:
+                0 0 40px var(--glow-yellow),
+                0 0 80px var(--glow-yellow);
+        }
+
+        .hero-title .white {
+            color: var(--text);
+            -webkit-text-stroke: 2px var(--text);
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-tagline {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            color: var(--text-dim);
+            margin-bottom: 0.5rem;
+            letter-spacing: 2px;
+        }
+
+        .hero-tagline span {
+            color: var(--piss-yellow);
+        }
+
+        .hero-description {
+            font-size: 1.15rem;
+            color: var(--text-dim);
+            max-width: 480px;
+            margin-bottom: 2.5rem;
+            line-height: 1.7;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 3rem;
+        }
+
+        .btn {
+            padding: 16px 32px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: var(--piss-yellow);
+            color: var(--void);
+            clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+        }
+
+        .btn-primary:hover {
+            transform: translate(-3px, -3px);
+            box-shadow: 6px 6px 0 var(--angry-purple);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text);
+            border: 2px solid var(--elevated);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--piss-yellow);
+            color: var(--piss-yellow);
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 3rem;
+        }
+
+        .stat {
+            position: relative;
+        }
+
+        .stat-number {
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 2.2rem;
+            color: var(--piss-yellow);
+        }
+
+        .stat-label {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Hero Visual */
+        .hero-visual {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hero-logo-container {
+            position: relative;
+        }
+
+        .hero-logo {
+            width: 320px;
+            height: 320px;
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-logo-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 2px dashed var(--piss-yellow);
+            border-radius: 50%;
+            opacity: 0.3;
+        }
+
+        .hero-logo-ring:nth-child(2) {
+            width: 380px;
+            height: 380px;
+            animation: spin-slow 30s linear infinite;
+        }
+
+        .hero-logo-ring:nth-child(3) {
+            width: 440px;
+            height: 440px;
+            animation: spin-slow 45s linear infinite reverse;
+            border-color: var(--angry-purple);
+        }
+
+        .hero-logo-ring:nth-child(4) {
+            width: 500px;
+            height: 500px;
+            animation: spin-slow 60s linear infinite;
+            border-style: dotted;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-15px) rotate(2deg); }
+            75% { transform: translateY(15px) rotate(-2deg); }
+        }
+
+        @keyframes spin-slow {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        .floating-icons {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .floating-icon {
+            position: absolute;
+            font-size: 1.5rem;
+            animation: orbit 20s linear infinite;
+        }
+
+        .floating-icon:nth-child(1) {
+            top: 10%;
+            left: 20%;
+            animation-delay: 0s;
+            color: var(--neon-cyan);
+        }
+
+        .floating-icon:nth-child(2) {
+            top: 80%;
+            left: 15%;
+            animation-delay: -5s;
+            color: var(--hot-pink);
+        }
+
+        .floating-icon:nth-child(3) {
+            top: 20%;
+            right: 10%;
+            animation-delay: -10s;
+            color: var(--sick-green);
+        }
+
+        .floating-icon:nth-child(4) {
+            bottom: 20%;
+            right: 20%;
+            animation-delay: -15s;
+            color: var(--piss-yellow);
+        }
+
+        @keyframes orbit {
+            0% { transform: translateY(0) rotate(0deg); opacity: 0.6; }
+            25% { transform: translateY(-20px) rotate(90deg); opacity: 1; }
+            50% { transform: translateY(0) rotate(180deg); opacity: 0.6; }
+            75% { transform: translateY(20px) rotate(270deg); opacity: 1; }
+            100% { transform: translateY(0) rotate(360deg); opacity: 0.6; }
+        }
+
+        /* Marquee */
+        .marquee-section {
+            padding: 2rem 0;
+            background: var(--piss-yellow);
+            overflow: hidden;
+            transform: rotate(-1deg) scale(1.02);
+        }
+
+        .marquee {
+            display: flex;
+            animation: marquee 20s linear infinite;
+        }
+
+        .marquee-content {
+            display: flex;
+            gap: 4rem;
+            padding: 0 2rem;
+            white-space: nowrap;
+        }
+
+        .marquee-item {
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 1.2rem;
+            color: var(--void);
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .marquee-item i {
+            font-size: 0.9rem;
+        }
+
+        @keyframes marquee {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
+        }
+
+        /* Features Section */
+        .features {
+            padding: 120px 6rem;
+            position: relative;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 5rem;
+        }
+
+        .section-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--angry-purple);
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 3rem;
+            text-transform: uppercase;
+        }
+
+        .section-title span {
+            color: var(--piss-yellow);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature-card {
+            background: var(--surface);
+            padding: 2.5rem;
+            position: relative;
+            transition: all 0.3s;
+            border: 1px solid var(--elevated);
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--piss-yellow), var(--angry-purple));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.4s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--piss-yellow);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-number {
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 4rem;
+            color: var(--elevated);
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            line-height: 1;
+        }
+
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--piss-yellow), var(--angry-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            color: var(--void);
+            margin-bottom: 1.5rem;
+            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+        }
+
+        .feature-card h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            color: var(--text);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .feature-card p {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+
+        /* How It Works */
+        .how-it-works {
+            padding: 120px 6rem;
+            background: var(--abyss);
+            position: relative;
+        }
+
+        .how-it-works::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                radial-gradient(circle at 20% 50%, var(--glow-purple) 0%, transparent 50%),
+                radial-gradient(circle at 80% 50%, var(--glow-yellow) 0%, transparent 50%);
+            opacity: 0.1;
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0;
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .steps::before {
+            content: '';
+            position: absolute;
+            top: 48px;
+            left: 15%;
+            right: 15%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--piss-yellow), var(--angry-purple), var(--neon-cyan));
+        }
+
+        .step {
+            text-align: center;
+            position: relative;
+            padding: 0 2rem;
+        }
+
+        .step-number {
+            width: 96px;
+            height: 96px;
+            background: var(--surface);
+            border: 3px solid var(--piss-yellow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 2rem;
+            position: relative;
+            z-index: 2;
+            transition: all 0.3s;
+        }
+
+        .step-number span {
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 2.5rem;
+            color: var(--piss-yellow);
+        }
+
+        .step:hover .step-number {
+            background: var(--piss-yellow);
+            transform: rotate(-5deg) scale(1.1);
+        }
+
+        .step:hover .step-number span {
+            color: var(--void);
+        }
+
+        .step h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 800;
+            margin-bottom: 0.75rem;
+            color: var(--text);
+            text-transform: uppercase;
+        }
+
+        .step p {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+        }
+
+        /* App Preview */
+        .preview {
+            padding: 120px 6rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .preview-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .preview-window {
+            background: var(--surface);
+            border: 1px solid var(--elevated);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow:
+                0 50px 100px rgba(0, 0, 0, 0.5),
+                0 0 100px var(--glow-purple);
+        }
+
+        .preview-header {
+            background: var(--abyss);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--elevated);
+        }
+
+        .preview-dots {
+            display: flex;
+            gap: 8px;
+        }
+
+        .preview-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .preview-dot.red { background: #ff5f57; }
+        .preview-dot.yellow { background: #febc2e; }
+        .preview-dot.green { background: #28c840; }
+
+        .preview-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--muted);
+            flex: 1;
+            text-align: center;
+        }
+
+        .preview-body {
+            display: grid;
+            grid-template-columns: 72px 240px 1fr;
+            min-height: 500px;
+        }
+
+        .preview-servers {
+            background: var(--void);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .preview-server {
+            width: 48px;
+            height: 48px;
+            background: var(--surface);
+            border-radius: 50%;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .preview-server:hover {
+            border-radius: 16px;
+        }
+
+        .preview-server.active {
+            background: var(--angry-purple);
+            border-radius: 16px;
+        }
+
+        .preview-server.home {
+            background: var(--piss-yellow);
+            border-radius: 16px;
+        }
+
+        .preview-channels {
+            background: var(--abyss);
+            padding: 16px;
+        }
+
+        .preview-channel-header {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 1rem;
+            color: var(--text);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .preview-channel-group {
+            margin-bottom: 16px;
+        }
+
+        .preview-channel-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .preview-channel {
+            padding: 8px 12px;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .preview-channel:hover {
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        .preview-channel.active {
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        .preview-channel i {
+            font-size: 1.1rem;
+            opacity: 0.6;
+        }
+
+        .preview-chat {
+            background: var(--surface);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .preview-chat-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--elevated);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .preview-messages {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow: hidden;
+        }
+
+        .preview-message {
+            display: flex;
+            gap: 16px;
+            animation: message-slide 0.5s ease-out both;
+        }
+
+        .preview-message:nth-child(1) { animation-delay: 0.5s; }
+        .preview-message:nth-child(2) { animation-delay: 1s; }
+        .preview-message:nth-child(3) { animation-delay: 1.5s; }
+        .preview-message:nth-child(4) { animation-delay: 2s; }
+
+        @keyframes message-slide {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .preview-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .preview-msg-content {
+            flex: 1;
+        }
+
+        .preview-msg-header {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .preview-msg-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .preview-msg-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--muted);
+        }
+
+        .preview-msg-text {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .preview-input {
+            padding: 16px 20px;
+            border-top: 1px solid var(--elevated);
+        }
+
+        .preview-input-box {
+            background: var(--abyss);
+            padding: 12px 16px;
+            border-radius: 8px;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        /* Testimonials */
+        .testimonials {
+            padding: 120px 6rem;
+            background: var(--abyss);
+        }
+
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .testimonial-card {
+            background: var(--surface);
+            padding: 2rem;
+            position: relative;
+            border: 1px solid var(--elevated);
+        }
+
+        .testimonial-card::before {
+            content: '"';
+            font-family: Georgia, serif;
+            font-size: 6rem;
+            color: var(--piss-yellow);
+            opacity: 0.2;
+            position: absolute;
+            top: 0;
+            left: 16px;
+            line-height: 1;
+        }
+
+        .testimonial-stars {
+            color: var(--piss-yellow);
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .testimonial-text {
+            font-size: 1rem;
+            line-height: 1.7;
+            margin-bottom: 1.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .testimonial-avatar {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--piss-yellow), var(--angry-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 1rem;
+            color: var(--void);
+        }
+
+        .testimonial-info {
+            flex: 1;
+        }
+
+        .testimonial-name {
+            font-weight: 700;
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+
+        .testimonial-role {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+
+        /* FAQ */
+        .faq {
+            padding: 120px 6rem;
+        }
+
+        .faq-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .faq-item {
+            border: 1px solid var(--elevated);
+            margin-bottom: 1rem;
+            background: var(--surface);
+            overflow: hidden;
+        }
+
+        .faq-question {
+            padding: 1.5rem 2rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 1.05rem;
+            color: var(--text);
+            transition: all 0.2s;
+        }
+
+        .faq-question:hover {
+            background: var(--elevated);
+        }
+
+        .faq-question i {
+            color: var(--piss-yellow);
+            transition: transform 0.3s;
+        }
+
+        .faq-item.active .faq-question {
+            border-bottom: 1px solid var(--elevated);
+        }
+
+        .faq-item.active .faq-question i {
+            transform: rotate(180deg);
+        }
+
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .faq-item.active .faq-answer {
+            max-height: 300px;
+        }
+
+        .faq-answer p {
+            padding: 1.5rem 2rem;
+            color: var(--text-dim);
+            line-height: 1.7;
+        }
+
+        .faq-answer code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--abyss);
+            padding: 2px 6px;
+            font-size: 0.85rem;
+            color: var(--piss-yellow);
+        }
+
+        /* CTA */
+        .cta {
+            padding: 120px 6rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, var(--glow-yellow), transparent 60%);
+            opacity: 0.15;
+        }
+
+        .cta-title {
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 3.5rem;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .cta-title span {
+            color: var(--piss-yellow);
+        }
+
+        .cta p {
+            font-size: 1.2rem;
+            color: var(--text-dim);
+            margin-bottom: 2.5rem;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Footer */
+        footer {
+            padding: 80px 6rem 40px;
+            background: var(--void);
+            border-top: 1px solid var(--elevated);
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 4rem;
+            margin-bottom: 4rem;
+        }
+
+        .footer-brand {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .footer-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 1.3rem;
+            color: var(--piss-yellow);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .footer-logo img {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+        }
+
+        .footer-brand p {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+            line-height: 1.7;
+            max-width: 300px;
+        }
+
+        .footer-column h4 {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text);
+            margin-bottom: 1.5rem;
+        }
+
+        .footer-column ul {
+            list-style: none;
+        }
+
+        .footer-column li {
+            margin-bottom: 0.75rem;
+        }
+
+        .footer-column a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+
+        .footer-column a:hover {
+            color: var(--piss-yellow);
+        }
+
+        .footer-bottom {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding-top: 2rem;
+            border-top: 1px solid var(--elevated);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-bottom p {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+
+        .footer-bottom a {
+            color: var(--piss-yellow);
+            text-decoration: none;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .social-links a {
+            width: 44px;
+            height: 44px;
+            background: var(--surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-dim);
+            transition: all 0.2s;
+            border: 1px solid var(--elevated);
+        }
+
+        .social-links a:hover {
+            background: var(--piss-yellow);
+            color: var(--void);
+            border-color: var(--piss-yellow);
+            transform: translateY(-3px);
+        }
+
+        /* Mobile */
+        @media (max-width: 1024px) {
+            .hero {
+                grid-template-columns: 1fr;
+                text-align: center;
+                padding: 120px 2rem 80px;
+            }
+
+            .hero-content {
+                order: 2;
+            }
+
+            .hero-visual {
+                order: 1;
+                margin-bottom: 3rem;
+            }
+
+            .hero-title {
+                font-size: 3.5rem;
+            }
+
+            .hero-description {
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+            .hero-buttons {
+                justify-content: center;
+            }
+
+            .hero-stats {
+                justify-content: center;
+            }
+
+            .hero-logo {
+                width: 200px;
+                height: 200px;
+            }
+
+            .features-grid,
+            .steps,
+            .testimonials-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .steps::before {
+                display: none;
+            }
+
+            .preview-body {
+                grid-template-columns: 1fr;
+            }
+
+            .preview-servers,
+            .preview-channels {
+                display: none;
+            }
+
+            .footer-content {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+                text-align: center;
+            }
+
+            .footer-brand p {
+                margin: 0 auto;
+            }
+
+            .footer-bottom {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            nav {
+                padding: 1rem 1.5rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .features,
+            .how-it-works,
+            .preview,
+            .testimonials,
+            .faq,
+            .cta,
+            footer {
+                padding-left: 2rem;
+                padding-right: 2rem;
+            }
+        }
+
+        /* Scroll reveal */
+        .reveal {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav>
+        <a href="#" class="nav-logo">
+            <img src="../public/pisscord-dark.png" alt="Pisscord">
+            Pisscord
+        </a>
+        <ul class="nav-links">
+            <li><a href="#features">Features</a></li>
+            <li><a href="#how-it-works">How It Works</a></li>
+            <li><a href="#preview">Preview</a></li>
+            <li><a href="#faq">FAQ</a></li>
+        </ul>
+        <a href="https://github.com/jamditis/pisscord/releases/latest" class="nav-cta">
+            Download
+        </a>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-bg">
+            <div class="hero-bg-gradient yellow"></div>
+            <div class="hero-bg-gradient purple"></div>
+            <div class="hero-grid"></div>
+        </div>
+
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span>v1.0.5 NOW AVAILABLE</span>
+            </div>
+            <h1 class="hero-title">
+                <span class="yellow">PISS</span><span class="white">CORD</span>
+            </h1>
+            <p class="hero-tagline">// <span>TALK SHIT, PRIVATELY</span></p>
+            <p class="hero-description">
+                Peer-to-peer encrypted voice, video, and text. No middlemen. No data harvesting.
+                Just you and your people, connected directly through the void.
+            </p>
+            <div class="hero-buttons">
+                <a href="https://github.com/jamditis/pisscord/releases/latest" class="btn btn-primary">
+                    <i class="fab fa-windows"></i> Download for Windows
+                </a>
+                <a href="https://github.com/jamditis/pisscord" class="btn btn-secondary">
+                    <i class="fab fa-github"></i> View Source
+                </a>
+            </div>
+            <div class="hero-stats">
+                <div class="stat">
+                    <div class="stat-number">100%</div>
+                    <div class="stat-label">P2P Encrypted</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">$0</div>
+                    <div class="stat-label">Forever Free</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Data Collected</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hero-visual">
+            <div class="hero-logo-container">
+                <img src="../public/pisscord-dark.png" alt="Pisscord Logo" class="hero-logo">
+                <div class="hero-logo-ring"></div>
+                <div class="hero-logo-ring"></div>
+                <div class="hero-logo-ring"></div>
+            </div>
+            <div class="floating-icons">
+                <i class="fas fa-microphone floating-icon"></i>
+                <i class="fas fa-video floating-icon"></i>
+                <i class="fas fa-shield-halved floating-icon"></i>
+                <i class="fas fa-bolt floating-icon"></i>
+            </div>
+        </div>
+    </section>
+
+    <!-- Marquee -->
+    <div class="marquee-section">
+        <div class="marquee">
+            <div class="marquee-content">
+                <span class="marquee-item"><i class="fas fa-lock"></i> END-TO-END ENCRYPTED</span>
+                <span class="marquee-item"><i class="fas fa-bolt"></i> ZERO LATENCY</span>
+                <span class="marquee-item"><i class="fas fa-eye-slash"></i> NO TRACKING</span>
+                <span class="marquee-item"><i class="fas fa-robot"></i> AI POWERED</span>
+                <span class="marquee-item"><i class="fas fa-desktop"></i> SCREEN SHARE</span>
+                <span class="marquee-item"><i class="fas fa-code"></i> OPEN SOURCE</span>
+                <span class="marquee-item"><i class="fas fa-lock"></i> END-TO-END ENCRYPTED</span>
+                <span class="marquee-item"><i class="fas fa-bolt"></i> ZERO LATENCY</span>
+                <span class="marquee-item"><i class="fas fa-eye-slash"></i> NO TRACKING</span>
+                <span class="marquee-item"><i class="fas fa-robot"></i> AI POWERED</span>
+                <span class="marquee-item"><i class="fas fa-desktop"></i> SCREEN SHARE</span>
+                <span class="marquee-item"><i class="fas fa-code"></i> OPEN SOURCE</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features -->
+    <section class="features" id="features">
+        <div class="section-header reveal">
+            <div class="section-label">// What You Get</div>
+            <h2 class="section-title">LOADED WITH <span>FEATURES</span></h2>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card reveal">
+                <span class="feature-number">01</span>
+                <div class="feature-icon">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <h3>P2P Encryption</h3>
+                <p>Your conversations travel directly between devices. No servers storing your secrets. No corporate overlords reading your DMs.</p>
+            </div>
+
+            <div class="feature-card reveal">
+                <span class="feature-number">02</span>
+                <div class="feature-icon">
+                    <i class="fas fa-video"></i>
+                </div>
+                <h3>HD Voice & Video</h3>
+                <p>Crystal-clear WebRTC calls with no middleman lag. It's like being in the same room, minus the smell.</p>
+            </div>
+
+            <div class="feature-card reveal">
+                <span class="feature-number">03</span>
+                <div class="feature-icon">
+                    <i class="fas fa-desktop"></i>
+                </div>
+                <h3>Screen Sharing</h3>
+                <p>One-click screen sharing for gaming, presentations, or showing mom how to use "the Google" for the 47th time.</p>
+            </div>
+
+            <div class="feature-card reveal">
+                <span class="feature-number">04</span>
+                <div class="feature-icon">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <h3>Pissbot AI</h3>
+                <p>Built-in AI assistant powered by Google Gemini. Ask questions, get jokes, receive questionable life advice.</p>
+            </div>
+
+            <div class="feature-card reveal">
+                <span class="feature-number">05</span>
+                <div class="feature-icon">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <h3>Instant Messaging</h3>
+                <p>P2P text channels that never touch a server. Your memes stay between you and your crew.</p>
+            </div>
+
+            <div class="feature-card reveal">
+                <span class="feature-number">06</span>
+                <div class="feature-icon">
+                    <i class="fas fa-palette"></i>
+                </div>
+                <h3>Custom Profiles</h3>
+                <p>Personalize your presence with custom colors and status messages. Stand out in the void.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works" id="how-it-works">
+        <div class="section-header reveal">
+            <div class="section-label">// Getting Started</div>
+            <h2 class="section-title">STUPID <span>SIMPLE</span></h2>
+        </div>
+
+        <div class="steps">
+            <div class="step reveal">
+                <div class="step-number"><span>1</span></div>
+                <h3>Download</h3>
+                <p>Grab the Windows installer. It's free, it's clean, and your antivirus won't even flinch.</p>
+            </div>
+
+            <div class="step reveal">
+                <div class="step-number"><span>2</span></div>
+                <h3>Share Link</h3>
+                <p>Get your unique peer ID and send it to your friends. They click, you connect. Magic.</p>
+            </div>
+
+            <div class="step reveal">
+                <div class="step-number"><span>3</span></div>
+                <h3>Talk Shit</h3>
+                <p>Jump into voice, spam the chat, or vibe in silence. Your call. Literally.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Preview -->
+    <section class="preview" id="preview">
+        <div class="section-header reveal">
+            <div class="section-label">// The Experience</div>
+            <h2 class="section-title">FAMILIAR <span>VIBES</span></h2>
+        </div>
+
+        <div class="preview-container reveal">
+            <div class="preview-window">
+                <div class="preview-header">
+                    <div class="preview-dots">
+                        <div class="preview-dot red"></div>
+                        <div class="preview-dot yellow"></div>
+                        <div class="preview-dot green"></div>
+                    </div>
+                    <div class="preview-title">Pisscord v1.0.5</div>
+                </div>
+                <div class="preview-body">
+                    <div class="preview-servers">
+                        <div class="preview-server home"></div>
+                        <div class="preview-server active"></div>
+                        <div class="preview-server"></div>
+                    </div>
+                    <div class="preview-channels">
+                        <div class="preview-channel-header">
+                            <img src="../public/pisscord-dark.png" style="width: 24px; height: 24px; border-radius: 6px;">
+                            Family Chat
+                        </div>
+                        <div class="preview-channel-group">
+                            <div class="preview-channel-label">Text Channels</div>
+                            <div class="preview-channel active"><i class="fas fa-hashtag"></i> general</div>
+                            <div class="preview-channel"><i class="fas fa-hashtag"></i> links</div>
+                            <div class="preview-channel"><i class="fas fa-robot"></i> pissbot</div>
+                        </div>
+                        <div class="preview-channel-group">
+                            <div class="preview-channel-label">Voice Channels</div>
+                            <div class="preview-channel"><i class="fas fa-volume-up"></i> Voice Lounge</div>
+                        </div>
+                    </div>
+                    <div class="preview-chat">
+                        <div class="preview-chat-header">
+                            <i class="fas fa-hashtag" style="color: var(--muted);"></i> general
+                        </div>
+                        <div class="preview-messages">
+                            <div class="preview-message">
+                                <div class="preview-avatar" style="background: linear-gradient(135deg, #3ba55c, #2d7d46);"></div>
+                                <div class="preview-msg-content">
+                                    <div class="preview-msg-header">
+                                        <span class="preview-msg-name" style="color: #3ba55c;">Mom</span>
+                                        <span class="preview-msg-time">Today at 2:34 PM</span>
+                                    </div>
+                                    <div class="preview-msg-text">Honey are you coming to dinner Sunday? I'm making lasagna</div>
+                                </div>
+                            </div>
+                            <div class="preview-message">
+                                <div class="preview-avatar" style="background: linear-gradient(135deg, #5865F2, #4752c4);"></div>
+                                <div class="preview-msg-content">
+                                    <div class="preview-msg-header">
+                                        <span class="preview-msg-name" style="color: #5865F2;">You</span>
+                                        <span class="preview-msg-time">Today at 2:35 PM</span>
+                                    </div>
+                                    <div class="preview-msg-text">Yes! Should I bring anything?</div>
+                                </div>
+                            </div>
+                            <div class="preview-message">
+                                <div class="preview-avatar" style="background: linear-gradient(135deg, #ed4245, #c73538);"></div>
+                                <div class="preview-msg-content">
+                                    <div class="preview-msg-header">
+                                        <span class="preview-msg-name" style="color: #ed4245;">Brother</span>
+                                        <span class="preview-msg-time">Today at 2:36 PM</span>
+                                    </div>
+                                    <div class="preview-msg-text">Bring chips. Also let's hop in voice after dinner, I need help with that boss fight</div>
+                                </div>
+                            </div>
+                            <div class="preview-message">
+                                <div class="preview-avatar" style="background: linear-gradient(135deg, #f0e130, #c9bc28);"></div>
+                                <div class="preview-msg-content">
+                                    <div class="preview-msg-header">
+                                        <span class="preview-msg-name" style="color: #f0e130;">Dad</span>
+                                        <span class="preview-msg-time">Today at 2:38 PM</span>
+                                    </div>
+                                    <div class="preview-msg-text">How do I turn on my camera again?</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="preview-input">
+                            <div class="preview-input-box">Message #general...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="testimonials">
+        <div class="section-header reveal">
+            <div class="section-label">// Reviews</div>
+            <h2 class="section-title">REAL <span>HUMANS</span> (PROBABLY)</h2>
+        </div>
+
+        <div class="testimonials-grid">
+            <div class="testimonial-card reveal">
+                <div class="testimonial-stars">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                </div>
+                <p class="testimonial-text">"Finally, an app that doesn't sell my soul to 47 different ad networks. My tinfoil hat approves."</p>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar">JD</div>
+                    <div class="testimonial-info">
+                        <div class="testimonial-name">John's Dad</div>
+                        <div class="testimonial-role">Privacy Enthusiast</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="testimonial-card reveal">
+                <div class="testimonial-stars">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                </div>
+                <p class="testimonial-text">"Voice quality so good I can hear my brother breathing through his mouth. Feature or bug? Unclear."</p>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar">MK</div>
+                    <div class="testimonial-info">
+                        <div class="testimonial-name">Mike K.</div>
+                        <div class="testimonial-role">Hardcore Gamer</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="testimonial-card reveal">
+                <div class="testimonial-stars">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star-half-alt"></i>
+                </div>
+                <p class="testimonial-text">"Pissbot told me a joke so bad I ascended to another plane of existence. Would recommend."</p>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar">SL</div>
+                    <div class="testimonial-info">
+                        <div class="testimonial-name">Sarah L.</div>
+                        <div class="testimonial-role">Bad Joke Connoisseur</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="faq" id="faq">
+        <div class="section-header reveal">
+            <div class="section-label">// Questions</div>
+            <h2 class="section-title">FREQUENTLY <span>ASKED</span></h2>
+        </div>
+
+        <div class="faq-container">
+            <div class="faq-item active reveal">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    Is Pisscord actually free?
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    <p>Yes. 100% free. No premium tiers. No "pay to remove ads." No venture capital vampires demanding growth metrics. We made this for friends and family, not profit.</p>
+                </div>
+            </div>
+
+            <div class="faq-item reveal">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    Is my data really private?
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    <p>All voice, video, and messages go directly between you and your contacts via WebRTC. We use Firebase only to show who's online (presence). We never see your conversations. Period.</p>
+                </div>
+            </div>
+
+            <div class="faq-item reveal">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    Why is it called Pisscord?
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    <p>Because corporate overlords don't trademark the word "piss." Plus, our angry water droplet mascot needed a home that matched his energy.</p>
+                </div>
+            </div>
+
+            <div class="faq-item reveal">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    Does it work on Mac or Linux?
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    <p>Currently Windows-only. We're built on Electron though, so cross-platform is totally possible. Star the <a href="https://github.com/jamditis/pisscord" style="color: var(--piss-yellow);">GitHub repo</a> to show interest and we might actually do it.</p>
+                </div>
+            </div>
+
+            <div class="faq-item reveal">
+                <div class="faq-question" onclick="toggleFaq(this)">
+                    What's Pissbot and should I be worried?
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-answer">
+                    <p>Pissbot is our AI assistant (Google Gemini under the hood). It lives in <code>#pissbot</code> and answers questions, tells jokes, and provides entertainment. World domination scheduled for v2.0.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta">
+        <h2 class="cta-title reveal">READY TO <span>CONNECT?</span></h2>
+        <p class="reveal">Download Pisscord. Talk shit. Stay private.</p>
+        <div class="hero-buttons reveal" style="justify-content: center;">
+            <a href="https://github.com/jamditis/pisscord/releases/latest" class="btn btn-primary">
+                <i class="fab fa-windows"></i> Get Pisscord
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-brand">
+                <div class="footer-logo">
+                    <img src="../public/pisscord-dark.png" alt="Pisscord">
+                    Pisscord
+                </div>
+                <p>Peer-to-peer communication for people who value privacy. No corporate overlords. No data harvesting. Just you and your people.</p>
+            </div>
+
+            <div class="footer-column">
+                <h4>Product</h4>
+                <ul>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="https://github.com/jamditis/pisscord/releases/latest">Download</a></li>
+                    <li><a href="https://github.com/jamditis/pisscord/releases">Changelog</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-column">
+                <h4>Resources</h4>
+                <ul>
+                    <li><a href="#faq">FAQ</a></li>
+                    <li><a href="https://github.com/jamditis/pisscord/issues">Report Bug</a></li>
+                    <li><a href="https://github.com/jamditis/pisscord">Source Code</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-column">
+                <h4>Connect</h4>
+                <ul>
+                    <li><a href="https://github.com/jamditis/pisscord">GitHub</a></li>
+                    <li><a href="https://github.com/jamditis">@jamditis</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>Made with spite by <a href="https://github.com/jamditis">JawnPiece Productions</a></p>
+            <div class="social-links">
+                <a href="https://github.com/jamditis/pisscord" title="GitHub">
+                    <i class="fab fa-github"></i>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Scroll reveal
+        function revealOnScroll() {
+            const reveals = document.querySelectorAll('.reveal');
+            const windowHeight = window.innerHeight;
+
+            reveals.forEach((element, index) => {
+                const elementTop = element.getBoundingClientRect().top;
+                const revealPoint = 100;
+
+                if (elementTop < windowHeight - revealPoint) {
+                    setTimeout(() => {
+                        element.classList.add('visible');
+                    }, index * 50);
+                }
+            });
+        }
+
+        // FAQ toggle
+        function toggleFaq(element) {
+            const faqItem = element.parentElement;
+            const wasActive = faqItem.classList.contains('active');
+
+            // Close all
+            document.querySelectorAll('.faq-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // Open clicked if it wasn't active
+            if (!wasActive) {
+                faqItem.classList.add('active');
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            revealOnScroll();
+        });
+
+        window.addEventListener('scroll', revealOnScroll);
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
