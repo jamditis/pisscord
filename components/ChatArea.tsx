@@ -126,7 +126,13 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMes
                 </span>
               </div>
               <div className="text-discord-text whitespace-pre-wrap break-words leading-relaxed">
-                {msg.content}
+                {msg.content.split(/(https?:\/\/[^\s]+)/g).map((part, i) => 
+                    part.match(/https?:\/\/[^\s]+/) ? (
+                        <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-discord-link hover:underline">
+                            {part}
+                        </a>
+                    ) : part
+                )}
               </div>
               {/* Attachment Rendering */}
               {msg.attachment && (
