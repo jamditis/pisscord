@@ -38,7 +38,7 @@ export type { PresenceUser as OnlineUser };
 export const uploadFile = async (file: File): Promise<string> => {
   const filename = `${Date.now()}-${file.name}`;
   const fileRef = storageRef(storage, `uploads/${filename}`);
-  
+
   try {
     const snapshot = await uploadBytes(fileRef, file);
     const url = await getDownloadURL(snapshot.ref);
@@ -46,6 +46,37 @@ export const uploadFile = async (file: File): Promise<string> => {
   } catch (error) {
     console.error("File upload failed:", error);
     throw error;
+  }
+};
+
+// Get resized image URL (Firebase Resize Images extension)
+// The extension creates thumbnails with _200x200, _400x400, etc. suffixes
+export const getResizedImageUrl = (originalUrl: string, size: '200x200' | '400x400' = '200x200'): string => {
+  // Firebase extension adds suffix before file extension
+  // e.g., uploads/image.jpg -> uploads/image_200x200.jpg
+  // If the URL contains the token, we need to handle it carefully
+
+  try {
+    const url = new URL(originalUrl);
+    const pathMatch = url.pathname.match(/\/o\/(.+?)(\?|$)/);
+    if (!pathMatch) return originalUrl;
+
+    const encodedPath = pathMatch[1];
+    const decodedPath = decodeURIComponent(encodedPath);
+
+    // Find the last dot for file extension
+    const lastDot = decodedPath.lastIndexOf('.');
+    if (lastDot === -1) return originalUrl;
+
+    const basePath = decodedPath.substring(0, lastDot);
+    const extension = decodedPath.substring(lastDot);
+    const resizedPath = `${basePath}_${size}${extension}`;
+
+    // Re-encode and replace in URL
+    const newEncodedPath = encodeURIComponent(resizedPath);
+    return originalUrl.replace(encodedPath, newEncodedPath);
+  } catch {
+    return originalUrl;
   }
 };
 
@@ -84,13 +115,14 @@ export const checkForMOTD = async (): Promise<string | null> => {
 
 export const registerPresence = (peerId: string, profile: UserProfile) => {
   const userRef = ref(db, `users/${peerId}`);
-  
+
   // Set initial status
   set(userRef, {
     peerId,
     displayName: profile.displayName,
     statusMessage: profile.statusMessage,
     color: profile.color,
+    photoURL: profile.photoURL || null,
     lastSeen: Date.now(),
     voiceChannelId: null
   });
@@ -107,6 +139,7 @@ export const updatePresence = (peerId: string, profile: UserProfile, voiceChanne
       displayName: profile.displayName,
       statusMessage: profile.statusMessage,
       color: profile.color,
+      photoURL: profile.photoURL || null,
       lastSeen: Date.now(),
       voiceChannelId
     });

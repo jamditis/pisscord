@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { ConnectionState, UserProfile, PresenceUser } from '../types';
 
 interface VoiceStageProps {
@@ -19,6 +19,68 @@ interface VoiceStageProps {
   onIdCopied?: () => void;
 }
 
+// Audio activity detection hook
+const useAudioActivity = (stream: MediaStream | null, enabled: boolean = true) => {
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!stream || !enabled) {
+      setIsSpeaking(false);
+      return;
+    }
+
+    const audioTracks = stream.getAudioTracks();
+    if (audioTracks.length === 0) {
+      setIsSpeaking(false);
+      return;
+    }
+
+    try {
+      const audioContext = new AudioContext();
+      const analyser = audioContext.createAnalyser();
+      const source = audioContext.createMediaStreamSource(stream);
+
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.5;
+      source.connect(analyser);
+
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const THRESHOLD = 20; // Adjust sensitivity
+
+      const checkAudio = () => {
+        if (!analyserRef.current) return;
+
+        analyserRef.current.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+
+        setIsSpeaking(average > THRESHOLD);
+        animationFrameRef.current = requestAnimationFrame(checkAudio);
+      };
+
+      checkAudio();
+
+      return () => {
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+        }
+        if (audioContextRef.current) {
+          audioContextRef.current.close();
+        }
+      };
+    } catch (err) {
+      console.error('Audio activity detection error:', err);
+    }
+  }, [stream, enabled]);
+
+  return isSpeaking;
+};
+
 export const VoiceStage: React.FC<VoiceStageProps> = ({
   myStream,
   remoteStreams,
@@ -38,9 +100,18 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
 }) => {
   const myVideoRef = useRef<HTMLVideoElement>(null);
   const [remoteIdInput, setRemoteIdInput] = useState('');
-  
+
+  // Spotlight state - null means grid view, peerId means that user is spotlighted, 'self' for local user
+  const [spotlightedUser, setSpotlightedUser] = useState<string | null>(null);
+
+  // Audio activity for local stream
+  const isLocalSpeaking = useAudioActivity(myStream, isAudioEnabled);
+
   // Map to store refs for each remote video
   const remoteVideoRefs = useRef<Map<string, HTMLVideoElement | null>>(new Map());
+
+  // Track speaking state for remote users
+  const [remoteSpeaking, setRemoteSpeaking] = useState<Map<string, boolean>>(new Map());
 
   // Effect to attach local stream
   useEffect(() => {
@@ -58,6 +129,63 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
         }
     });
   }, [remoteStreams]);
+
+  // Effect to track audio activity for remote streams
+  useEffect(() => {
+    const audioContexts: Map<string, { ctx: AudioContext; animFrame: number }> = new Map();
+
+    remoteStreams.forEach((stream, peerId) => {
+      const audioTracks = stream.getAudioTracks();
+      if (audioTracks.length === 0) return;
+
+      try {
+        const audioContext = new AudioContext();
+        const analyser = audioContext.createAnalyser();
+        const source = audioContext.createMediaStreamSource(stream);
+
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.5;
+        source.connect(analyser);
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        const THRESHOLD = 15;
+
+        const checkAudio = () => {
+          analyser.getByteFrequencyData(dataArray);
+          const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+
+          setRemoteSpeaking(prev => {
+            const newMap = new Map(prev);
+            newMap.set(peerId, average > THRESHOLD);
+            return newMap;
+          });
+
+          const animFrame = requestAnimationFrame(checkAudio);
+          const existing = audioContexts.get(peerId);
+          if (existing) {
+            audioContexts.set(peerId, { ...existing, animFrame });
+          }
+        };
+
+        const animFrame = requestAnimationFrame(checkAudio);
+        audioContexts.set(peerId, { ctx: audioContext, animFrame });
+      } catch (err) {
+        console.error('Remote audio activity detection error:', err);
+      }
+    });
+
+    return () => {
+      audioContexts.forEach(({ ctx, animFrame }) => {
+        cancelAnimationFrame(animFrame);
+        ctx.close();
+      });
+    };
+  }, [remoteStreams]);
+
+  // Toggle spotlight
+  const toggleSpotlight = (userId: string) => {
+    setSpotlightedUser(prev => prev === userId ? null : userId);
+  };
 
   const handleConnectSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,65 +297,116 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
         )}
 
         {/* My Video Tile */}
-        <div className="relative aspect-video bg-discord-dark rounded-lg overflow-hidden shadow-lg border border-discord-sidebar group min-h-[200px]">
+        <div
+          onClick={() => toggleSpotlight('self')}
+          className={`relative aspect-video bg-discord-dark rounded-lg overflow-hidden shadow-lg group cursor-pointer transition-all duration-300 ${
+            spotlightedUser === 'self'
+              ? 'col-span-full row-span-2 md:col-span-2'
+              : spotlightedUser && spotlightedUser !== 'self'
+                ? 'hidden md:block'
+                : ''
+          } ${isLocalSpeaking ? 'ring-4 ring-green-500 ring-opacity-75' : 'border border-discord-sidebar'}`}
+          style={{ minHeight: spotlightedUser === 'self' ? '400px' : '200px' }}
+        >
            {isVideoEnabled || isScreenSharing ? (
-              <video 
-                ref={myVideoRef} 
-                autoPlay 
-                playsInline 
-                muted 
+              <video
+                ref={myVideoRef}
+                autoPlay
+                playsInline
+                muted
                 className="w-full h-full object-cover transform"
                 style={{ transform: isScreenSharing ? 'none' : 'scaleX(-1)' }}
               />
            ) : (
               <div className="w-full h-full flex items-center justify-center">
-                  <div 
-                      className="w-24 h-24 rounded-full flex items-center justify-center overflow-hidden"
+                  <div
+                      className={`rounded-full flex items-center justify-center overflow-hidden transition-all ${
+                        isLocalSpeaking ? 'ring-4 ring-green-500 ring-opacity-75' : ''
+                      } ${spotlightedUser === 'self' ? 'w-32 h-32' : 'w-24 h-24'}`}
                       style={{ backgroundColor: userProfile.photoURL ? 'transparent' : userProfile.color }}
                   >
                       {userProfile.photoURL ? (
                           <img src={userProfile.photoURL} alt="" className="w-full h-full object-cover" />
                       ) : (
-                          <i className="fas fa-user text-4xl text-white"></i>
+                          <i className={`fas fa-user text-white ${spotlightedUser === 'self' ? 'text-5xl' : 'text-4xl'}`}></i>
                       )}
                   </div>
               </div>
            )}
+           {/* Spotlight indicator */}
+           {spotlightedUser === 'self' && (
+             <div className="absolute top-2 right-2 bg-discord-accent px-2 py-1 rounded text-white text-xs font-bold flex items-center">
+               <i className="fas fa-thumbtack mr-1"></i> Pinned
+             </div>
+           )}
+           {/* Click to pin hint on hover */}
+           <div className="absolute top-2 left-2 bg-black/60 px-2 py-1 rounded text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+             <i className="fas fa-mouse-pointer mr-1"></i> {spotlightedUser === 'self' ? 'Unpin' : 'Click to pin'}
+           </div>
            <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-white text-sm font-bold flex items-center">
                You {isScreenSharing && '(Screen)'}
                {!isAudioEnabled && <i className="fas fa-microphone-slash ml-2 text-red-500 text-xs"></i>}
+               {isLocalSpeaking && isAudioEnabled && <i className="fas fa-volume-up ml-2 text-green-500 text-xs animate-pulse"></i>}
            </div>
         </div>
 
         {/* Remote Video Tiles */}
         {connectionState === ConnectionState.CONNECTED && Array.from(remoteStreams.entries()).map(([peerId, stream]) => {
           const remoteUser = getRemoteUser(peerId);
+          const isSpeaking = remoteSpeaking.get(peerId) || false;
+          const isSpotlighted = spotlightedUser === peerId;
+          const hasVideo = stream && stream.getVideoTracks().length > 0 && stream.getVideoTracks()[0].enabled;
+
           return (
-            <div key={peerId} className="relative aspect-video bg-discord-dark rounded-lg overflow-hidden shadow-lg border border-discord-sidebar min-h-[200px]">
-               {stream && stream.getVideoTracks().length > 0 ? (
-                  <video 
+            <div
+              key={peerId}
+              onClick={() => toggleSpotlight(peerId)}
+              className={`relative aspect-video bg-discord-dark rounded-lg overflow-hidden shadow-lg group cursor-pointer transition-all duration-300 ${
+                isSpotlighted
+                  ? 'col-span-full row-span-2 md:col-span-2'
+                  : spotlightedUser && !isSpotlighted
+                    ? 'hidden md:block'
+                    : ''
+              } ${isSpeaking ? 'ring-4 ring-green-500 ring-opacity-75' : 'border border-discord-sidebar'}`}
+              style={{ minHeight: isSpotlighted ? '400px' : '200px' }}
+            >
+               {hasVideo ? (
+                  <video
                       ref={el => remoteVideoRefs.current.set(peerId, el)}
-                      autoPlay 
+                      autoPlay
                       playsInline
-                      muted // Muted because App.tsx handles audio globally
-                      className="w-full h-full object-cover" 
+                      muted
+                      className="w-full h-full object-cover"
                   />
                ) : (
-                  <div className="w-full h-full flex items-center justify-center animate-pulse">
-                      <div 
-                          className="w-24 h-24 rounded-full flex items-center justify-center overflow-hidden"
+                  <div className="w-full h-full flex items-center justify-center">
+                      <div
+                          className={`rounded-full flex items-center justify-center overflow-hidden transition-all ${
+                            isSpeaking ? 'ring-4 ring-green-500 ring-opacity-75' : ''
+                          } ${isSpotlighted ? 'w-32 h-32' : 'w-24 h-24'}`}
                           style={{ backgroundColor: remoteUser?.photoURL ? 'transparent' : (remoteUser?.color || '#5865F2') }}
                       >
                           {remoteUser?.photoURL ? (
                               <img src={remoteUser.photoURL} alt="" className="w-full h-full object-cover" />
                           ) : (
-                              <i className="fas fa-user text-4xl text-white"></i>
+                              <i className={`fas fa-user text-white ${isSpotlighted ? 'text-5xl' : 'text-4xl'}`}></i>
                           )}
                       </div>
                   </div>
                )}
-               <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-white text-sm font-bold">
+               {/* Spotlight indicator */}
+               {isSpotlighted && (
+                 <div className="absolute top-2 right-2 bg-discord-accent px-2 py-1 rounded text-white text-xs font-bold flex items-center">
+                   <i className="fas fa-thumbtack mr-1"></i> Pinned
+                 </div>
+               )}
+               {/* Click to pin hint on hover */}
+               <div className="absolute top-2 left-2 bg-black/60 px-2 py-1 rounded text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                 <i className="fas fa-mouse-pointer mr-1"></i> {isSpotlighted ? 'Unpin' : 'Click to pin'}
+               </div>
+               <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded text-white text-sm font-bold flex items-center">
                    {remoteUser?.displayName || peerId.substring(0,5) + '...'}
+                   {isSpeaking && <i className="fas fa-volume-up ml-2 text-green-500 text-xs animate-pulse"></i>}
                </div>
             </div>
           );

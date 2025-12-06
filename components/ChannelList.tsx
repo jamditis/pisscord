@@ -1,9 +1,11 @@
 import React from 'react';
-import { Channel, ChannelType, UserProfile, ConnectionState } from '../types';
+import { Channel, ChannelType, UserProfile, ConnectionState, PresenceUser } from '../types';
 
 interface ChannelListProps {
   channels: Channel[];
   activeChannelId: string;
+  activeVoiceChannelId: string | null;
+  onlineUsers: PresenceUser[];
   onSelectChannel: (id: string) => void;
   connectionState: string;
   peerId: string | null;
@@ -23,6 +25,8 @@ interface ChannelListProps {
 export const ChannelList: React.FC<ChannelListProps> = ({
   channels,
   activeChannelId,
+  activeVoiceChannelId,
+  onlineUsers,
   onSelectChannel,
   connectionState,
   peerId,
@@ -38,6 +42,10 @@ export const ChannelList: React.FC<ChannelListProps> = ({
   onVolumeChange,
   onShowToast
 }) => {
+  // Get users in each voice channel
+  const getUsersInVoiceChannel = (channelId: string) => {
+    return onlineUsers.filter(u => u.voiceChannelId === channelId);
+  };
   const [showVolumeSlider, setShowVolumeSlider] = React.useState(false);
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -79,22 +87,63 @@ export const ChannelList: React.FC<ChannelListProps> = ({
             Voice Channels
           </div>
           <div className="mt-1 px-2 space-y-[2px]">
-            {channels.filter(c => c.type === ChannelType.VOICE).map(channel => (
-              <div
-                key={channel.id}
-                onClick={() => onSelectChannel(channel.id)}
-                className={`group px-2 py-1 rounded mx-1 flex items-center cursor-pointer ${
-                  activeChannelId === channel.id ? 'bg-discord-hover text-white' : 'text-discord-muted hover:bg-discord-hover hover:text-discord-text'
-                }`}
-              >
-                <i className="fas fa-volume-up mr-2 text-sm"></i>
-                <span className="font-medium truncate">{channel.name}</span>
-                {/* Visual indicator if connected to voice, but looking at this item */}
-                {connectionState === ConnectionState.CONNECTED && activeChannelId !== channel.id && (
-                     <div className="ml-auto w-2 h-2 bg-green-500 rounded-full"></div>
-                )}
-              </div>
-            ))}
+            {channels.filter(c => c.type === ChannelType.VOICE).map(channel => {
+              const usersInChannel = getUsersInVoiceChannel(channel.id);
+              const isActiveVoice = activeVoiceChannelId === channel.id;
+
+              return (
+                <div key={channel.id}>
+                  {/* Channel Row */}
+                  <div
+                    onClick={() => onSelectChannel(channel.id)}
+                    className={`group px-2 py-1 rounded mx-1 flex items-center cursor-pointer ${
+                      activeChannelId === channel.id ? 'bg-discord-hover text-white' : 'text-discord-muted hover:bg-discord-hover hover:text-discord-text'
+                    }`}
+                  >
+                    <i className="fas fa-volume-up mr-2 text-sm"></i>
+                    <span className="font-medium truncate">{channel.name}</span>
+                    {/* User count badge */}
+                    {usersInChannel.length > 0 && (
+                      <span className="ml-auto text-[10px] bg-discord-dark px-1.5 py-0.5 rounded-full text-discord-muted">
+                        {usersInChannel.length}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Users in this voice channel */}
+                  {usersInChannel.length > 0 && (
+                    <div className="ml-6 mt-1 space-y-1">
+                      {usersInChannel.map(user => (
+                        <div
+                          key={user.peerId}
+                          className="flex items-center px-2 py-1 rounded text-discord-text hover:bg-discord-hover/50 transition-colors"
+                        >
+                          <div className="relative">
+                            <div
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs overflow-hidden"
+                              style={{ backgroundColor: user.photoURL ? 'transparent' : (user.color || '#5865F2') }}
+                            >
+                              {user.photoURL ? (
+                                <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <i className="fas fa-user text-[10px]"></i>
+                              )}
+                            </div>
+                            {/* Online indicator */}
+                            <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-discord-sidebar rounded-full"></div>
+                          </div>
+                          <span className="ml-2 text-sm truncate">{user.displayName}</span>
+                          {/* Show muted icon if user is self and muted */}
+                          {user.peerId === peerId && !isAudioEnabled && (
+                            <i className="fas fa-microphone-slash ml-auto text-red-500 text-xs"></i>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

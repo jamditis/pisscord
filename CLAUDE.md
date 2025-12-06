@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Pisscord is a private, peer-to-peer Discord clone built with React, TypeScript, Electron, and PeerJS. It enables direct P2P voice/video calling, text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
 
-**Current Version:** 1.0.11
-**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.0.11
+**Current Version:** 1.0.14
+**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.0.14
 
 ## Key Architecture
 
@@ -218,7 +218,30 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - `noUnusedLocals` and `noUnusedParameters` disabled (intentional)
 - React JSX transform (no need to import React in TSX files)
 
-## Recent Changes (v1.0.9 - v1.0.11)
+## Recent Changes (v1.0.9 - v1.0.14)
+
+### v1.0.14 (2025-12-06)
+- **Video Spotlight:** Click any video tile to pin/maximize it during calls
+- **Speaking Indicator:** Green ring around avatars when user is speaking (Web Audio API activity detection)
+- **Markdown Chat:** Full Discord-style markdown rendering (bold, italic, code, headers, lists, links)
+- **Voice Channel Users:** Users now appear nested under voice channels in sidebar
+- **Second Voice Channel:** Added "Gaming" voice channel
+- **Bugfix:** Fixed bug report submission error (Firebase rejects undefined values)
+- **Bugfix:** Added manual download fallback for auto-updater
+- **Bugfix:** Fixed profile picture sync to Firebase presence
+
+### v1.0.13 (2025-12-06)
+- **Mesh Networking:** True many-to-many group calls (replaces 1:1 calling)
+- **File Sharing:** Drag & drop images/files in chat with Firebase Storage
+- **Profile Pictures:** Upload custom avatars synced across users
+- **Community Channels:** Added #issues for bug reporting, #dev-updates for GitHub commit feed
+- **MOTD System:** Message of the day displayed on app launch
+- **Message Retention:** 14-day automatic message cleanup
+
+### v1.0.12 (2025-12-06)
+- **Major Refactor:** Converted to mesh networking architecture
+- **Firebase Storage:** Integrated file upload and sharing
+- **Bug Reports:** In-app bug submission to Firebase
 
 ### v1.0.11 (2025-12-06)
 - **Bugfix:** Fixed version mismatch - APP_VERSION in App.tsx now syncs with package.json
@@ -235,7 +258,7 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - **Confirmation Modals:** Native-looking dialogs for important actions (incoming calls, disconnect)
 - **Dev Mode Improvements:** Auto-detect Vite dev server port (scans 5173-5180), better `app.isPackaged` detection
 
-### New Components Added
+### Components Added (v1.0.9+)
 - `components/Toast.tsx` - Toast notification system with auto-dismiss
 - `components/ContextMenu.tsx` - Right-click context menu with `useContextMenu` hook
 - `components/ConfirmModal.tsx` - Confirmation dialogs with callbacks

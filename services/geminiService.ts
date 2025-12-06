@@ -40,38 +40,42 @@ const buildSystemInstruction = (config: PissbotConfig | null): string => {
 };
 
 export const generateAIResponse = async (prompt: string): Promise<string> => {
-    if (!prompt || !prompt.trim()) {
-      return "Please provide a prompt.";
+  if (!prompt || !prompt.trim()) {
+    return "Please provide a prompt.";
+  }
+
+  try {
+    const client = getClient();
+    if (!client) {
+      return "⚠️ Pissbot is offline: API key not configured.";
     }
 
+    // Get config from Firebase
+    const config = await getPissbotConfig();
+    const systemInstruction = buildSystemInstruction(config);
+
     // Timeout Promise
-    const timeout = new Promise<string>((_, reject) => 
-        setTimeout(() => reject(new Error("Request timed out after 15s")), 15000)
+    const timeout = new Promise<string>((_, reject) =>
+      setTimeout(() => reject(new Error("Request timed out after 15s")), 15000)
     );
 
     const fetchPromise = async () => {
-        const model = genAI.getGenerativeModel({
-          model: "gemini-2.0-flash",
-          systemInstruction: await buildSystemInstruction(),
-        });
-
-        const chatSession = model.startChat({
-          generationConfig,
-          history: [],
-        });
-
-        const result = await chatSession.sendMessage(prompt);
-        return result.response.text();
+      const response = await client.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: prompt,
+        config: {
+          systemInstruction,
+          maxOutputTokens: 1024,
+          temperature: 0.8,
+        },
+      });
+      return response.text || "No response generated.";
     };
 
     // Race fetch vs timeout
     return await Promise.race([fetchPromise(), timeout]);
-
   } catch (error: any) {
     console.error("Error generating AI response:", error);
-    // Log to app debug logs if possible (this service is isolated, but we console.error which goes to AppLogs via App.tsx override if we did that, 
-    // but App.tsx only overrides console.log if we explicitly call log().
-    // We should probably return a descriptive error message.
     return `⚠️ Pissbot Error: ${error.message || "Connection failed"}`;
   }
 };

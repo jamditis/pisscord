@@ -21,10 +21,17 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 
   const handleDownload = () => {
     if (isElectron) {
+      console.log('[UPDATE] User clicked download, calling electronAPI.downloadUpdate()');
       (window as any).electronAPI.downloadUpdate();
     } else if (downloadUrl) {
       window.open(downloadUrl, '_blank');
     }
+  };
+
+  // Fallback to manual download if auto-update fails
+  const handleManualDownload = () => {
+    const releaseUrl = `https://github.com/jamditis/pisscord/releases/tag/v${latestVersion}`;
+    window.open(releaseUrl, '_blank');
   };
 
   const handleInstall = () => {
@@ -88,13 +95,24 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                     <i className="fas fa-spinner fa-spin mr-2"></i> Downloading...
                   </button>
                 ) : (
-                  <button
-                    onClick={handleDownload}
-                    className="bg-discord-green hover:bg-green-600 text-white font-bold py-3 rounded transition-all flex items-center justify-center"
-                  >
-                    <i className="fas fa-download mr-2"></i>
-                    {isElectron ? 'Download in Background' : 'Download Update'}
-                  </button>
+                  <>
+                    <button
+                      onClick={handleDownload}
+                      className="bg-discord-green hover:bg-green-600 text-white font-bold py-3 rounded transition-all flex items-center justify-center"
+                    >
+                      <i className="fas fa-download mr-2"></i>
+                      {isElectron ? 'Download in Background' : 'Download Update'}
+                    </button>
+                    {isElectron && (
+                      <button
+                        onClick={handleManualDownload}
+                        className="bg-discord-main hover:bg-discord-hover text-discord-text font-medium py-2 rounded transition-all flex items-center justify-center text-sm"
+                      >
+                        <i className="fas fa-external-link-alt mr-2"></i>
+                        Manual Download (if auto-update fails)
+                      </button>
+                    )}
+                  </>
                 )}
                 <button
                     onClick={onClose}

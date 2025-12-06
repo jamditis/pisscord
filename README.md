@@ -2,7 +2,7 @@
 
 # Pisscord
 
-**Current Version:** v1.0.11 | [Download Latest](https://github.com/jamditis/pisscord/releases/latest)
+**Current Version:** v1.0.14 | [Download Latest](https://github.com/jamditis/pisscord/releases/latest)
 
 A private, peer-to-peer Discord clone for trusted groups with enterprise-grade voice/video calling, AI assistance, and real-time presence.
 
@@ -11,11 +11,17 @@ A private, peer-to-peer Discord clone for trusted groups with enterprise-grade v
 - **🔒 P2P Encrypted Calls**: Direct peer-to-peer WebRTC connections - no relay servers
 - **🎥 HD Video & Voice**: Crystal clear communication with advanced media controls
 - **🖥️ Screen Sharing**: Share your screen seamlessly without reconnecting
-- **🤖 AI Assistant**: Integrated Gemini AI for instant help and conversation
-- **👥 Real-time Presence**: See who's online across your network
-- **🎨 Custom Profiles**: Personalize with custom names, statuses, and colors
-- **🎛️ Advanced Controls**: Device selection, volume adjustment, and persistent voice panel
-- **🔧 Debug Tools**: Built-in WebRTC troubleshooting and connection logs
+- **📌 Video Spotlight**: Click any video tile to pin/maximize it during calls
+- **🗣️ Speaking Indicator**: Green ring shows who's talking in real-time
+- **👥 Mesh Networking**: True many-to-many group calls
+- **📁 File Sharing**: Drop images and files directly in chat
+- **🤖 AI Assistant**: Integrated Gemini 2.5 Flash for instant help
+- **📝 Markdown Chat**: Full markdown support in text channels
+- **👤 Profile Pictures**: Upload custom avatars synced across users
+- **📢 Dev Updates**: Live GitHub commit feed in #dev-updates
+- **🐛 Bug Reporting**: In-app issue submission to #issues
+- **🎨 Custom Profiles**: Personalize with names, statuses, and colors
+- **🎛️ Advanced Controls**: Device selection, volume adjustment (0-200%)
 - **📱 System Tray**: Minimize to tray - stay connected while multitasking
 
 ## 🏗️ Architecture Highlights

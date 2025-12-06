@@ -3,9 +3,148 @@ import { Message, Channel, ChannelType } from '../types';
 import { generateAIResponse } from '../services/geminiService';
 import { uploadFile } from '../services/firebase';
 
+// Simple Discord-style Markdown renderer
+const renderMarkdown = (text: string): React.ReactNode[] => {
+  const elements: React.ReactNode[] = [];
+  let key = 0;
+
+  // Split by code blocks first (```code```)
+  const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
+  let lastIndex = 0;
+  let match;
+
+  const processInlineMarkdown = (str: string): React.ReactNode[] => {
+    const result: React.ReactNode[] = [];
+    let innerKey = 0;
+
+    // Process inline elements: **bold**, *italic*, `code`, ~~strikethrough~~, [link](url)
+    const inlineRegex = /(\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+)`|~~(.+?)~~|\[([^\]]+)\]\(([^)]+)\)|(https?:\/\/[^\s]+))/g;
+    let innerLastIndex = 0;
+    let innerMatch;
+
+    while ((innerMatch = inlineRegex.exec(str)) !== null) {
+      // Add text before match
+      if (innerMatch.index > innerLastIndex) {
+        result.push(str.substring(innerLastIndex, innerMatch.index));
+      }
+
+      if (innerMatch[2]) {
+        // **bold**
+        result.push(<strong key={`b-${innerKey++}`} className="font-bold">{innerMatch[2]}</strong>);
+      } else if (innerMatch[3]) {
+        // *italic*
+        result.push(<em key={`i-${innerKey++}`} className="italic">{innerMatch[3]}</em>);
+      } else if (innerMatch[4]) {
+        // `inline code`
+        result.push(<code key={`c-${innerKey++}`} className="bg-discord-dark px-1 py-0.5 rounded text-sm font-mono text-pink-400">{innerMatch[4]}</code>);
+      } else if (innerMatch[5]) {
+        // ~~strikethrough~~
+        result.push(<del key={`s-${innerKey++}`} className="line-through opacity-70">{innerMatch[5]}</del>);
+      } else if (innerMatch[6] && innerMatch[7]) {
+        // [link](url)
+        result.push(
+          <a key={`a-${innerKey++}`} href={innerMatch[7]} target="_blank" rel="noopener noreferrer" className="text-discord-link hover:underline">
+            {innerMatch[6]}
+          </a>
+        );
+      } else if (innerMatch[8]) {
+        // Plain URL
+        result.push(
+          <a key={`u-${innerKey++}`} href={innerMatch[8]} target="_blank" rel="noopener noreferrer" className="text-discord-link hover:underline">
+            {innerMatch[8]}
+          </a>
+        );
+      }
+
+      innerLastIndex = innerMatch.index + innerMatch[0].length;
+    }
+
+    // Add remaining text
+    if (innerLastIndex < str.length) {
+      result.push(str.substring(innerLastIndex));
+    }
+
+    return result.length > 0 ? result : [str];
+  };
+
+  while ((match = codeBlockRegex.exec(text)) !== null) {
+    // Add text before code block (with inline processing)
+    if (match.index > lastIndex) {
+      const beforeText = text.substring(lastIndex, match.index);
+      // Process headers and lists in non-code sections
+      const lines = beforeText.split('\n');
+      lines.forEach((line, i) => {
+        if (line.startsWith('# ')) {
+          elements.push(<h1 key={key++} className="text-xl font-bold text-white mt-2 mb-1">{processInlineMarkdown(line.slice(2))}</h1>);
+        } else if (line.startsWith('## ')) {
+          elements.push(<h2 key={key++} className="text-lg font-bold text-white mt-2 mb-1">{processInlineMarkdown(line.slice(3))}</h2>);
+        } else if (line.startsWith('### ')) {
+          elements.push(<h3 key={key++} className="text-base font-bold text-white mt-1 mb-1">{processInlineMarkdown(line.slice(4))}</h3>);
+        } else if (line.match(/^[-*] \[x\] /)) {
+          elements.push(<div key={key++} className="flex items-center gap-2"><input type="checkbox" checked disabled className="accent-discord-green" /><span className="line-through opacity-70">{processInlineMarkdown(line.slice(6))}</span></div>);
+        } else if (line.match(/^[-*] \[ \] /)) {
+          elements.push(<div key={key++} className="flex items-center gap-2"><input type="checkbox" disabled /><span>{processInlineMarkdown(line.slice(6))}</span></div>);
+        } else if (line.match(/^[-*] /)) {
+          elements.push(<div key={key++} className="flex items-start gap-2 ml-2"><span className="text-discord-muted">•</span><span>{processInlineMarkdown(line.slice(2))}</span></div>);
+        } else if (line.match(/^\d+\. /)) {
+          const num = line.match(/^(\d+)\. /)?.[1];
+          elements.push(<div key={key++} className="flex items-start gap-2 ml-2"><span className="text-discord-muted">{num}.</span><span>{processInlineMarkdown(line.replace(/^\d+\. /, ''))}</span></div>);
+        } else if (line.startsWith('> ')) {
+          elements.push(<blockquote key={key++} className="border-l-4 border-discord-muted pl-3 py-1 text-discord-text/80 italic">{processInlineMarkdown(line.slice(2))}</blockquote>);
+        } else {
+          elements.push(<span key={key++}>{processInlineMarkdown(line)}{i < lines.length - 1 ? <br /> : null}</span>);
+        }
+      });
+    }
+
+    // Add code block
+    const language = match[1] || '';
+    const code = match[2].trim();
+    elements.push(
+      <pre key={key++} className="bg-discord-dark rounded-lg p-3 my-2 overflow-x-auto">
+        {language && <div className="text-[10px] text-discord-muted uppercase mb-2">{language}</div>}
+        <code className="text-sm font-mono text-green-400 whitespace-pre">{code}</code>
+      </pre>
+    );
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Process remaining text after last code block
+  if (lastIndex < text.length) {
+    const remainingText = text.substring(lastIndex);
+    const lines = remainingText.split('\n');
+    lines.forEach((line, i) => {
+      if (line.startsWith('# ')) {
+        elements.push(<h1 key={key++} className="text-xl font-bold text-white mt-2 mb-1">{processInlineMarkdown(line.slice(2))}</h1>);
+      } else if (line.startsWith('## ')) {
+        elements.push(<h2 key={key++} className="text-lg font-bold text-white mt-2 mb-1">{processInlineMarkdown(line.slice(3))}</h2>);
+      } else if (line.startsWith('### ')) {
+        elements.push(<h3 key={key++} className="text-base font-bold text-white mt-1 mb-1">{processInlineMarkdown(line.slice(4))}</h3>);
+      } else if (line.match(/^[-*] \[x\] /)) {
+        elements.push(<div key={key++} className="flex items-center gap-2"><input type="checkbox" checked disabled className="accent-discord-green" /><span className="line-through opacity-70">{processInlineMarkdown(line.slice(6))}</span></div>);
+      } else if (line.match(/^[-*] \[ \] /)) {
+        elements.push(<div key={key++} className="flex items-center gap-2"><input type="checkbox" disabled /><span>{processInlineMarkdown(line.slice(6))}</span></div>);
+      } else if (line.match(/^[-*] /)) {
+        elements.push(<div key={key++} className="flex items-start gap-2 ml-2"><span className="text-discord-muted">•</span><span>{processInlineMarkdown(line.slice(2))}</span></div>);
+      } else if (line.match(/^\d+\. /)) {
+        const num = line.match(/^(\d+)\. /)?.[1];
+        elements.push(<div key={key++} className="flex items-start gap-2 ml-2"><span className="text-discord-muted">{num}.</span><span>{processInlineMarkdown(line.replace(/^\d+\. /, ''))}</span></div>);
+      } else if (line.startsWith('> ')) {
+        elements.push(<blockquote key={key++} className="border-l-4 border-discord-muted pl-3 py-1 text-discord-text/80 italic">{processInlineMarkdown(line.slice(2))}</blockquote>);
+      } else {
+        elements.push(<span key={key++}>{processInlineMarkdown(line)}{i < lines.length - 1 ? <br /> : null}</span>);
+      }
+    });
+  }
+
+  return elements;
+};
+
 interface ChatAreaProps {
   channel: Channel;
   messages: Message[];
+  onlineUsers: Array<{ displayName: string; photoURL?: string }>;
   onSendMessage: (text: string, attachment?: Message['attachment']) => void;
   onSendAIMessage: (text: string, response: string) => void;
   onOpenReportModal?: () => void;
@@ -152,14 +291,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                   {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
-              <div className="text-discord-text whitespace-pre-wrap break-words leading-relaxed">
-                {msg.content.split(/(https?:\/\/[^\s]+)/g).map((part, i) => 
-                    part.match(/https?:\/\/[^\s]+/) ? (
-                        <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-discord-link hover:underline">
-                            {part}
-                        </a>
-                    ) : part
-                )}
+              <div className="text-discord-text break-words leading-relaxed">
+                {renderMarkdown(msg.content)}
               </div>
               {/* Attachment Rendering */}
               {msg.attachment && (

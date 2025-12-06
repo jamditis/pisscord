@@ -17,7 +17,7 @@ import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, up
 import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
 
-const APP_VERSION = "1.0.13";
+const APP_VERSION = "1.0.14";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
@@ -27,6 +27,7 @@ const INITIAL_CHANNELS: Channel[] = [
   { id: '4', name: 'dev-updates', type: ChannelType.TEXT },
   { id: '5', name: 'issues', type: ChannelType.TEXT },
   { id: 'voice-1', name: 'Voice Lounge', type: ChannelType.VOICE },
+  { id: 'voice-2', name: 'Gaming', type: ChannelType.VOICE },
 ];
 
 const generateName = () => {
@@ -804,24 +805,21 @@ export default function App() {
           return;
       }
 
+      // Build message object - only include attachment if it exists
+      // Firebase RTDB doesn't allow undefined values
       const newMessage: Message = {
-          id: Date.now().toString() + Math.random().toString(), 
-          sender, 
-          content: text, 
-          timestamp: Date.now(), 
-          isAi, 
-          attachment,
-          // Add avatar to message for persistence
-          // Note: We'd need to update Message type to support avatarURL if we want to persist it.
-          // For now, we rely on UserList lookup or just don't persist avatar in message (it will show generic/lookup).
-          // Actually, let's check if we can add it.
+          id: Date.now().toString() + Math.random().toString(),
+          sender,
+          content: text,
+          timestamp: Date.now(),
+          isAi,
       };
-      
-      // If it's Pissbot, we just add it locally for now? 
-      // No, Pissbot messages should also be persisted if we want history.
-      // But Pissbot logic is client-side. If I persist it, everyone will see my Pissbot interaction?
-      // Yes, if it's a public channel. That's fine.
-      
+
+      // Only add attachment if it's defined
+      if (attachment) {
+          newMessage.attachment = attachment;
+      }
+
       sendMessage(channelId, newMessage);
   };
 
@@ -999,6 +997,8 @@ export default function App() {
           <ChannelList
             channels={INITIAL_CHANNELS}
             activeChannelId={activeChannelId}
+            activeVoiceChannelId={activeVoiceChannelId}
+            onlineUsers={onlineUsers}
             onSelectChannel={(id) => {
                 const ch = INITIAL_CHANNELS.find(c => c.id === id);
                 if (ch?.type === ChannelType.VOICE) {
