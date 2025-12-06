@@ -11,7 +11,7 @@ interface ChatAreaProps {
   onOpenReportModal?: () => void;
 }
 
-export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMessage, onSendAIMessage, onOpenReportModal }) => {
+export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUsers, onSendMessage, onSendAIMessage, onOpenReportModal }) => {
   const [inputValue, setInputValue] = useState('');
   const [isTypingAI, setIsTypingAI] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -42,8 +42,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMes
         try {
             const response = await generateAIResponse(text);
             onSendAIMessage(text, response);
-        } catch (err) {
-            onSendAIMessage(text, "Error communicating with AI.");
+        } catch (err: any) {
+            const errorMsg = `AI Error: ${err.message || "Unknown error"}`;
+            console.error(errorMsg);
+            onSendAIMessage(text, "😵 Pissbot crashed! Check debug logs.");
         } finally {
             setIsTypingAI(false);
         }
@@ -75,6 +77,16 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMes
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  // Helper to find user avatar
+  const getUserAvatar = (senderName: string) => {
+      // Pissbot special case
+      if (senderName === 'Pissbot') return null; 
+      
+      // Try to find user by display name (Not perfect, but works for now without senderId)
+      const user = onlineUsers.find(u => u.displayName === senderName);
+      return user?.photoURL;
   };
 
   return (
@@ -117,11 +129,15 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMes
             </div>
         )}
         
-        {messages.map((msg) => (
+        {messages.map((msg) => {
+          const avatarUrl = getUserAvatar(msg.sender);
+          return (
           <div key={msg.id} className="group flex hover:bg-discord-hover/30 -mx-4 px-4 py-1">
             <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center mt-1 cursor-pointer hover:opacity-80 overflow-hidden ${msg.isAi ? 'bg-discord-accent' : 'bg-gray-500'}`}>
               {msg.isAi ? (
                   <i className="fas fa-robot text-white"></i>
+              ) : avatarUrl ? (
+                  <img src={avatarUrl} alt={msg.sender} className="w-full h-full object-cover" />
               ) : (
                   <i className="fas fa-user text-white"></i>
               )}
@@ -177,7 +193,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMes
               )}
             </div>
           </div>
-        ))}
+          );
+        })}
         {isTypingAI && (
            <div className="flex px-4 py-2">
                <span className="text-discord-muted text-sm italic animate-pulse">Pissbot is thinking...</span>
@@ -188,40 +205,58 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onSendMes
 
       {/* Input Area */}
       <div className="px-4 pb-6 pt-2 shrink-0">
-        <div className="bg-discord-chat rounded-lg px-4 py-2.5 flex items-center shadow-sm border border-transparent focus-within:border-discord-accent/50 transition-colors">
-          
-          {/* Hidden File Input */}
-          <input 
-             type="file" 
-             ref={fileInputRef} 
-             onChange={handleFileSelect} 
-             className="hidden" 
-          />
+        {/* #issues Channel - Special Button */}
+        {channel.id === '5' ? (
+            <button 
+                onClick={onOpenReportModal}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded flex items-center justify-center transition-all shadow-lg"
+            >
+                <i className="fas fa-bug mr-2"></i> Report Issue / Request Feature
+            </button>
+        ) : channel.id === '4' ? (
+            /* #dev-updates - Read Only */
+            <div className="bg-discord-chat rounded-lg px-4 py-3 flex items-center justify-center border border-discord-sidebar cursor-not-allowed opacity-50">
+                <i className="fas fa-lock mr-2 text-discord-muted"></i>
+                <span className="text-discord-muted font-bold text-sm">You do not have permission to send messages in this channel.</span>
+            </div>
+        ) : (
+            /* Standard Input */
+            <div className="bg-discord-chat rounded-lg px-4 py-2.5 flex items-center shadow-sm border border-transparent focus-within:border-discord-accent/50 transition-colors">
+              
+              {/* Hidden File Input */}
+              <input 
+                 type="file" 
+                 ref={fileInputRef} 
+                 onChange={handleFileSelect} 
+                 className="hidden" 
+              />
 
-          <button 
-             onClick={() => fileInputRef.current?.click()}
-             disabled={isUploading}
-             className={`text-discord-muted hover:text-discord-text mr-3 bg-discord-sidebar rounded-full w-6 h-6 flex items-center justify-center transition-colors ${isUploading ? 'animate-pulse cursor-wait' : ''}`}
-             title="Upload File"
-          >
-            {isUploading ? <i className="fas fa-spinner fa-spin text-xs"></i> : <i className="fas fa-plus text-xs"></i>}
-          </button>
-          
-          <input
-            type="text"
-            className="bg-transparent border-none outline-none text-discord-text flex-1 placeholder-discord-muted"
-            placeholder={`Message #${channel.name}`}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            autoFocus
-          />
-          <div className="flex items-center space-x-3 text-discord-muted ml-2 text-xl">
-             <i className="fas fa-gift hover:text-discord-text cursor-pointer"></i>
-             <i className="fas fa-sticky-note hover:text-discord-text cursor-pointer"></i>
-             <i className="fas fa-smile hover:text-discord-text cursor-pointer"></i>
-          </div>
-        </div>
+              <button 
+                 onClick={() => fileInputRef.current?.click()}
+                 disabled={isUploading}
+                 className={`text-discord-muted hover:text-discord-text mr-3 bg-discord-sidebar rounded-full w-6 h-6 flex items-center justify-center transition-colors ${isUploading ? 'animate-pulse cursor-wait' : ''}`}
+                 title="Upload File"
+              >
+                {isUploading ? <i className="fas fa-spinner fa-spin text-xs"></i> : <i className="fas fa-plus text-xs"></i>}
+              </button>
+              
+              <input
+                type="text"
+                className="bg-transparent border-none outline-none text-discord-text flex-1 placeholder-discord-muted"
+                placeholder={`Message #${channel.name}`}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                autoFocus
+              />
+              <div className="flex items-center space-x-3 text-discord-muted ml-2 text-xl">
+                 <i className="fas fa-gift hover:text-discord-text cursor-pointer"></i>
+                 <i className="fas fa-sticky-note hover:text-discord-text cursor-pointer"></i>
+                 <i className="fas fa-smile hover:text-discord-text cursor-pointer"></i>
+              </div>
+            </div>
+        )}
+        
         {channel.type === ChannelType.AI && (
              <div className="text-xs text-discord-muted mt-1 ml-1">
                  AI responses are generated by Pissbot.

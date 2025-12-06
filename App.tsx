@@ -1048,6 +1048,7 @@ export default function App() {
              <ChatArea 
                 channel={activeChannel}
                 messages={messages[activeChannel.id] || []}
+                onlineUsers={onlineUsers}
                 onSendMessage={(text, attachment) => addMessage(activeChannel.id, text, userProfile.displayName, false, attachment)}
                 onSendAIMessage={(text, response) => addMessage(activeChannel.id, response, 'Pissbot', true)}
                 onOpenReportModal={() => setShowReportModal(true)}

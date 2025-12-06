@@ -40,25 +40,38 @@ const buildSystemInstruction = (config: PissbotConfig | null): string => {
 };
 
 export const generateAIResponse = async (prompt: string): Promise<string> => {
-  const ai = getClient();
-  if (!ai) return "Error: API Key not found. Please configure your API key.";
+    if (!prompt || !prompt.trim()) {
+      return "Please provide a prompt.";
+    }
 
-  try {
-    // Fetch dynamic config from Firebase
-    const config = await getPissbotConfig();
-    const systemInstruction = buildSystemInstruction(config);
+    // Timeout Promise
+    const timeout = new Promise<string>((_, reject) => 
+        setTimeout(() => reject(new Error("Request timed out after 15s")), 15000)
+    );
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        systemInstruction,
-      }
-    });
+    const fetchPromise = async () => {
+        const model = genAI.getGenerativeModel({
+          model: "gemini-2.0-flash",
+          systemInstruction: await buildSystemInstruction(),
+        });
 
-    return response.text || "I couldn't generate a response.";
-  } catch (error) {
-    console.error("Gemini API Error:", error);
-    return "Sorry, I encountered an error processing your request.";
+        const chatSession = model.startChat({
+          generationConfig,
+          history: [],
+        });
+
+        const result = await chatSession.sendMessage(prompt);
+        return result.response.text();
+    };
+
+    // Race fetch vs timeout
+    return await Promise.race([fetchPromise(), timeout]);
+
+  } catch (error: any) {
+    console.error("Error generating AI response:", error);
+    // Log to app debug logs if possible (this service is isolated, but we console.error which goes to AppLogs via App.tsx override if we did that, 
+    // but App.tsx only overrides console.log if we explicitly call log().
+    // We should probably return a descriptive error message.
+    return `⚠️ Pissbot Error: ${error.message || "Connection failed"}`;
   }
 };
