@@ -159,6 +159,28 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - Downloads updates in background, installs on app restart
 - Single instance lock prevents conflicts during updates
 
+## Git Workflow
+
+**IMPORTANT: Always use feature branches for development.**
+
+1. **Never commit directly to `master`** - master branch should only contain stable, tested releases
+2. **Create feature branches** for all new work:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+3. **Test thoroughly** before merging to master
+4. **Merge to master only after confirming stable build**:
+   ```bash
+   git checkout master
+   git merge feature/your-feature-name
+   ```
+5. **Delete feature branch** after successful merge
+
+### Branch Naming Conventions
+- `feature/` - New features (e.g., `feature/group-calls`)
+- `fix/` - Bug fixes (e.g., `fix/audio-playback`)
+- `release/` - Release preparation (e.g., `release/v1.0.8`)
+
 ## TypeScript Configuration
 
 - Target: ES2020 with bundler module resolution
