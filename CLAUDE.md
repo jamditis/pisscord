@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Pisscord is a private, peer-to-peer Discord clone built with React, TypeScript, Electron, and PeerJS. It enables direct P2P voice/video calling, text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
 
-**Current Version:** 1.0.14
-**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.0.14
+**Current Version:** 1.1.0
+**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.1.0
 
 ## Key Architecture
 
@@ -218,7 +218,18 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - `noUnusedLocals` and `noUnusedParameters` disabled (intentional)
 - React JSX transform (no need to import React in TSX files)
 
-## Recent Changes (v1.0.9 - v1.0.14)
+## Recent Changes (v1.0.9 - v1.1.0)
+
+### v1.1.0 (2025-12-06)
+- **Voice Channel Approval Mode:** Channels can require approval to join when occupied
+- **Collapsible User List:** User sidebar can be collapsed/expanded in voice and text channels
+- **User List in Voice Calls:** User sidebar now visible alongside voice stage
+- **Bugfix:** Voice channel view switching no longer forces rejoin
+- **Bugfix:** Profile updates preserve voice channel state (users don't disappear)
+- **Bugfix:** Speaking indicator uses box-shadow instead of ring (no layout shift)
+- **Bugfix:** Video spotlight layout rewritten with cleaner flexbox approach
+- **UI:** Removed "Add Server" button, Pisscord logo replaces home icon
+- **UI:** Pissbot channel moved to bottom of text channels
 
 ### v1.0.14 (2025-12-06)
 - **Video Spotlight:** Click any video tile to pin/maximize it during calls

@@ -13,7 +13,7 @@ A private P2P Discord clone built for personal use. **Not malware** - it's a leg
 - Backend: Firebase Realtime Database + Storage
 - AI: Google Gemini 2.5 Flash (Pissbot assistant)
 
-**Current Version:** 1.0.14
+**Current Version:** 1.1.0
 
 ## Project Structure
 
