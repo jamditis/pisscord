@@ -14,6 +14,7 @@ import { ContextMenu, useContextMenu } from './components/ContextMenu';
 import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs } from './types';
 import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages } from './services/firebase';
 import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
+import { fetchGitHubReleases } from './services/github';
 
 const APP_VERSION = "1.0.12";
 
@@ -22,6 +23,7 @@ const INITIAL_CHANNELS: Channel[] = [
   { id: '1', name: 'general', type: ChannelType.TEXT },
   { id: '2', name: 'links', type: ChannelType.TEXT },
   { id: '3', name: 'pissbot', type: ChannelType.AI },
+  { id: '4', name: 'dev-updates', type: ChannelType.TEXT },
   { id: 'voice-1', name: 'Voice Lounge', type: ChannelType.VOICE },
 ];
 
@@ -120,7 +122,16 @@ export default function App() {
   // --- SUBSCRIPTIONS ---
   useEffect(() => {
       // Subscribe to messages for the active channel
-      if (activeChannel.type !== ChannelType.VOICE) {
+      if (activeChannel.id === '4') {
+          // Dev Updates Channel - Fetch from GitHub
+          fetchGitHubReleases().then(msgs => {
+              setMessages(prev => ({
+                  ...prev,
+                  '4': msgs
+              }));
+          });
+          // No subscription needed as it's a pull-once (cached)
+      } else if (activeChannel.type !== ChannelType.VOICE) {
           const unsubscribe = subscribeToMessages(activeChannelId, (newMessages) => {
               setMessages(prev => ({
                   ...prev,
@@ -745,6 +756,12 @@ export default function App() {
 
   // --- UI ACTIONS ---
   const addMessage = (channelId: string, text: string, sender: string, isAi: boolean = false, attachment?: Message['attachment']) => {
+      // Prevent posting in read-only dev channel
+      if (channelId === '4') {
+          toast.error("Read Only", "Only system updates are posted here.");
+          return;
+      }
+
       const newMessage: Message = {
           id: Date.now().toString() + Math.random().toString(), 
           sender, 
