@@ -16,7 +16,8 @@
     "productName": "Pisscord",
     "files": [
       "dist/**/*",
-      "electron.js"
+      "electron.js",
+      "preload.js"
     ],
     "directories": {
       "buildResources": "assets"
@@ -30,15 +31,25 @@
       "perMachine": true,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    }
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "jamditis",
+        "repo": "pisscord",
+        "private": false
+      }
+    ]
   },
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "peerjs": "^1.5.2",
     "@google/genai": "*",
-    "firebase": "^10.8.0"
+    "electron-updater": "^6.6.2",
+    "firebase": "^10.8.0",
+    "peerjs": "^1.5.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.66",

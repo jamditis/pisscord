@@ -52,13 +52,20 @@ This release includes all planned features for the initial production version.
    ```
    This takes 1-2 minutes on first build.
 
-3. **Find the installer**:
+3. **Find the installer files**:
    - Navigate to `dist/` folder
-   - Look for `Pisscord Setup 1.0.1.exe`
+   - Main installer: `Pisscord Setup 1.0.1.exe`
+   - Auto-update files: `latest.yml`, `.nupkg`, `.blockmap` files
 
-4. **Send to Devin**:
-   - Email the `.exe` file
-   - Or upload to cloud storage and share link
+4. **Upload to GitHub Releases** (for auto-updater):
+   - Go to https://github.com/jamditis/pisscord/releases
+   - Create release `v1.0.1`
+   - Upload **ALL** files from `dist/` folder
+   - This enables automatic updates for Devin!
+
+5. **Send to Devin**:
+   - Share GitHub Release link
+   - Or email just the `.exe` file (auto-update will work after install)
 
 ---
 

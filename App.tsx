@@ -73,7 +73,7 @@ export default function App() {
   // --- MODALS ---
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [updateInfo, setUpdateInfo] = useState<{url: string, latest: string} | null>(null);
+  const [updateInfo, setUpdateInfo] = useState<{url: string, latest: string, downloading?: boolean, progress?: number, ready?: boolean} | null>(null);
 
   // --- REFS ---
   const peerInstance = useRef<Peer | null>(null);
@@ -92,14 +92,52 @@ export default function App() {
   // --- LIFECYCLE: Updates & Peer Init ---
   useEffect(() => {
     isMountedRef.current = true;
-    
-    // Check Updates
+
+    // Check Updates (both Firebase and Electron auto-updater)
     checkForUpdates(APP_VERSION).then(update => {
         if (update?.hasUpdate) {
             setUpdateInfo({ url: update.url, latest: update.latest });
             setShowUpdateModal(true);
         }
     });
+
+    // Setup Electron auto-updater listeners (if running in Electron)
+    if ((window as any).electronAPI) {
+      const electronAPI = (window as any).electronAPI;
+
+      electronAPI.onUpdateAvailable((data: any) => {
+        log(`Update available: ${data.version}`, 'info');
+        setUpdateInfo({
+          url: '',
+          latest: data.version,
+          downloading: false,
+          ready: false
+        });
+        setShowUpdateModal(true);
+      });
+
+      electronAPI.onUpdateDownloadProgress((data: any) => {
+        log(`Downloading update: ${data.percent}%`, 'info');
+        setUpdateInfo(prev => prev ? {
+          ...prev,
+          downloading: true,
+          progress: data.percent
+        } : null);
+      });
+
+      electronAPI.onUpdateDownloaded((data: any) => {
+        log(`Update downloaded: ${data.version}`, 'info');
+        setUpdateInfo(prev => prev ? {
+          ...prev,
+          downloading: false,
+          ready: true
+        } : null);
+      });
+
+      electronAPI.onUpdateError((message: string) => {
+        log(`Update error: ${message}`, 'error');
+      });
+    }
 
     // Init PeerJS
     if (peerInstance.current) peerInstance.current.destroy();
@@ -372,7 +410,14 @@ export default function App() {
       <audio ref={remoteAudioRef} className="hidden" />
 
       {showUpdateModal && updateInfo && (
-          <UpdateModal latestVersion={updateInfo.latest} downloadUrl={updateInfo.url} onClose={() => setShowUpdateModal(false)} />
+          <UpdateModal
+            latestVersion={updateInfo.latest}
+            downloadUrl={updateInfo.url}
+            downloading={updateInfo.downloading}
+            progress={updateInfo.progress}
+            ready={updateInfo.ready}
+            onClose={() => setShowUpdateModal(false)}
+          />
       )}
 
       {showSettingsModal && (

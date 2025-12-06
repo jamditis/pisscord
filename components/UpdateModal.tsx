@@ -3,10 +3,35 @@ import React from 'react';
 interface UpdateModalProps {
   latestVersion: string;
   downloadUrl: string;
+  downloading?: boolean;
+  progress?: number;
+  ready?: boolean;
   onClose: () => void;
 }
 
-export const UpdateModal: React.FC<UpdateModalProps> = ({ latestVersion, downloadUrl, onClose }) => {
+export const UpdateModal: React.FC<UpdateModalProps> = ({
+  latestVersion,
+  downloadUrl,
+  downloading = false,
+  progress = 0,
+  ready = false,
+  onClose
+}) => {
+  const isElectron = !!(window as any).electronAPI;
+
+  const handleDownload = () => {
+    if (isElectron) {
+      (window as any).electronAPI.downloadUpdate();
+    } else if (downloadUrl) {
+      window.open(downloadUrl, '_blank');
+    }
+  };
+
+  const handleInstall = () => {
+    if (isElectron) {
+      (window as any).electronAPI.installUpdate();
+    }
+  };
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="bg-discord-sidebar w-full max-w-md rounded-lg shadow-2xl border border-discord-green relative overflow-hidden">
@@ -26,25 +51,56 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ latestVersion, downloa
                 <i className="fas fa-rocket text-discord-green text-3xl"></i>
             </div>
             
-            <h3 className="text-white text-xl font-bold mb-2">Version {latestVersion} is out!</h3>
+            <h3 className="text-white text-xl font-bold mb-2">
+              {ready ? 'Update Ready!' : `Version ${latestVersion} is out!`}
+            </h3>
             <p className="text-discord-muted text-sm mb-6">
-                A new version of Pisscord is available. Please download and install it to ensure you can connect with your friends.
+                {ready
+                  ? 'Update has been downloaded. Restart Pisscord to install.'
+                  : downloading
+                  ? `Downloading update... ${progress}%`
+                  : 'A new version of Pisscord is available. Download it now for the latest features and bug fixes.'}
             </p>
 
+            {/* Progress Bar */}
+            {downloading && (
+              <div className="mb-4 bg-discord-dark rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-discord-green h-full transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+            )}
+
             <div className="flex flex-col gap-3">
-                <a 
-                    href={downloadUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
+                {ready ? (
+                  <button
+                    onClick={handleInstall}
                     className="bg-discord-green hover:bg-green-600 text-white font-bold py-3 rounded transition-all flex items-center justify-center"
-                >
-                    <i className="fas fa-download mr-2"></i> Download Update
-                </a>
-                <button 
+                  >
+                    <i className="fas fa-sync-alt mr-2"></i> Restart & Install
+                  </button>
+                ) : downloading ? (
+                  <button
+                    disabled
+                    className="bg-discord-main text-discord-muted font-bold py-3 rounded cursor-not-allowed flex items-center justify-center"
+                  >
+                    <i className="fas fa-spinner fa-spin mr-2"></i> Downloading...
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleDownload}
+                    className="bg-discord-green hover:bg-green-600 text-white font-bold py-3 rounded transition-all flex items-center justify-center"
+                  >
+                    <i className="fas fa-download mr-2"></i>
+                    {isElectron ? 'Download in Background' : 'Download Update'}
+                  </button>
+                )}
+                <button
                     onClick={onClose}
                     className="text-discord-muted hover:text-discord-text text-xs"
                 >
-                    Remind me later
+                    {ready ? 'Install later' : 'Remind me later'}
                 </button>
             </div>
         </div>

@@ -77,7 +77,21 @@ Your Firebase Realtime Database should have this structure:
 - Upload to Google Drive, Dropbox, or any CDN
 - Get a direct download link
 
-### Step 3: Update Firebase
+### Step 3: Upload to GitHub Releases (For Auto-Updater)
+
+**IMPORTANT**: Auto-updater requires ALL files to be uploaded to GitHub Releases:
+
+1. Go to https://github.com/jamditis/pisscord/releases
+2. Click "Create a new release"
+3. Tag: `v1.0.2`
+4. Title: `Pisscord v1.0.2`
+5. Upload **ALL** these files from `dist/`:
+   - `Pisscord Setup 1.0.2.exe`
+   - `latest.yml` (auto-updater manifest)
+   - Any `.nupkg` or `.blockmap` files
+6. Click "Publish release"
+
+### Step 4: Update Firebase (Optional Fallback)
 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
 2. Select the `pisscord-edbca` project
@@ -94,6 +108,8 @@ Your Firebase Realtime Database should have this structure:
 ```
 
 6. Click "Add" or "Update"
+
+**Note**: Firebase is now a fallback. Auto-updater uses GitHub Releases directly.
 
 ### Step 4: Test Update Flow
 
