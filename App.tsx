@@ -12,13 +12,12 @@ import { ReportIssueModal } from './components/ReportIssueModal';
 import { ToastContainer, useToast } from './components/Toast';
 import { ConfirmModal } from './components/ConfirmModal';
 import { ContextMenu, useContextMenu } from './components/ContextMenu';
-import { JoinRequestPanel } from './components/JoinRequestPanel';
 import { MobileNav, MobileView } from './components/MobileNav';
 import { SplashScreen } from './components/SplashScreen';
 import { useIsMobile } from './hooks/useIsMobile';
-import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs, JoinRequest, AppSettings, AppTheme } from './types';
+import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs, AppSettings, AppTheme } from './types';
 import { ThemeProvider, themeColors } from './contexts/ThemeContext';
-import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages, cleanupOldMessages, getPissbotConfig, PissbotConfig, checkForMOTD, sendJoinRequest, subscribeToJoinRequests, removeJoinRequest } from './services/firebase';
+import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages, cleanupOldMessages, getPissbotConfig, PissbotConfig, checkForMOTD } from './services/firebase';
 import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
 import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService } from './services/platform';
@@ -32,8 +31,8 @@ const INITIAL_CHANNELS: Channel[] = [
   { id: '4', name: 'dev-updates', type: ChannelType.TEXT },
   { id: '5', name: 'issues', type: ChannelType.TEXT },
   { id: '3', name: 'pissbot', type: ChannelType.AI },
-  { id: 'voice-1', name: 'Voice Lounge', type: ChannelType.VOICE, requireApproval: false },
-  { id: 'voice-2', name: 'Gaming', type: ChannelType.VOICE, requireApproval: true },
+  { id: 'voice-1', name: 'Chillin\'', type: ChannelType.VOICE },
+  { id: 'voice-2', name: 'Gaming', type: ChannelType.VOICE },
 ];
 
 const generateName = () => {
@@ -85,7 +84,6 @@ export default function App() {
   
   // --- STATE: Data ---
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
-  const [pendingJoinRequests, setPendingJoinRequests] = useState<JoinRequest[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
       const saved = localStorage.getItem('pisscord_profile');
       if (saved) {
@@ -156,7 +154,7 @@ export default function App() {
               const roadmapMessage: Message = {
                   id: 'roadmap',
                   sender: 'System',
-                  content: "# 🗺️ Roadmap\n\n- [x] Group Calls\n- [x] File Sharing\n- [x] Profile Pictures\n- [ ] Mobile App\n- [ ] Encrypted DMs\n\n*Updates every commit.*",
+                  content: "# 🗺️ Roadmap\n\n- [x] Group Calls\n- [x] File Sharing\n- [x] Profile Pictures\n- [x] Mobile App\n- [x] Theme Customization\n- [ ] Encrypted DMs\n- [ ] iOS App\n\n*Updates every commit.*",
                   timestamp: Date.now(), // Always at bottom? Or top? 
                   // If we want it at top, set timestamp 0. If bottom, Date.now().
                   // Actually, let's just put it in the list.
@@ -179,33 +177,6 @@ export default function App() {
       }
   }, [activeChannelId, activeChannel.type]);
 
-  // Subscribe to join requests when connected to an approval-required voice channel
-  useEffect(() => {
-      if (connectionState !== ConnectionState.CONNECTED || !activeVoiceChannelId) {
-          setPendingJoinRequests([]);
-          return;
-      }
-
-      const channel = INITIAL_CHANNELS.find(c => c.id === activeVoiceChannelId);
-      if (!channel?.requireApproval) {
-          setPendingJoinRequests([]);
-          return;
-      }
-
-      log(`Subscribing to join requests for ${channel.name}`, 'info');
-      const unsubscribe = subscribeToJoinRequests(activeVoiceChannelId, (requests) => {
-          // Filter out our own requests
-          const otherRequests = requests.filter(r => r.peerId !== myPeerId);
-          setPendingJoinRequests(otherRequests);
-
-          // Show toast for new requests
-          if (otherRequests.length > 0) {
-              playSound('call_incoming', false);
-          }
-      });
-
-      return () => unsubscribe();
-  }, [connectionState, activeVoiceChannelId, myPeerId]);
 
   // --- HELPERS ---
   const log = (message: string, type: 'info' | 'error' | 'webrtc' = 'info') => {
@@ -537,27 +508,6 @@ export default function App() {
       const channel = INITIAL_CHANNELS.find(c => c.id === channelId);
       const peersInChannel = onlineUsers.filter(u => u.voiceChannelId === channelId && u.peerId !== myPeerId);
 
-      // Check if channel requires approval and has users in it
-      if (channel?.requireApproval && peersInChannel.length > 0) {
-          log(`Channel ${channel.name} requires approval. Sending join request...`, 'info');
-
-          // Send join request to Firebase
-          if (myPeerId) {
-              sendJoinRequest(channelId, {
-                  peerId: myPeerId,
-                  displayName: userProfile.displayName,
-                  photoURL: userProfile.photoURL,
-                  color: userProfile.color,
-                  channelId,
-                  timestamp: Date.now()
-              });
-          }
-
-          setActiveChannelId(channelId);
-          toast.info("Waiting for Approval", "Your request to join has been sent.");
-          return;
-      }
-
       setActiveChannelId(channelId);
       setActiveVoiceChannelId(channelId);
       setConnectionState(ConnectionState.CONNECTING);
@@ -589,26 +539,6 @@ export default function App() {
       }
   };
 
-  // Approve a join request
-  const handleApproveJoinRequest = (request: JoinRequest) => {
-      log(`Approving join request from ${request.displayName}`, 'info');
-
-      // Remove the request from Firebase
-      removeJoinRequest(request.channelId, request.peerId);
-
-      // The remote peer will receive an incoming call which will be auto-accepted
-      // because they're already "waiting" in the channel
-      handleStartCall(request.peerId);
-
-      toast.success("Approved", `${request.displayName} is joining the call.`);
-  };
-
-  // Deny a join request
-  const handleDenyJoinRequest = (request: JoinRequest) => {
-      log(`Denying join request from ${request.displayName}`, 'info');
-      removeJoinRequest(request.channelId, request.peerId);
-      toast.info("Denied", `${request.displayName}'s request was denied.`);
-  };
 
   const handleAcceptCall = async (call: any) => {
       setConnectionState(ConnectionState.CONNECTING);
@@ -1343,11 +1273,6 @@ export default function App() {
                   onlineUsers={onlineUsers}
                   onIdCopied={() => toast.success("Copied!", "Send this ID to your friend so they can call you.")}
                 />
-                <JoinRequestPanel
-                    requests={pendingJoinRequests}
-                    onApprove={handleApproveJoinRequest}
-                    onDeny={handleDenyJoinRequest}
-                  />
                 </div>
               </div>
             )}
@@ -1435,11 +1360,6 @@ export default function App() {
                     userProfile={userProfile}
                     onlineUsers={onlineUsers}
                     onIdCopied={() => toast.success("Copied!", "Send this ID to your friend so they can call you.")}
-                 />
-                 <JoinRequestPanel
-                   requests={pendingJoinRequests}
-                   onApprove={handleApproveJoinRequest}
-                   onDeny={handleDenyJoinRequest}
                  />
                </div>
                <UserList

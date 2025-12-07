@@ -118,13 +118,6 @@ export const ChannelList: React.FC<ChannelListProps> = ({
 
         {/* Right side indicators */}
         <div className="flex items-center space-x-2">
-          {channel.requireApproval && (
-            <div className="w-6 h-6 rounded-full bg-yellow-500/20 flex items-center justify-center">
-              <svg className="w-3 h-3 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
-              </svg>
-            </div>
-          )}
           {usersInChannel.length > 0 && (
             <div className="px-2 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-bold">
               {usersInChannel.length}
@@ -311,10 +304,6 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                   >
                     <i className="fas fa-volume-up mr-2 text-sm"></i>
                     <span className="font-medium truncate">{channel.name}</span>
-                    {/* Lock icon for approval-required channels */}
-                    {channel.requireApproval && (
-                      <i className="fas fa-lock ml-1 text-[10px] text-yellow-500" title="Approval required to join"></i>
-                    )}
                     {/* User count badge */}
                     {usersInChannel.length > 0 && (
                       <span className="ml-auto text-[10px] bg-discord-dark px-1.5 py-0.5 rounded-full text-discord-muted">
