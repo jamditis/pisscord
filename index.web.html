@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Mobile viewport with safe area support -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+    <!-- iOS web app meta tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Pisscord" />
+    <!-- Android theme color -->
+    <meta name="theme-color" content="#202225" />
+    <!-- Disable phone number detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/pisscord-purple.png" />
+    <title>Pisscord - Web</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              discord: {
+                dark: '#202225',
+                sidebar: '#2f3136',
+                main: '#36393f',
+                chat: '#36393f',
+                header: '#36393f',
+                accent: '#5865F2',
+                green: '#3ba55c',
+                red: '#ed4245',
+                hover: '#393c43',
+                text: '#dcddde',
+                muted: '#72767d'
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        background-color: #202225;
+        color: #dcddde;
+        overflow: hidden;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background-color: #2f3136;
+      }
+      ::-webkit-scrollbar-thumb {
+        background-color: #202225;
+        border-radius: 4px;
+      }
+      /* Fix for text cursor visibility */
+      input, textarea {
+        caret-color: white !important;
+        cursor: text !important;
+      }
+      input:focus, textarea:focus {
+        caret-color: white !important;
+      }
+    </style>
+    <link rel="stylesheet" href="/index.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

@@ -3,13 +3,53 @@
  *
  * Provides unified APIs across Electron, Capacitor (iOS/Android), and Web.
  * Import this instead of accessing window.electronAPI directly.
+ *
+ * Web-safe: Capacitor modules are loaded conditionally to support pure browser deployments.
  */
 
-import { Capacitor } from '@capacitor/core';
-import { Clipboard } from '@capacitor/clipboard';
-import { Haptics, ImpactStyle } from '@capacitor/haptics';
-import { App } from '@capacitor/app';
-import { StatusBar, Style } from '@capacitor/status-bar';
+// ============================================================================
+// Capacitor Detection & Lazy Loading
+// ============================================================================
+
+// Check if Capacitor is available (without importing it)
+const hasCapacitor = typeof window !== 'undefined' &&
+                     !!(window as any).Capacitor &&
+                     typeof (window as any).Capacitor.isNativePlatform === 'function';
+
+// Safely check if running in native platform
+const isNativePlatform = hasCapacitor ? (window as any).Capacitor.isNativePlatform() : false;
+const capacitorPlatform = hasCapacitor ? (window as any).Capacitor.getPlatform() : 'web';
+
+// Lazy-loaded Capacitor modules (only loaded when actually used on native platforms)
+let CapacitorClipboard: any = null;
+let CapacitorHaptics: any = null;
+let CapacitorApp: any = null;
+let CapacitorStatusBar: any = null;
+
+// Load Capacitor modules only when needed and on native platforms
+const loadCapacitorModules = async () => {
+  if (!isNativePlatform) return;
+
+  try {
+    const [clipboard, haptics, app, statusBar] = await Promise.all([
+      import('@capacitor/clipboard'),
+      import('@capacitor/haptics'),
+      import('@capacitor/app'),
+      import('@capacitor/status-bar')
+    ]);
+    CapacitorClipboard = clipboard.Clipboard;
+    CapacitorHaptics = { Haptics: haptics.Haptics, ImpactStyle: haptics.ImpactStyle };
+    CapacitorApp = app.App;
+    CapacitorStatusBar = { StatusBar: statusBar.StatusBar, Style: statusBar.Style };
+  } catch (e) {
+    console.warn('[Platform] Failed to load Capacitor modules:', e);
+  }
+};
+
+// Initialize Capacitor modules on native platforms
+if (isNativePlatform) {
+  loadCapacitorModules();
+}
 
 // ============================================================================
 // Platform Detection
@@ -20,30 +60,30 @@ export const Platform = {
   isElectron: typeof window !== 'undefined' && !!(window as any).electronAPI,
 
   /** Running in Capacitor mobile app */
-  isCapacitor: Capacitor.isNativePlatform(),
+  isCapacitor: isNativePlatform,
 
   /** Running in a web browser (not Electron or Capacitor) */
   isWeb: typeof window !== 'undefined' &&
          !(window as any).electronAPI &&
-         !Capacitor.isNativePlatform(),
+         !isNativePlatform,
 
   /** Running on iOS (Capacitor) */
-  isIOS: Capacitor.getPlatform() === 'ios',
+  isIOS: capacitorPlatform === 'ios',
 
   /** Running on Android (Capacitor) */
-  isAndroid: Capacitor.getPlatform() === 'android',
+  isAndroid: capacitorPlatform === 'android',
 
   /** Running on any mobile platform */
-  isMobile: Capacitor.isNativePlatform(),
+  isMobile: isNativePlatform,
 
   /** Running on desktop (Electron or web on desktop browser) */
-  isDesktop: !Capacitor.isNativePlatform(),
+  isDesktop: !isNativePlatform,
 
   /** Get the current platform name */
   getName(): 'electron' | 'ios' | 'android' | 'web' {
     if ((window as any).electronAPI) return 'electron';
-    if (Capacitor.getPlatform() === 'ios') return 'ios';
-    if (Capacitor.getPlatform() === 'android') return 'android';
+    if (capacitorPlatform === 'ios') return 'ios';
+    if (capacitorPlatform === 'android') return 'android';
     return 'web';
   }
 };
@@ -56,8 +96,8 @@ export const ClipboardService = {
   async write(text: string): Promise<void> {
     if (Platform.isElectron) {
       (window as any).electronAPI.copyToClipboard(text);
-    } else if (Platform.isCapacitor) {
-      await Clipboard.write({ string: text });
+    } else if (Platform.isCapacitor && CapacitorClipboard) {
+      await CapacitorClipboard.write({ string: text });
     } else {
       // Web fallback
       await navigator.clipboard.writeText(text);
@@ -65,8 +105,8 @@ export const ClipboardService = {
   },
 
   async read(): Promise<string> {
-    if (Platform.isCapacitor) {
-      const result = await Clipboard.read();
+    if (Platform.isCapacitor && CapacitorClipboard) {
+      const result = await CapacitorClipboard.read();
       return result.value;
     } else {
       // Web/Electron
@@ -193,8 +233,9 @@ export const HapticsService = {
   isSupported: Platform.isCapacitor,
 
   async impact(style: 'light' | 'medium' | 'heavy' = 'medium'): Promise<void> {
-    if (!Platform.isCapacitor) return;
+    if (!Platform.isCapacitor || !CapacitorHaptics) return;
 
+    const { Haptics, ImpactStyle } = CapacitorHaptics;
     const styleMap = {
       light: ImpactStyle.Light,
       medium: ImpactStyle.Medium,
@@ -205,13 +246,13 @@ export const HapticsService = {
   },
 
   async vibrate(): Promise<void> {
-    if (!Platform.isCapacitor) return;
-    await Haptics.vibrate();
+    if (!Platform.isCapacitor || !CapacitorHaptics) return;
+    await CapacitorHaptics.Haptics.vibrate();
   },
 
   async notification(type: 'success' | 'warning' | 'error' = 'success'): Promise<void> {
-    if (!Platform.isCapacitor) return;
-    await Haptics.notification({ type: type as any });
+    if (!Platform.isCapacitor || !CapacitorHaptics) return;
+    await CapacitorHaptics.Haptics.notification({ type: type as any });
   }
 };
 
@@ -223,18 +264,19 @@ export const StatusBarService = {
   isSupported: Platform.isCapacitor,
 
   async setDarkStyle(): Promise<void> {
-    if (!Platform.isCapacitor) return;
+    if (!Platform.isCapacitor || !CapacitorStatusBar) return;
+    const { StatusBar, Style } = CapacitorStatusBar;
     await StatusBar.setStyle({ style: Style.Dark });
   },
 
   async hide(): Promise<void> {
-    if (!Platform.isCapacitor) return;
-    await StatusBar.hide();
+    if (!Platform.isCapacitor || !CapacitorStatusBar) return;
+    await CapacitorStatusBar.StatusBar.hide();
   },
 
   async show(): Promise<void> {
-    if (!Platform.isCapacitor) return;
-    await StatusBar.show();
+    if (!Platform.isCapacitor || !CapacitorStatusBar) return;
+    await CapacitorStatusBar.StatusBar.show();
   }
 };
 
@@ -244,20 +286,20 @@ export const StatusBarService = {
 
 export const AppLifecycleService = {
   onBackButton(callback: () => void): void {
-    if (Platform.isCapacitor) {
-      App.addListener('backButton', callback);
+    if (Platform.isCapacitor && CapacitorApp) {
+      CapacitorApp.addListener('backButton', callback);
     }
   },
 
   onAppStateChange(callback: (state: { isActive: boolean }) => void): void {
-    if (Platform.isCapacitor) {
-      App.addListener('appStateChange', callback);
+    if (Platform.isCapacitor && CapacitorApp) {
+      CapacitorApp.addListener('appStateChange', callback);
     }
   },
 
   async exitApp(): Promise<void> {
-    if (Platform.isCapacitor) {
-      await App.exitApp();
+    if (Platform.isCapacitor && CapacitorApp) {
+      await CapacitorApp.exitApp();
     }
   }
 };
