@@ -1,0 +1,46 @@
+{
+  "rules": {
+    // System config - read-only for all users
+    "system": {
+      ".read": true,
+      ".write": false
+    },
+    
+    // Pissbot AI config - read-only for all users
+    "pissbot": {
+      ".read": true,
+      ".write": false
+    },
+    
+    // User presence - users can only write their own presence
+    "users": {
+      ".read": true,
+      "$peerId": {
+        ".write": true,
+        ".validate": "newData.hasChildren(['peerId', 'displayName', 'lastSeen']) && newData.child('peerId').val() == $peerId && newData.child('displayName').val().length <= 32"
+      }
+    },
+    
+    // Messages - anyone can read/write, but with validation
+    "messages": {
+      ".read": true,
+      "$channelId": {
+        "$messageId": {
+          ".write": true,
+          ".validate": "newData.hasChildren(['sender', 'content', 'timestamp']) && newData.child('content').val().length <= 4000 && newData.child('sender').val().length <= 32"
+        }
+      }
+    },
+    
+    // Join requests - anyone can read/write their own requests
+    "joinRequests": {
+      ".read": true,
+      "$channelId": {
+        "$peerId": {
+          ".write": true,
+          ".validate": "newData.hasChildren(['peerId', 'displayName', 'timestamp']) && newData.child('peerId').val() == $peerId"
+        }
+      }
+    }
+  }
+}
