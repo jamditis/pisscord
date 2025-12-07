@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserProfile, DeviceSettings, AppLogs } from '../types';
+import { UserProfile, DeviceSettings, AppLogs, AppSettings, AppTheme } from '../types';
 import { uploadFile } from '../services/firebase';
 import { useIsMobile } from '../hooks/useIsMobile';
 
 interface UserSettingsModalProps {
   currentProfile: UserProfile;
   currentDevices: DeviceSettings;
+  currentAppSettings: AppSettings;
   logs: AppLogs[];
   appVersion: string;
   onSaveProfile: (newProfile: UserProfile) => void;
   onSaveDevices: (newDevices: DeviceSettings) => void;
+  onSaveAppSettings: (newSettings: AppSettings) => void;
   onCheckForUpdates: () => void;
   onClose: () => void;
   onShowToast?: (type: 'success' | 'error' | 'info' | 'warning', title: string, message?: string) => void;
@@ -19,9 +21,9 @@ interface UserSettingsModalProps {
 const COLORS = ['#5865F2', '#3ba55c', '#ed4245', '#faa61a', '#eb459e', '#00b0f4', '#a8a8a8'];
 
 export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
-    currentProfile, currentDevices, logs, appVersion, onSaveProfile, onSaveDevices, onCheckForUpdates, onClose, onShowToast
+    currentProfile, currentDevices, currentAppSettings, logs, appVersion, onSaveProfile, onSaveDevices, onSaveAppSettings, onCheckForUpdates, onClose, onShowToast
 }) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'voice' | 'debug' | 'about'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'voice' | 'appearance' | 'debug' | 'about'>('profile');
   
   // Profile State
   const [displayName, setDisplayName] = useState(currentProfile.displayName);
@@ -37,6 +39,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [audioInputId, setAudioInputId] = useState(currentDevices.audioInputId);
   const [audioOutputId, setAudioOutputId] = useState(currentDevices.audioOutputId);
   const [videoInputId, setVideoInputId] = useState(currentDevices.videoInputId);
+
+  // App Settings State
+  const [selectedTheme, setSelectedTheme] = useState<AppTheme>(currentAppSettings.theme);
 
   useEffect(() => {
     // Enumerate devices
@@ -55,7 +60,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         audioOutputId,
         videoInputId
     });
-    onShowToast?.('success', 'Settings Saved', 'Your profile and device settings have been updated.');
+    onSaveAppSettings({
+        theme: selectedTheme
+    });
+    onShowToast?.('success', 'Settings Saved', 'Your settings have been updated.');
     onClose();
   };
 
@@ -96,21 +104,21 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
   // Mobile tab item component
   const MobileTabItem: React.FC<{
-    tab: 'profile' | 'voice' | 'debug' | 'about';
+    tab: 'profile' | 'voice' | 'appearance' | 'debug' | 'about';
     icon: string;
     label: string;
   }> = ({ tab, icon, label }) => (
     <motion.button
       onClick={() => setActiveTab(tab)}
       whileTap={{ scale: 0.95 }}
-      className={`flex flex-col items-center justify-center py-2 px-4 rounded-xl transition-all ${
+      className={`flex flex-col items-center justify-center py-1.5 px-1 min-w-0 rounded-lg transition-all ${
         activeTab === tab
           ? 'bg-purple-500/20 text-purple-400'
           : 'text-white/50'
       }`}
     >
-      <i className={`fas ${icon} text-lg mb-1`}></i>
-      <span className="text-[10px] font-medium">{label}</span>
+      <i className={`fas ${icon} text-sm mb-0.5`}></i>
+      <span className="text-[8px] font-medium truncate">{label}</span>
     </motion.button>
   );
 
@@ -143,9 +151,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         </div>
 
         {/* Tab Bar */}
-        <div className="flex items-center justify-around px-2 py-2 border-b border-white/5 bg-white/[0.02]">
+        <div className="flex items-center justify-around px-1 py-1.5 border-b border-white/5 bg-white/[0.02]">
           <MobileTabItem tab="profile" icon="fa-user" label="Profile" />
           <MobileTabItem tab="voice" icon="fa-microphone" label="Audio" />
+          <MobileTabItem tab="appearance" icon="fa-palette" label="Theme" />
           <MobileTabItem tab="debug" icon="fa-bug" label="Debug" />
           <MobileTabItem tab="about" icon="fa-info-circle" label="About" />
         </div>
@@ -242,6 +251,87 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                         />
                       ))}
                     </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* APPEARANCE TAB */}
+            {activeTab === 'appearance' && (
+              <motion.div
+                key="appearance"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <div>
+                  <label className="block text-xs font-bold text-white/40 uppercase mb-3 tracking-wide">App Theme</label>
+                  <p className="text-white/50 text-sm mb-4">Choose your app theme. This changes the splash screen and accent colors.</p>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Gold Theme */}
+                    <motion.button
+                      onClick={() => setSelectedTheme('gold')}
+                      whileTap={{ scale: 0.98 }}
+                      className={`relative rounded-2xl p-4 border-2 transition-all ${
+                        selectedTheme === 'gold'
+                          ? 'border-yellow-400 bg-yellow-400/10'
+                          : 'border-white/10 bg-white/5'
+                      }`}
+                    >
+                      {selectedTheme === 'gold' && (
+                        <div className="absolute top-2 right-2">
+                          <i className="fas fa-check-circle text-yellow-400"></i>
+                        </div>
+                      )}
+                      <div
+                        className="w-16 h-16 rounded-xl mx-auto mb-3 flex items-center justify-center"
+                        style={{
+                          background: 'linear-gradient(135deg, #f0e130 0%, #c4b82a 100%)',
+                          boxShadow: '0 0 20px rgba(240, 225, 48, 0.3)'
+                        }}
+                      >
+                        <span className="text-2xl">💧</span>
+                      </div>
+                      <span className="block text-white font-medium text-sm">Gold</span>
+                      <span className="block text-white/40 text-xs mt-1">Classic Pisscord</span>
+                    </motion.button>
+
+                    {/* Purple Theme */}
+                    <motion.button
+                      onClick={() => setSelectedTheme('purple')}
+                      whileTap={{ scale: 0.98 }}
+                      className={`relative rounded-2xl p-4 border-2 transition-all ${
+                        selectedTheme === 'purple'
+                          ? 'border-purple-400 bg-purple-400/10'
+                          : 'border-white/10 bg-white/5'
+                      }`}
+                    >
+                      {selectedTheme === 'purple' && (
+                        <div className="absolute top-2 right-2">
+                          <i className="fas fa-check-circle text-purple-400"></i>
+                        </div>
+                      )}
+                      <div
+                        className="w-16 h-16 rounded-xl mx-auto mb-3 flex items-center justify-center"
+                        style={{
+                          background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+                          boxShadow: '0 0 20px rgba(168, 85, 247, 0.3)'
+                        }}
+                      >
+                        <span className="text-2xl">💧</span>
+                      </div>
+                      <span className="block text-white font-medium text-sm">Purple</span>
+                      <span className="block text-white/40 text-xs mt-1">Night Mode</span>
+                    </motion.button>
+                  </div>
+                </div>
+
+                <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <i className="fas fa-info-circle text-purple-400 mt-0.5"></i>
+                    <p className="text-purple-400 text-sm">Theme changes will apply on your next app launch.</p>
                   </div>
                 </div>
               </motion.div>
@@ -377,6 +467,67 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                   </div>
                 </div>
 
+                {/* Theme Selection */}
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                  <h4 className="text-white font-semibold text-sm mb-3">App Theme</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Gold Theme */}
+                    <motion.button
+                      onClick={() => setSelectedTheme('gold')}
+                      whileTap={{ scale: 0.98 }}
+                      className={`relative rounded-xl p-3 border-2 transition-all ${
+                        selectedTheme === 'gold'
+                          ? 'border-yellow-400 bg-yellow-400/10'
+                          : 'border-white/10 bg-white/5'
+                      }`}
+                    >
+                      {selectedTheme === 'gold' && (
+                        <div className="absolute top-2 right-2">
+                          <i className="fas fa-check-circle text-yellow-400 text-sm"></i>
+                        </div>
+                      )}
+                      <div
+                        className="w-12 h-12 rounded-lg mx-auto mb-2 flex items-center justify-center"
+                        style={{
+                          background: 'linear-gradient(135deg, #f0e130 0%, #c4b82a 100%)',
+                          boxShadow: '0 0 15px rgba(240, 225, 48, 0.3)'
+                        }}
+                      >
+                        <span className="text-lg">💧</span>
+                      </div>
+                      <span className="block text-white font-medium text-xs">Gold</span>
+                    </motion.button>
+
+                    {/* Purple Theme */}
+                    <motion.button
+                      onClick={() => setSelectedTheme('purple')}
+                      whileTap={{ scale: 0.98 }}
+                      className={`relative rounded-xl p-3 border-2 transition-all ${
+                        selectedTheme === 'purple'
+                          ? 'border-purple-400 bg-purple-400/10'
+                          : 'border-white/10 bg-white/5'
+                      }`}
+                    >
+                      {selectedTheme === 'purple' && (
+                        <div className="absolute top-2 right-2">
+                          <i className="fas fa-check-circle text-purple-400 text-sm"></i>
+                        </div>
+                      )}
+                      <div
+                        className="w-12 h-12 rounded-lg mx-auto mb-2 flex items-center justify-center"
+                        style={{
+                          background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+                          boxShadow: '0 0 15px rgba(168, 85, 247, 0.3)'
+                        }}
+                      >
+                        <span className="text-lg">💧</span>
+                      </div>
+                      <span className="block text-white font-medium text-xs">Purple</span>
+                    </motion.button>
+                  </div>
+                  <p className="text-white/40 text-xs mt-3 text-center">Theme applies on next app launch</p>
+                </div>
+
                 <motion.button
                   onClick={handleCheckUpdates}
                   whileTap={{ scale: 0.98 }}
@@ -419,11 +570,17 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             >
                 My Profile
             </button>
-            <button 
+            <button
                 onClick={() => setActiveTab('voice')}
                 className={`text-left px-3 py-2 rounded text-sm font-medium ${activeTab === 'voice' ? 'bg-discord-hover text-white' : 'text-discord-text hover:bg-discord-hover'}`}
             >
                 Voice & Video
+            </button>
+            <button
+                onClick={() => setActiveTab('appearance')}
+                className={`text-left px-3 py-2 rounded text-sm font-medium ${activeTab === 'appearance' ? 'bg-discord-hover text-white' : 'text-discord-text hover:bg-discord-hover'}`}
+            >
+                Appearance
             </button>
             <div className="border-t border-discord-muted/20 my-2"></div>
             <button
@@ -445,6 +602,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             <h2 className="text-xl font-bold text-white mb-6">
                 {activeTab === 'profile' && 'My Profile'}
                 {activeTab === 'voice' && 'Voice & Video Settings'}
+                {activeTab === 'appearance' && 'Appearance'}
                 {activeTab === 'debug' && 'Troubleshooting Logs'}
                 {activeTab === 'about' && 'About Pisscord'}
             </h2>
@@ -573,6 +731,77 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                         <div className="bg-discord-green/10 text-discord-green p-4 rounded text-sm border border-discord-green/20">
                             <i className="fas fa-info-circle mr-2"></i>
                             Changes require reconnecting to the call to take full effect.
+                        </div>
+                    </div>
+                )}
+
+                {/* APPEARANCE TAB */}
+                {activeTab === 'appearance' && (
+                    <div className="space-y-6">
+                        <div>
+                            <h3 className="text-white font-semibold mb-2">App Theme</h3>
+                            <p className="text-discord-muted text-sm mb-4">Choose your app theme. This changes the splash screen and accent colors.</p>
+
+                            <div className="grid grid-cols-2 gap-4 max-w-md">
+                                {/* Gold Theme */}
+                                <button
+                                    onClick={() => setSelectedTheme('gold')}
+                                    className={`relative rounded-xl p-4 border-2 transition-all hover:scale-[1.02] ${
+                                        selectedTheme === 'gold'
+                                            ? 'border-yellow-400 bg-yellow-400/10'
+                                            : 'border-discord-muted/20 bg-discord-dark hover:border-discord-muted/40'
+                                    }`}
+                                >
+                                    {selectedTheme === 'gold' && (
+                                        <div className="absolute top-2 right-2">
+                                            <i className="fas fa-check-circle text-yellow-400"></i>
+                                        </div>
+                                    )}
+                                    <div
+                                        className="w-14 h-14 rounded-lg mx-auto mb-3 flex items-center justify-center"
+                                        style={{
+                                            background: 'linear-gradient(135deg, #f0e130 0%, #c4b82a 100%)',
+                                            boxShadow: '0 0 20px rgba(240, 225, 48, 0.3)'
+                                        }}
+                                    >
+                                        <span className="text-xl">💧</span>
+                                    </div>
+                                    <span className="block text-white font-medium text-sm">Gold</span>
+                                    <span className="block text-discord-muted text-xs mt-1">Classic Pisscord</span>
+                                </button>
+
+                                {/* Purple Theme */}
+                                <button
+                                    onClick={() => setSelectedTheme('purple')}
+                                    className={`relative rounded-xl p-4 border-2 transition-all hover:scale-[1.02] ${
+                                        selectedTheme === 'purple'
+                                            ? 'border-purple-400 bg-purple-400/10'
+                                            : 'border-discord-muted/20 bg-discord-dark hover:border-discord-muted/40'
+                                    }`}
+                                >
+                                    {selectedTheme === 'purple' && (
+                                        <div className="absolute top-2 right-2">
+                                            <i className="fas fa-check-circle text-purple-400"></i>
+                                        </div>
+                                    )}
+                                    <div
+                                        className="w-14 h-14 rounded-lg mx-auto mb-3 flex items-center justify-center"
+                                        style={{
+                                            background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+                                            boxShadow: '0 0 20px rgba(168, 85, 247, 0.3)'
+                                        }}
+                                    >
+                                        <span className="text-xl">💧</span>
+                                    </div>
+                                    <span className="block text-white font-medium text-sm">Purple</span>
+                                    <span className="block text-discord-muted text-xs mt-1">Night Mode</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="bg-discord-accent/10 text-discord-accent p-4 rounded text-sm border border-discord-accent/20 max-w-md">
+                            <i className="fas fa-info-circle mr-2"></i>
+                            Theme changes will apply on your next app launch.
                         </div>
                     </div>
                 )}

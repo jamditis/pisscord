@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Channel, ChannelType, UserProfile, ConnectionState, PresenceUser } from '../types';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface ChannelListProps {
   channels: Channel[];
@@ -50,6 +51,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
   };
   const [showVolumeSlider, setShowVolumeSlider] = React.useState(false);
   const isMobile = useIsMobile();
+  const { colors, theme } = useTheme();
 
   // Mobile-optimized channel item component
   const MobileChannelItem: React.FC<{
@@ -66,19 +68,25 @@ export const ChannelList: React.FC<ChannelListProps> = ({
         onClick={onClick}
         className={`w-full flex items-center px-4 py-3.5 rounded-xl mb-2 transition-all ${
           isActive
-            ? 'bg-gradient-to-r from-purple-500/20 to-purple-500/10 border border-purple-500/30'
+            ? theme === 'gold'
+              ? 'bg-gradient-to-r from-yellow-400/20 to-yellow-400/10 border border-yellow-400/30'
+              : 'bg-gradient-to-r from-purple-500/20 to-purple-500/10 border border-purple-500/30'
             : 'bg-white/5 border border-transparent active:bg-white/10'
         }`}
         whileTap={{ scale: 0.98 }}
         style={{
-          boxShadow: isActive ? '0 0 20px rgba(168, 85, 247, 0.15)' : 'none',
+          boxShadow: isActive ? `0 0 20px ${colors.glowFaint}` : 'none',
         }}
       >
         {/* Icon */}
         <div
           className={`w-10 h-10 rounded-xl flex items-center justify-center mr-3 ${
             isActive
-              ? isVoice ? 'bg-green-500/20 text-green-400' : isAI ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-500/20 text-purple-400'
+              ? isVoice
+                ? 'bg-green-500/20 text-green-400'
+                : theme === 'gold'
+                  ? 'bg-yellow-400/20 text-yellow-400'
+                  : 'bg-purple-500/20 text-purple-400'
               : 'bg-white/10 text-gray-400'
           }`}
         >
@@ -123,7 +131,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
             </div>
           )}
           {isActive && (
-            <div className="w-2 h-2 rounded-full bg-purple-500" />
+            <div className="w-2 h-2 rounded-full" style={{ background: colors.primary }} />
           )}
         </div>
       </motion.button>

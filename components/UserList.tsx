@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConnectionState, PresenceUser } from '../types';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface UserListProps {
   connectionState: ConnectionState;
@@ -17,7 +18,8 @@ const MobileUserCard: React.FC<{
   user: PresenceUser;
   isMe?: boolean;
   onConnect?: () => void;
-}> = ({ user, isMe, onConnect }) => {
+  themeColors: { primary: string; glow: string; glowLight: string; glowFaint: string };
+}> = ({ user, isMe, onConnect, themeColors }) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -25,11 +27,14 @@ const MobileUserCard: React.FC<{
       exit={{ opacity: 0, scale: 0.95 }}
       whileTap={!isMe ? { scale: 0.98 } : undefined}
       onClick={!isMe ? onConnect : undefined}
-      className={`flex items-center p-3 rounded-xl mb-2 transition-all ${
-        isMe
-          ? 'bg-gradient-to-r from-purple-500/15 to-purple-500/5 border border-purple-500/20'
-          : 'bg-white/5 border border-white/5 active:bg-white/10'
-      }`}
+      className="flex items-center p-3 rounded-xl mb-2 transition-all"
+      style={isMe ? {
+        background: `linear-gradient(to right, ${themeColors.glowFaint}, transparent)`,
+        border: `1px solid ${themeColors.glowLight}`,
+      } : {
+        background: 'rgba(255, 255, 255, 0.05)',
+        border: '1px solid rgba(255, 255, 255, 0.05)',
+      }}
     >
       {/* Avatar with status */}
       <div className="relative">
@@ -53,7 +58,13 @@ const MobileUserCard: React.FC<{
         <div className="flex items-center gap-2">
           <span className="text-white font-medium text-sm truncate">{user.displayName}</span>
           {isMe && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/30 text-purple-300 uppercase font-bold">
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded-full uppercase font-bold"
+              style={{
+                background: themeColors.glowLight,
+                color: themeColors.primary,
+              }}
+            >
               You
             </span>
           )}
@@ -82,6 +93,7 @@ export const UserList: React.FC<UserListProps> = ({
   onToggleCollapse
 }) => {
   const isMobile = useIsMobile();
+  const { colors } = useTheme();
 
   // Filter out self from the main list
   const others = onlineUsers.filter(u => u.peerId !== myPeerId);
@@ -111,7 +123,7 @@ export const UserList: React.FC<UserListProps> = ({
               <div className="text-xs font-bold text-white/40 uppercase tracking-wider mb-2 px-1">
                 Your Profile
               </div>
-              <MobileUserCard user={me} isMe />
+              <MobileUserCard user={me} isMe themeColors={colors} />
             </div>
           )}
 
@@ -146,6 +158,7 @@ export const UserList: React.FC<UserListProps> = ({
                     <MobileUserCard
                       user={user}
                       onConnect={() => onConnectToUser(user.peerId)}
+                      themeColors={colors}
                     />
                   </motion.div>
                 ))}

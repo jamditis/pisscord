@@ -16,13 +16,14 @@ import { JoinRequestPanel } from './components/JoinRequestPanel';
 import { MobileNav, MobileView } from './components/MobileNav';
 import { SplashScreen } from './components/SplashScreen';
 import { useIsMobile } from './hooks/useIsMobile';
-import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs, JoinRequest } from './types';
+import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs, JoinRequest, AppSettings, AppTheme } from './types';
+import { ThemeProvider, themeColors } from './contexts/ThemeContext';
 import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages, cleanupOldMessages, getPissbotConfig, PissbotConfig, checkForMOTD, sendJoinRequest, subscribeToJoinRequests, removeJoinRequest } from './services/firebase';
 import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
 import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService } from './services/platform';
 
-const APP_VERSION = "1.1.1";
+const APP_VERSION = "1.3.0";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
@@ -51,6 +52,10 @@ const DEFAULT_DEVICES: DeviceSettings = {
     audioInputId: "",
     audioOutputId: "",
     videoInputId: ""
+};
+
+const DEFAULT_APP_SETTINGS: AppSettings = {
+    theme: 'purple'
 };
 
 export default function App() {
@@ -94,6 +99,10 @@ export default function App() {
   const [deviceSettings, setDeviceSettings] = useState<DeviceSettings>(() => {
       const saved = localStorage.getItem('pisscord_devices');
       return saved ? JSON.parse(saved) : DEFAULT_DEVICES;
+  });
+  const [appSettings, setAppSettings] = useState<AppSettings>(() => {
+      const saved = localStorage.getItem('pisscord_app_settings');
+      return saved ? JSON.parse(saved) : DEFAULT_APP_SETTINGS;
   });
   const [onlineUsers, setOnlineUsers] = useState<PresenceUser[]>([]);
   const [logs, setLogs] = useState<AppLogs[]>([]);
@@ -968,6 +977,11 @@ export default function App() {
       // Re-trigger stream if connected? Ideally yes, but for now user must reconnect.
   };
 
+  const handleSaveAppSettings = (newSettings: AppSettings) => {
+      setAppSettings(newSettings);
+      localStorage.setItem('pisscord_app_settings', JSON.stringify(newSettings));
+  };
+
   const handleCheckForUpdates = () => {
       log("Manually checking for updates...", 'info');
       checkForUpdates(APP_VERSION).then(update => {
@@ -1057,13 +1071,14 @@ export default function App() {
   };
 
   return (
+    <ThemeProvider initialTheme={appSettings.theme}>
     <div
       className="flex w-full h-screen bg-discord-main text-discord-text overflow-hidden font-sans relative"
       onContextMenu={handleContextMenu}
     >
       {/* Splash Screen */}
       {showSplash && (
-        <SplashScreen theme="purple" onComplete={() => setShowSplash(false)} />
+        <SplashScreen theme={appSettings.theme} onComplete={() => setShowSplash(false)} />
       )}
 
       {/* Global Audio Elements for persistent audio across views */}
@@ -1110,10 +1125,12 @@ export default function App() {
           <UserSettingsModal
             currentProfile={userProfile}
             currentDevices={deviceSettings}
+            currentAppSettings={appSettings}
             logs={logs}
             appVersion={APP_VERSION}
             onSaveProfile={handleSaveProfile}
             onSaveDevices={handleSaveDevices}
+            onSaveAppSettings={handleSaveAppSettings}
             onCheckForUpdates={handleCheckForUpdates}
             onClose={() => setShowSettingsModal(false)}
             onShowToast={(type, title, message) => toast[type](title, message)}
@@ -1224,7 +1241,7 @@ export default function App() {
                 >
                   <div
                     className="absolute bottom-0 left-0 right-0 h-px"
-                    style={{ background: 'linear-gradient(90deg, transparent, rgba(240, 225, 48, 0.2), transparent)' }}
+                    style={{ background: `linear-gradient(90deg, transparent, ${themeColors[appSettings.theme].glowLight}, transparent)` }}
                   />
                   <button
                     onClick={() => setMobileView('channels')}
@@ -1238,7 +1255,7 @@ export default function App() {
                   <div className="flex items-center">
                     <span
                       className="text-lg mr-1.5"
-                      style={{ color: chatChannel.type === 'AI' ? '#22c55e' : '#f0e130' }}
+                      style={{ color: chatChannel.type === 'AI' ? '#22c55e' : themeColors[appSettings.theme].primary }}
                     >
                       {chatChannel.type === 'AI' ? '🤖' : '#'}
                     </span>
@@ -1271,7 +1288,7 @@ export default function App() {
                 >
                   <div
                     className="absolute bottom-0 left-0 right-0 h-px"
-                    style={{ background: `linear-gradient(90deg, transparent, ${connectionState === ConnectionState.CONNECTED ? 'rgba(34, 197, 94, 0.3)' : 'rgba(240, 225, 48, 0.2)'}, transparent)` }}
+                    style={{ background: `linear-gradient(90deg, transparent, ${connectionState === ConnectionState.CONNECTED ? 'rgba(34, 197, 94, 0.3)' : themeColors[appSettings.theme].glowLight}, transparent)` }}
                   />
                   <div className="flex items-center">
                     <div
@@ -1285,7 +1302,7 @@ export default function App() {
                     <div>
                       <span
                         className="font-semibold"
-                        style={{ color: connectionState === ConnectionState.CONNECTED ? '#22c55e' : '#f0e130' }}
+                        style={{ color: connectionState === ConnectionState.CONNECTED ? '#22c55e' : themeColors[appSettings.theme].primary }}
                       >
                         {connectionState === ConnectionState.CONNECTED ? 'Voice Connected' : 'Voice Lounge'}
                       </span>
@@ -1490,5 +1507,6 @@ export default function App() {
         />
       )}
     </div>
+    </ThemeProvider>
   );
 }

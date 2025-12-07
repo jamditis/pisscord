@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ConnectionState } from '../types';
 import { HapticsService } from '../services/platform';
+import { useTheme } from '../contexts/ThemeContext';
 
 export type MobileView = 'chat' | 'channels' | 'users' | 'voice';
 
@@ -21,6 +22,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   onOpenSettings,
 }) => {
   const isConnected = connectionState === ConnectionState.CONNECTED;
+  const { colors } = useTheme();
 
   const tabs = [
     {
@@ -106,7 +108,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       <div
         className="absolute top-0 left-0 right-0 h-px"
         style={{
-          background: 'linear-gradient(90deg, transparent, rgba(240, 225, 48, 0.3), transparent)',
+          background: `linear-gradient(90deg, transparent, ${colors.glowLight}, transparent)`,
         }}
       />
 
@@ -135,13 +137,13 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                   background: isActive
                     ? isLive
                       ? '#22c55e'
-                      : '#f0e130'
+                      : colors.primary
                     : 'transparent',
                   transform: isActive ? 'scaleX(1)' : 'scaleX(0)',
                   boxShadow: isActive
                     ? isLive
                       ? '0 0 12px rgba(34, 197, 94, 0.5)'
-                      : '0 0 12px rgba(240, 225, 48, 0.5)'
+                      : `0 0 12px ${colors.glow}`
                     : 'none',
                 }}
               />
@@ -159,7 +161,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                     color: isActive
                       ? isLive
                         ? '#22c55e'
-                        : '#f0e130'
+                        : colors.primary
                       : '#6b7280',
                     transition: 'color 0.2s ease-out',
                   }}
@@ -200,7 +202,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                   color: isActive
                     ? isLive
                       ? '#22c55e'
-                      : '#f0e130'
+                      : colors.primary
                     : '#6b7280',
                 }}
               >

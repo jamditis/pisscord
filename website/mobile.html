@@ -1,0 +1,1595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PISSCORD - Mobile App Guide</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --void: #0a0a0f;
+            --abyss: #12121a;
+            --surface: #1a1a26;
+            --elevated: #252533;
+            --muted: #4a4a5a;
+            --text: #e8e8f0;
+            --text-dim: #9898a8;
+
+            --piss-yellow: #f0e130;
+            --piss-gold: #ffd700;
+            --angry-purple: #8b5cf6;
+            --electric-violet: #a855f7;
+            --hot-pink: #ec4899;
+            --neon-cyan: #22d3ee;
+            --sick-green: #84cc16;
+            --android-green: #3ddc84;
+
+            --glow-yellow: rgba(240, 225, 48, 0.4);
+            --glow-purple: rgba(139, 92, 246, 0.4);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--void);
+            color: var(--text);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Noise texture overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Scanlines */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.1) 0px,
+                rgba(0, 0, 0, 0.1) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+            pointer-events: none;
+            z-index: 9998;
+            opacity: 0.3;
+        }
+
+        ::selection {
+            background: var(--piss-yellow);
+            color: var(--void);
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            background: linear-gradient(to bottom, var(--void), transparent);
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 1.4rem;
+            color: var(--piss-yellow);
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .nav-logo img {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            border: 2px solid var(--piss-yellow);
+            box-shadow: 0 0 20px var(--glow-yellow);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            position: relative;
+            padding: 4px 0;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--piss-yellow);
+            transition: width 0.3s;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--piss-yellow);
+        }
+
+        .nav-links a:hover::after,
+        .nav-links a.active::after {
+            width: 100%;
+        }
+
+        .nav-cta {
+            background: var(--piss-yellow);
+            color: var(--void);
+            padding: 12px 24px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+            transition: all 0.3s;
+        }
+
+        .nav-cta:hover {
+            background: var(--text);
+            transform: translate(-2px, -2px);
+            box-shadow: 4px 4px 0 var(--piss-yellow);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 60vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 120px 2rem 60px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .hero-bg-gradient {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.3;
+        }
+
+        .hero-bg-gradient.yellow {
+            background: var(--piss-yellow);
+            top: -200px;
+            right: 20%;
+            animation: pulse-slow 8s ease-in-out infinite;
+        }
+
+        .hero-bg-gradient.green {
+            background: var(--android-green);
+            bottom: -100px;
+            left: 20%;
+            animation: pulse-slow 8s ease-in-out infinite 4s;
+        }
+
+        @keyframes pulse-slow {
+            0%, 100% { transform: scale(1); opacity: 0.2; }
+            50% { transform: scale(1.2); opacity: 0.4; }
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--surface);
+            border: 1px solid var(--android-green);
+            padding: 8px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--android-green);
+            margin-bottom: 1.5rem;
+            animation: fade-in 0.6s ease-out;
+        }
+
+        .hero-badge i {
+            color: var(--piss-yellow);
+        }
+
+        .hero-title {
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 4rem;
+            line-height: 1;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            animation: slide-up 0.8s ease-out;
+        }
+
+        .hero-title .yellow {
+            color: var(--piss-yellow);
+            text-shadow: 0 0 40px var(--glow-yellow);
+        }
+
+        .hero-title .green {
+            color: var(--android-green);
+            text-shadow: 0 0 40px rgba(61, 220, 132, 0.4);
+        }
+
+        .hero-subtitle {
+            font-size: 1.3rem;
+            color: var(--text-dim);
+            max-width: 600px;
+            margin-bottom: 2rem;
+            animation: slide-up 0.8s ease-out 0.1s both;
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slide-up {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Quick Nav Pills */
+        .quick-nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.75rem;
+            animation: slide-up 0.8s ease-out 0.2s both;
+        }
+
+        .quick-nav a {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            background: var(--surface);
+            border: 1px solid var(--elevated);
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .quick-nav a:hover {
+            border-color: var(--piss-yellow);
+            color: var(--piss-yellow);
+            transform: translateY(-2px);
+        }
+
+        .quick-nav a i {
+            font-size: 0.85rem;
+        }
+
+        /* Main Content */
+        .guide-layout {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 3rem 100px;
+        }
+
+        .guide-section {
+            margin-bottom: 5rem;
+            scroll-margin-top: 100px;
+        }
+
+        .section-header {
+            margin-bottom: 2rem;
+        }
+
+        .section-number {
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 5rem;
+            color: var(--elevated);
+            line-height: 1;
+            margin-bottom: -1.5rem;
+            margin-left: -4px;
+        }
+
+        .section-title {
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 2rem;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-title i {
+            color: var(--piss-yellow);
+            font-size: 1.5rem;
+        }
+
+        .section-title span {
+            color: var(--piss-yellow);
+        }
+
+        .section-title span.green {
+            color: var(--android-green);
+        }
+
+        .section-intro {
+            font-size: 1.1rem;
+            color: var(--text-dim);
+            max-width: 700px;
+            margin-top: 1rem;
+            line-height: 1.8;
+        }
+
+        /* Step-by-Step Guide */
+        .steps-container {
+            margin-top: 2rem;
+        }
+
+        .step-item {
+            display: grid;
+            grid-template-columns: 80px 1fr;
+            gap: 2rem;
+            padding: 2rem 0;
+            border-bottom: 1px solid var(--elevated);
+            position: relative;
+        }
+
+        .step-item:last-child {
+            border-bottom: none;
+        }
+
+        .step-number-large {
+            width: 64px;
+            height: 64px;
+            background: var(--surface);
+            border: 2px solid var(--piss-yellow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 1.8rem;
+            color: var(--piss-yellow);
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .step-item:hover .step-number-large {
+            background: var(--piss-yellow);
+            color: var(--void);
+            transform: rotate(-5deg) scale(1.05);
+        }
+
+        .step-content h4 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: var(--text);
+        }
+
+        .step-content p {
+            color: var(--text-dim);
+            line-height: 1.7;
+            margin-bottom: 1rem;
+        }
+
+        .step-tip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--electric-violet);
+        }
+
+        .step-tip i {
+            color: var(--angry-purple);
+        }
+
+        .step-tip.android {
+            background: rgba(61, 220, 132, 0.1);
+            border: 1px solid rgba(61, 220, 132, 0.3);
+            color: var(--android-green);
+        }
+
+        .step-tip.android i {
+            color: var(--android-green);
+        }
+
+        /* Feature Cards */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid var(--elevated);
+            padding: 1.5rem;
+            position: relative;
+            transition: all 0.3s;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--piss-yellow), var(--android-green));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.4s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--piss-yellow);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-card-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--piss-yellow), var(--android-green));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: var(--void);
+            margin-bottom: 1rem;
+            clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+        }
+
+        .feature-card h4 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .feature-card p {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            line-height: 1.6;
+        }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--abyss);
+            border: 1px solid var(--elevated);
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 1.5rem 0;
+        }
+
+        .code-header {
+            background: var(--surface);
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--elevated);
+        }
+
+        .code-header span {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+
+        .code-content {
+            padding: 1rem 1.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text);
+            overflow-x: auto;
+        }
+
+        .code-content code {
+            color: var(--piss-yellow);
+        }
+
+        /* Warning/Info Boxes */
+        .info-box {
+            display: flex;
+            gap: 1rem;
+            padding: 1.25rem;
+            margin: 1.5rem 0;
+            border-left: 3px solid;
+        }
+
+        .info-box.tip {
+            background: rgba(132, 204, 22, 0.1);
+            border-color: var(--sick-green);
+        }
+
+        .info-box.warning {
+            background: rgba(240, 225, 48, 0.1);
+            border-color: var(--piss-yellow);
+        }
+
+        .info-box.note {
+            background: rgba(139, 92, 246, 0.1);
+            border-color: var(--angry-purple);
+        }
+
+        .info-box.android {
+            background: rgba(61, 220, 132, 0.1);
+            border-color: var(--android-green);
+        }
+
+        .info-box i {
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .info-box.tip i { color: var(--sick-green); }
+        .info-box.warning i { color: var(--piss-yellow); }
+        .info-box.note i { color: var(--angry-purple); }
+        .info-box.android i { color: var(--android-green); }
+
+        .info-box-content {
+            flex: 1;
+        }
+
+        .info-box-content strong {
+            display: block;
+            margin-bottom: 0.25rem;
+            color: var(--text);
+        }
+
+        .info-box-content p {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Download Button */
+        .download-section {
+            text-align: center;
+            padding: 3rem;
+            background: var(--surface);
+            border: 1px solid var(--elevated);
+            margin: 2rem 0;
+        }
+
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, var(--android-green), #2ba360);
+            color: var(--void);
+            padding: 16px 32px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1rem;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+            transition: all 0.3s;
+        }
+
+        .download-btn:hover {
+            transform: translate(-4px, -4px);
+            box-shadow: 8px 8px 0 rgba(61, 220, 132, 0.3);
+        }
+
+        .download-btn i {
+            font-size: 1.2rem;
+        }
+
+        .download-note {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+
+        /* Theme Demo */
+        .theme-demo {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .theme-card {
+            padding: 1.5rem;
+            border: 2px solid var(--elevated);
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .theme-card.gold {
+            background: linear-gradient(135deg, rgba(240, 225, 48, 0.1), transparent);
+        }
+
+        .theme-card.purple {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), transparent);
+        }
+
+        .theme-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .theme-card.gold:hover {
+            border-color: var(--piss-yellow);
+        }
+
+        .theme-card.purple:hover {
+            border-color: var(--electric-violet);
+        }
+
+        .theme-swatch {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .theme-card.gold .theme-swatch {
+            background: var(--piss-yellow);
+            box-shadow: 0 0 30px var(--glow-yellow);
+        }
+
+        .theme-card.purple .theme-swatch {
+            background: var(--electric-violet);
+            box-shadow: 0 0 30px var(--glow-purple);
+        }
+
+        .theme-card h4 {
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .theme-card.gold h4 {
+            color: var(--piss-yellow);
+        }
+
+        .theme-card.purple h4 {
+            color: var(--electric-violet);
+        }
+
+        .theme-card p {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        /* Accordion FAQ Style */
+        .accordion {
+            margin-top: 2rem;
+        }
+
+        .accordion-item {
+            border: 1px solid var(--elevated);
+            margin-bottom: 0.75rem;
+            background: var(--surface);
+            overflow: hidden;
+        }
+
+        .accordion-header {
+            padding: 1.25rem 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: var(--text);
+            transition: all 0.2s;
+        }
+
+        .accordion-header:hover {
+            background: var(--elevated);
+        }
+
+        .accordion-header i {
+            color: var(--piss-yellow);
+            transition: transform 0.3s;
+        }
+
+        .accordion-item.active .accordion-header {
+            border-bottom: 1px solid var(--elevated);
+        }
+
+        .accordion-item.active .accordion-header i {
+            transform: rotate(180deg);
+        }
+
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .accordion-item.active .accordion-content {
+            max-height: 500px;
+        }
+
+        .accordion-content-inner {
+            padding: 1.5rem;
+            color: var(--text-dim);
+            line-height: 1.7;
+        }
+
+        .accordion-content-inner code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--abyss);
+            padding: 2px 6px;
+            font-size: 0.85rem;
+            color: var(--piss-yellow);
+        }
+
+        /* Mobile UI Preview */
+        .mobile-preview {
+            max-width: 300px;
+            margin: 2rem auto;
+            background: var(--abyss);
+            border-radius: 24px;
+            padding: 12px;
+            border: 2px solid var(--elevated);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .mobile-screen {
+            background: var(--surface);
+            border-radius: 16px;
+            overflow: hidden;
+            aspect-ratio: 9/19;
+        }
+
+        .mobile-header {
+            background: linear-gradient(to bottom, var(--abyss), var(--surface));
+            padding: 2rem 1rem 1rem;
+            text-align: center;
+        }
+
+        .mobile-header h4 {
+            color: var(--piss-yellow);
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .mobile-header p {
+            color: var(--muted);
+            font-size: 0.7rem;
+        }
+
+        .mobile-nav {
+            display: flex;
+            justify-content: space-around;
+            padding: 0.75rem;
+            background: var(--abyss);
+            border-top: 1px solid var(--elevated);
+        }
+
+        .mobile-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--muted);
+            font-size: 0.6rem;
+        }
+
+        .mobile-nav-item.active {
+            color: var(--piss-yellow);
+        }
+
+        .mobile-nav-item i {
+            font-size: 1rem;
+        }
+
+        /* Footer */
+        footer {
+            padding: 60px 3rem 40px;
+            background: var(--void);
+            border-top: 1px solid var(--elevated);
+            text-align: center;
+        }
+
+        .footer-logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 1.3rem;
+            color: var(--piss-yellow);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 1rem;
+        }
+
+        .footer-logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-links a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--piss-yellow);
+        }
+
+        .footer-bottom {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+
+        .footer-bottom a {
+            color: var(--piss-yellow);
+            text-decoration: none;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .guide-layout {
+                padding: 0 1.5rem 60px;
+            }
+
+            .hero-title {
+                font-size: 2.5rem;
+            }
+
+            nav {
+                padding: 1rem 1.5rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .step-item {
+                grid-template-columns: 60px 1fr;
+                gap: 1rem;
+            }
+
+            .step-number-large {
+                width: 48px;
+                height: 48px;
+                font-size: 1.4rem;
+            }
+
+            .theme-demo {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            nav {
+                padding: 0.75rem 1rem;
+                gap: 0.5rem;
+            }
+
+            .nav-logo {
+                font-size: 1rem;
+                gap: 8px;
+            }
+
+            .nav-logo img {
+                width: 32px;
+                height: 32px;
+            }
+
+            .nav-cta {
+                padding: 8px 12px;
+                font-size: 0.7rem;
+            }
+
+            .hero {
+                padding: 100px 1rem 50px;
+            }
+
+            .hero-title {
+                font-size: 1.75rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1rem;
+            }
+
+            .section-title {
+                font-size: 1.5rem;
+                flex-wrap: wrap;
+            }
+
+            .section-number {
+                font-size: 3.5rem;
+            }
+
+            .step-item {
+                grid-template-columns: 48px 1fr;
+                gap: 0.75rem;
+                padding: 1.5rem 0;
+            }
+
+            .step-number-large {
+                width: 40px;
+                height: 40px;
+                font-size: 1.2rem;
+            }
+
+            footer {
+                padding: 40px 1rem 30px;
+            }
+
+            .footer-links {
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+        }
+
+        /* Scroll Animations */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Back to Top Button */
+        .back-to-top {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 50px;
+            height: 50px;
+            background: var(--piss-yellow);
+            color: var(--void);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+            z-index: 100;
+        }
+
+        .back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .back-to-top:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px var(--glow-yellow);
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--piss-yellow), var(--android-green));
+            width: 0%;
+            z-index: 1001;
+            transition: width 0.1s;
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+
+    <!-- Navigation -->
+    <nav>
+        <a href="index.html" class="nav-logo">
+            <img src="../public/pisscord-dark.png" alt="Pisscord">
+            Pisscord
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="guide.html">User Guide</a></li>
+            <li><a href="mobile.html" class="active">Mobile</a></li>
+            <li><a href="index.html#faq">FAQ</a></li>
+        </ul>
+        <a href="https://github.com/jamditis/pisscord/releases/latest" class="nav-cta">
+            Download
+        </a>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-bg">
+            <div class="hero-bg-gradient yellow"></div>
+            <div class="hero-bg-gradient green"></div>
+        </div>
+
+        <div class="hero-badge">
+            <i class="fab fa-android"></i>
+            <span>ANDROID APP</span>
+        </div>
+        <h1 class="hero-title">
+            <span class="yellow">PISSCORD</span> <span class="green">MOBILE</span>
+        </h1>
+        <p class="hero-subtitle">
+            Take the pee-to-pee experience everywhere you go. Full-featured Android app with voice, video, chat, and themes.
+        </p>
+
+        <div class="quick-nav">
+            <a href="#installation"><i class="fas fa-download"></i> Installation</a>
+            <a href="#features"><i class="fas fa-mobile-alt"></i> Features</a>
+            <a href="#themes"><i class="fas fa-palette"></i> Themes</a>
+            <a href="#navigation"><i class="fas fa-compass"></i> Navigation</a>
+            <a href="#troubleshooting"><i class="fas fa-wrench"></i> Troubleshooting</a>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <div class="guide-layout">
+        <!-- Installation -->
+        <section class="guide-section reveal" id="installation">
+            <div class="section-header">
+                <div class="section-number">01</div>
+                <h2 class="section-title"><i class="fas fa-download"></i> <span class="green">Installation</span></h2>
+                <p class="section-intro">
+                    Get Pisscord on your Android device. Currently available as a direct APK download - iOS support coming soon.
+                </p>
+            </div>
+
+            <div class="download-section">
+                <a href="https://github.com/jamditis/pisscord/releases/latest" class="download-btn">
+                    <i class="fab fa-android"></i>
+                    Download APK
+                </a>
+                <p class="download-note">Requires Android 8.0 or later</p>
+            </div>
+
+            <div class="steps-container">
+                <div class="step-item">
+                    <div class="step-number-large">1</div>
+                    <div class="step-content">
+                        <h4>Download the APK</h4>
+                        <p>
+                            Go to the GitHub releases page and download the latest <code>app-debug.apk</code> file to your Android device. You can do this directly on your phone's browser.
+                        </p>
+                        <div class="step-tip android">
+                            <i class="fab fa-android"></i>
+                            File will be saved to your Downloads folder
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step-item">
+                    <div class="step-number-large">2</div>
+                    <div class="step-content">
+                        <h4>Enable Unknown Sources</h4>
+                        <p>
+                            Android blocks apps from unknown sources by default. When you try to install, you'll be prompted to allow installation from your browser or file manager.
+                        </p>
+                        <div class="step-tip">
+                            <i class="fas fa-shield-halved"></i>
+                            Go to Settings &rarr; Apps &rarr; Special access &rarr; Install unknown apps
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step-item">
+                    <div class="step-number-large">3</div>
+                    <div class="step-content">
+                        <h4>Install & Launch</h4>
+                        <p>
+                            Tap the downloaded APK file to install. Once installed, open Pisscord from your app drawer. Grant camera and microphone permissions when prompted.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-box android">
+                <i class="fab fa-android"></i>
+                <div class="info-box-content">
+                    <strong>Manual Updates</strong>
+                    <p>The mobile app doesn't auto-update yet. Check GitHub releases periodically for new versions, or follow us for announcements.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features -->
+        <section class="guide-section reveal" id="features">
+            <div class="section-header">
+                <div class="section-number">02</div>
+                <h2 class="section-title"><i class="fas fa-mobile-alt"></i> Mobile <span>Features</span></h2>
+                <p class="section-intro">
+                    Everything from the desktop app, optimized for touch. Voice calls, video, text chat, file sharing, and Pissbot AI.
+                </p>
+            </div>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-card-icon"><i class="fas fa-microphone"></i></div>
+                    <h4>Voice & Video Calls</h4>
+                    <p>Crystal-clear P2P voice and video. Full mesh networking support for group calls with multiple participants.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-card-icon"><i class="fas fa-comment-dots"></i></div>
+                    <h4>Text Chat</h4>
+                    <p>Real-time messaging with markdown support. Share images and files directly from your phone's gallery.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-card-icon"><i class="fas fa-robot"></i></div>
+                    <h4>Pissbot AI</h4>
+                    <p>Chat with our AI assistant powered by Gemini. Ask questions, get help, or just have a conversation.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-card-icon"><i class="fas fa-palette"></i></div>
+                    <h4>Theme Selection</h4>
+                    <p>Switch between Piss Gold and Royal Purple themes. Your choice persists across sessions.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-card-icon"><i class="fas fa-vibrate"></i></div>
+                    <h4>Haptic Feedback</h4>
+                    <p>Native haptic feedback on button presses and interactions. Feels responsive and tactile.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-card-icon"><i class="fas fa-expand"></i></div>
+                    <h4>Safe Area Support</h4>
+                    <p>Properly handles notches, camera cutouts, and navigation gestures on modern Android devices.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Themes -->
+        <section class="guide-section reveal" id="themes">
+            <div class="section-header">
+                <div class="section-number">03</div>
+                <h2 class="section-title"><i class="fas fa-palette"></i> Color <span>Themes</span></h2>
+                <p class="section-intro">
+                    Customize your Pisscord experience with two distinct color themes. Change anytime in Settings.
+                </p>
+            </div>
+
+            <div class="theme-demo">
+                <div class="theme-card gold">
+                    <div class="theme-swatch"></div>
+                    <h4>PISS GOLD</h4>
+                    <p>The original. Warm, bold, and unmistakably Pisscord. For true believers.</p>
+                </div>
+                <div class="theme-card purple">
+                    <div class="theme-swatch"></div>
+                    <h4>ROYAL PURPLE</h4>
+                    <p>Cool and sophisticated. A familiar vibe for those transitioning from other apps.</p>
+                </div>
+            </div>
+
+            <div class="info-box tip">
+                <i class="fas fa-check-circle"></i>
+                <div class="info-box-content">
+                    <strong>How to Change Themes</strong>
+                    <p>Tap the Settings icon in the bottom navigation &rarr; Theme tab &rarr; Select your preferred theme. Changes apply instantly across the entire app.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Navigation -->
+        <section class="guide-section reveal" id="navigation">
+            <div class="section-header">
+                <div class="section-number">04</div>
+                <h2 class="section-title"><i class="fas fa-compass"></i> Mobile <span>Navigation</span></h2>
+                <p class="section-intro">
+                    The mobile interface uses a bottom tab bar for easy one-handed navigation. Here's what each tab does.
+                </p>
+            </div>
+
+            <div class="mobile-preview">
+                <div class="mobile-screen">
+                    <div class="mobile-header">
+                        <h4># general</h4>
+                        <p>Pisscord Chat</p>
+                    </div>
+                    <div style="flex: 1;"></div>
+                    <div class="mobile-nav">
+                        <div class="mobile-nav-item">
+                            <i class="fas fa-hashtag"></i>
+                            <span>Channels</span>
+                        </div>
+                        <div class="mobile-nav-item active">
+                            <i class="fas fa-comment"></i>
+                            <span>Chat</span>
+                        </div>
+                        <div class="mobile-nav-item">
+                            <i class="fas fa-microphone"></i>
+                            <span>Voice</span>
+                        </div>
+                        <div class="mobile-nav-item">
+                            <i class="fas fa-users"></i>
+                            <span>Online</span>
+                        </div>
+                        <div class="mobile-nav-item">
+                            <i class="fas fa-cog"></i>
+                            <span>Settings</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-card-icon"><i class="fas fa-hashtag"></i></div>
+                    <h4>Channels Tab</h4>
+                    <p>Browse all text and voice channels. Tap a channel to switch to it. Voice channels show who's currently connected.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-card-icon"><i class="fas fa-comment"></i></div>
+                    <h4>Chat Tab</h4>
+                    <p>View and send messages in the current text channel. Supports markdown, images, and file attachments.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-card-icon"><i class="fas fa-microphone"></i></div>
+                    <h4>Voice Tab</h4>
+                    <p>Join voice/video calls. When connected, shows "Live" with a green indicator. Manage mute, camera, and disconnect.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-card-icon"><i class="fas fa-users"></i></div>
+                    <h4>Online Tab</h4>
+                    <p>See who's currently online. Tap a user to view their profile or initiate a call.</p>
+                </div>
+            </div>
+
+            <div class="info-box note">
+                <i class="fas fa-info-circle"></i>
+                <div class="info-box-content">
+                    <strong>Persistent Voice</strong>
+                    <p>Just like desktop, you can browse other tabs while staying connected to a voice channel. Audio continues in the background.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Settings -->
+        <section class="guide-section reveal" id="settings">
+            <div class="section-header">
+                <div class="section-number">05</div>
+                <h2 class="section-title"><i class="fas fa-cog"></i> Mobile <span>Settings</span></h2>
+                <p class="section-intro">
+                    Configure your profile, audio devices, and app preferences from the Settings tab.
+                </p>
+            </div>
+
+            <div class="accordion">
+                <div class="accordion-item active">
+                    <div class="accordion-header">
+                        <span>Profile</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-content-inner">
+                            Set your display name, status message, and avatar color. Upload a custom profile picture that syncs across all devices.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <span>Theme</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-content-inner">
+                            Switch between <strong>Piss Gold</strong> and <strong>Royal Purple</strong> color themes. Changes apply immediately to the entire app including navigation, headers, and accents.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <span>Audio</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-content-inner">
+                            Audio device selection uses your phone's default settings. For Bluetooth headphones, connect them before joining a call.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <span>Debug Log</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-content-inner">
+                            View real-time app events. Helpful for troubleshooting connection issues. Color-coded by type: <code>info</code>, <code>error</code>, <code>webrtc</code>.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <span>About</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-content-inner">
+                            View app version, feature list, and links to documentation. Check for updates manually from the About tab.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Troubleshooting -->
+        <section class="guide-section reveal" id="troubleshooting">
+            <div class="section-header">
+                <div class="section-number">06</div>
+                <h2 class="section-title"><i class="fas fa-wrench"></i> Trouble<span>shooting</span></h2>
+                <p class="section-intro">
+                    Common mobile issues and solutions.
+                </p>
+            </div>
+
+            <div class="accordion">
+                <div class="accordion-item active">
+                    <div class="accordion-header">
+                        <span>App won't install</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-content-inner">
+                            <p>Make sure you've enabled "Install unknown apps" for your browser or file manager. Go to <code>Settings &rarr; Apps &rarr; Special access &rarr; Install unknown apps</code> and enable it for the app you're installing from.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <span>No audio in calls</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-content-inner">
+                            <p>Check that you've granted microphone permissions. Go to <code>Settings &rarr; Apps &rarr; Pisscord &rarr; Permissions</code> and enable Microphone. Also check your phone's volume and that you're not on silent mode.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <span>Camera not working</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-content-inner">
+                            <p>Ensure camera permissions are granted. Some phones also require storage permissions for camera functionality. Check <code>Settings &rarr; Apps &rarr; Pisscord &rarr; Permissions</code>.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <span>Connection keeps dropping</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-content-inner">
+                            <p>P2P connections can be affected by mobile network quality. Try switching to WiFi if on cellular data. Some corporate or school WiFi networks block WebRTC traffic.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <span>App crashes on launch</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-content-inner">
+                            <p>Try clearing app data: <code>Settings &rarr; Apps &rarr; Pisscord &rarr; Storage &rarr; Clear Data</code>. If issues persist, uninstall and reinstall the latest APK version.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <div class="accordion-header">
+                        <span>Battery drain</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="accordion-content-inner">
+                            <p>Voice and video calls use significant battery. This is normal for real-time communication apps. Disable video when not needed to conserve battery. The app uses standard WebView and doesn't run background services.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-box warning" style="margin-top: 2rem;">
+                <i class="fas fa-bug"></i>
+                <div class="info-box-content">
+                    <strong>Found a bug?</strong>
+                    <p>Report issues in the <code>#issues</code> channel in the app, or open an issue on <a href="https://github.com/jamditis/pisscord/issues" style="color: var(--piss-yellow);">GitHub</a>. Include your Android version and device model.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Back to Top -->
+    <div class="back-to-top" id="backToTop">
+        <i class="fas fa-arrow-up"></i>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-logo">
+            <img src="../public/pisscord-dark.png" alt="Pisscord">
+            Pisscord
+        </div>
+        <div class="footer-links">
+            <a href="index.html">Home</a>
+            <a href="guide.html">User Guide</a>
+            <a href="mobile.html">Mobile</a>
+            <a href="https://github.com/jamditis/pisscord">GitHub</a>
+        </div>
+        <div class="footer-bottom">
+            <p>Made with spite by <a href="https://github.com/jamditis">JawnPiece Productions</a></p>
+        </div>
+    </footer>
+
+    <script>
+        // Scroll reveal
+        function revealOnScroll() {
+            const reveals = document.querySelectorAll('.reveal');
+            const windowHeight = window.innerHeight;
+
+            reveals.forEach((element) => {
+                const elementTop = element.getBoundingClientRect().top;
+                const revealPoint = 100;
+
+                if (elementTop < windowHeight - revealPoint) {
+                    element.classList.add('visible');
+                }
+            });
+        }
+
+        // Accordion toggle
+        document.querySelectorAll('.accordion-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const item = header.parentElement;
+                const wasActive = item.classList.contains('active');
+
+                // Close all in same accordion
+                item.parentElement.querySelectorAll('.accordion-item').forEach(i => {
+                    i.classList.remove('active');
+                });
+
+                // Open clicked if it wasn't active
+                if (!wasActive) {
+                    item.classList.add('active');
+                }
+            });
+        });
+
+        // Progress bar
+        function updateProgressBar() {
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const progress = (scrollTop / docHeight) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+        }
+
+        // Back to top button
+        function updateBackToTop() {
+            const btn = document.getElementById('backToTop');
+            if (window.scrollY > 500) {
+                btn.classList.add('visible');
+            } else {
+                btn.classList.remove('visible');
+            }
+        }
+
+        document.getElementById('backToTop').addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            revealOnScroll();
+            updateProgressBar();
+            updateBackToTop();
+        });
+
+        window.addEventListener('scroll', () => {
+            revealOnScroll();
+            updateProgressBar();
+            updateBackToTop();
+        });
+    </script>
+</body>
+</html>
