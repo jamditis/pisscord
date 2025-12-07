@@ -1083,10 +1083,11 @@ export default function App() {
             {/* Mobile Channel List View */}
             {mobileView === 'channels' && (
               <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Glassmorphism Header */}
+                {/* Glassmorphism Header - with top padding for status bar */}
                 <div
                   className="relative px-5 py-4"
                   style={{
+                    paddingTop: '3.5rem',
                     background: 'linear-gradient(to bottom, rgba(18, 18, 26, 0.98), rgba(18, 18, 26, 0.92))',
                     borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
                   }}
@@ -1103,7 +1104,7 @@ export default function App() {
                   </h2>
                   <p className="text-xs text-gray-500 mt-0.5">Browse text and voice channels</p>
                 </div>
-                <div className="flex-1 bg-discord-sidebar overflow-y-auto">
+                <div className="flex-1 bg-discord-sidebar overflow-y-auto pb-20">
                   <ChannelList
                   channels={INITIAL_CHANNELS}
                   activeChannelId={activeChannelId}
@@ -1196,10 +1197,11 @@ export default function App() {
             {/* Mobile Voice View */}
             {mobileView === 'voice' && (
               <div className="flex-1 flex flex-col min-h-0">
-                {/* Glassmorphism Voice Header */}
+                {/* Glassmorphism Voice Header - with top padding for status bar */}
                 <div
                   className="relative flex items-center justify-between px-4 py-3"
                   style={{
+                    paddingTop: '3.5rem',
                     background: 'linear-gradient(to bottom, rgba(18, 18, 26, 0.98), rgba(18, 18, 26, 0.92))',
                     borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
                   }}
@@ -1243,7 +1245,7 @@ export default function App() {
                     </button>
                   )}
                 </div>
-                <div className="flex-1 relative">
+                <div className="flex-1 relative pb-20">
                   <VoiceStage
                   myStream={myStream}
                   remoteStreams={remoteStreams}
@@ -1272,7 +1274,7 @@ export default function App() {
 
             {/* Mobile Users View */}
             {mobileView === 'users' && (
-              <div className="flex-1 flex flex-col overflow-hidden bg-gradient-to-b from-[#1a1a2e] to-[#16162a]">
+              <div className="flex-1 flex flex-col overflow-hidden bg-gradient-to-b from-[#1a1a2e] to-[#16162a] pb-20">
                 <UserList
                   connectionState={connectionState}
                   onlineUsers={onlineUsers}

@@ -262,7 +262,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
     return (
       <div className="flex-1 flex flex-col bg-gradient-to-b from-[#1a1a2e] to-[#16162a] h-full w-full max-w-full overflow-hidden">
         {/* Mobile Header - with top padding for status bar */}
-        <div className="px-4 py-3 pt-6 border-b border-white/5 flex items-center shrink-0 bg-[#1a1a2e]/80 backdrop-blur-sm">
+        <div
+          className="px-4 py-3 border-b border-white/5 flex items-center shrink-0 bg-[#1a1a2e]/80 backdrop-blur-sm"
+          style={{ paddingTop: '3.5rem' }}
+        >
           <div className={`w-9 h-9 rounded-xl flex items-center justify-center mr-3 ${
             channel.type === ChannelType.AI
               ? 'bg-gradient-to-br from-purple-500 to-indigo-600'

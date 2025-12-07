@@ -46,8 +46,8 @@ export const ReportIssueModal: React.FC<ReportIssueModalProps> = ({ onClose, onS
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[100] bg-gradient-to-b from-[#1a1a2e] to-[#0f0f1a] flex flex-col"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-white/5">
+        {/* Header - with top padding for status bar */}
+        <div className="flex items-center justify-between px-4 py-4 border-b border-white/5" style={{ paddingTop: '3.5rem' }}>
           <motion.button
             onClick={onClose}
             whileTap={{ scale: 0.95 }}

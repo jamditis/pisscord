@@ -91,8 +91,8 @@ export const UserList: React.FC<UserListProps> = ({
   if (isMobile) {
     return (
       <div className="flex-1 flex flex-col bg-gradient-to-b from-[#1a1a2e] to-[#16162a] overflow-hidden">
-        {/* Header */}
-        <div className="px-4 pt-4 pb-2">
+        {/* Header - with top padding for status bar */}
+        <div className="px-4 pb-2" style={{ paddingTop: '3.5rem' }}>
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-white">Online Users</h2>
             <div className="flex items-center gap-2">
