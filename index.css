@@ -139,3 +139,224 @@ html, body {
 .keyboard-visible .message-area {
   max-height: calc(100vh - 300px);
 }
+
+/* ============================================
+   ENHANCED MOBILE UI STYLES (Glassmorphism)
+   ============================================ */
+
+/* Smooth view transitions */
+@media (max-width: 768px) {
+  .mobile-view-enter {
+    animation: slideInFromRight 0.25s ease-out;
+  }
+
+  .mobile-view-exit {
+    animation: slideOutToLeft 0.2s ease-in;
+  }
+
+  @keyframes slideInFromRight {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slideOutToLeft {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+  }
+}
+
+/* Native-feeling button press feedback */
+.native-press {
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.native-press:active {
+  transform: scale(0.96);
+}
+
+/* Smooth pulse animation for live indicators */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Glassmorphism blur fallback for older devices */
+@supports not (backdrop-filter: blur(24px)) {
+  .backdrop-blur-xl {
+    background: rgba(18, 18, 26, 0.98) !important;
+  }
+}
+
+/* Mobile header safe area */
+@media (max-width: 768px) {
+  .mobile-header {
+    padding-top: max(env(safe-area-inset-top), 12px);
+  }
+}
+
+/* Enhanced touch targets for mobile nav */
+@media (max-width: 768px) {
+  .mobile-nav-button {
+    min-height: 56px;
+    min-width: 56px;
+  }
+}
+
+/* Smooth scrolling for mobile */
+@media (max-width: 768px) {
+  .smooth-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+}
+
+/* Channel list item hover/active states for mobile */
+@media (max-width: 768px) {
+  .channel-item-mobile {
+    transition: background-color 0.15s ease;
+  }
+
+  .channel-item-mobile:active {
+    background-color: rgba(240, 225, 48, 0.1);
+  }
+}
+
+/* Prevent text selection during swipe gestures */
+@media (max-width: 768px) {
+  .swipe-area {
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: pan-y;
+  }
+}
+
+/* iOS status bar overlay fix */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .ios-safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* ============================================
+   KEYBOARD HANDLING
+   ============================================ */
+
+/* When keyboard is visible, adjust layout */
+@media (max-width: 768px) {
+  /* Visual viewport API support */
+  .keyboard-aware {
+    height: 100%;
+    height: 100dvh; /* Dynamic viewport height */
+  }
+
+  /* Input focus state - scroll into view */
+  input:focus,
+  textarea:focus {
+    scroll-margin-bottom: 100px;
+  }
+
+  /* Prevent iOS zoom on input focus */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Bottom sheet adjust when keyboard opens */
+.bottom-sheet-keyboard-visible {
+  transform: translateY(-50vh);
+  transition: transform 0.3s ease-out;
+}
+
+/* ============================================
+   ANIMATION UTILITIES
+   ============================================ */
+
+/* Fade in animation */
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Slide up animation */
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scale in animation */
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ============================================
+   MOBILE DARK THEME OVERRIDES
+   ============================================ */
+
+@media (max-width: 768px) {
+  /* Darker mobile background */
+  .mobile-dark-bg {
+    background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
+  }
+
+  /* Select dropdown styling for mobile */
+  select {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 12px 16px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23ffffff'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+  }
+
+  select option {
+    background-color: #1a1a2e;
+    color: white;
+  }
+}

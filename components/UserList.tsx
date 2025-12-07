@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ConnectionState, PresenceUser } from '../types';
+import { useIsMobile } from '../hooks/useIsMobile';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface UserListProps {
   connectionState: ConnectionState;
@@ -10,6 +13,77 @@ interface UserListProps {
   onToggleCollapse?: () => void;
 }
 
+// Mobile user card component
+const MobileUserCard: React.FC<{
+  user: PresenceUser;
+  isMe?: boolean;
+  onConnect?: () => void;
+  themeColors: { primary: string; glow: string; glowLight: string; glowFaint: string };
+}> = ({ user, isMe, onConnect, themeColors }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      whileTap={!isMe ? { scale: 0.98 } : undefined}
+      onClick={!isMe ? onConnect : undefined}
+      className="flex items-center p-3 rounded-xl mb-2 transition-all"
+      style={isMe ? {
+        background: `linear-gradient(to right, ${themeColors.glowFaint}, transparent)`,
+        border: `1px solid ${themeColors.glowLight}`,
+      } : {
+        background: 'rgba(255, 255, 255, 0.05)',
+        border: '1px solid rgba(255, 255, 255, 0.05)',
+      }}
+    >
+      {/* Avatar with status */}
+      <div className="relative">
+        <div
+          className="w-11 h-11 rounded-full flex items-center justify-center text-white overflow-hidden shadow-lg"
+          style={{ backgroundColor: user.photoURL ? 'transparent' : (user.color || '#5865F2') }}
+        >
+          {user.photoURL ? (
+            <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <i className="fas fa-user text-lg"></i>
+          )}
+        </div>
+        <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-[#1a1a2e] ${
+          isMe ? 'bg-green-500' : 'bg-green-500'
+        }`}></div>
+      </div>
+
+      {/* User info */}
+      <div className="ml-3 flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-white font-medium text-sm truncate">{user.displayName}</span>
+          {isMe && (
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded-full uppercase font-bold"
+              style={{
+                background: themeColors.glowLight,
+                color: themeColors.primary,
+              }}
+            >
+              You
+            </span>
+          )}
+        </div>
+        <div className="text-xs text-white/50 truncate">
+          {user.statusMessage || (isMe ? 'Online' : 'Tap to call')}
+        </div>
+      </div>
+
+      {/* Call button for others */}
+      {!isMe && (
+        <div className="ml-2 w-9 h-9 rounded-full bg-green-500/20 flex items-center justify-center">
+          <i className="fas fa-phone-alt text-green-400 text-sm"></i>
+        </div>
+      )}
+    </motion.div>
+  );
+};
+
 export const UserList: React.FC<UserListProps> = ({
   connectionState,
   onlineUsers,
@@ -18,9 +92,97 @@ export const UserList: React.FC<UserListProps> = ({
   isCollapsed = false,
   onToggleCollapse
 }) => {
+  const isMobile = useIsMobile();
+  const { colors } = useTheme();
+
   // Filter out self from the main list
   const others = onlineUsers.filter(u => u.peerId !== myPeerId);
   const me = onlineUsers.find(u => u.peerId === myPeerId);
+
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <div className="flex-1 flex flex-col bg-gradient-to-b from-[#1a1a2e] to-[#16162a] overflow-hidden">
+        {/* Header - with top padding for status bar */}
+        <div className="px-4 pb-2" style={{ paddingTop: '3.5rem' }}>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-white">Online Users</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-white/50 bg-white/5 px-2 py-1 rounded-full">
+                {onlineUsers.length} online
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* User list */}
+        <div className="flex-1 overflow-y-auto px-4 pb-4">
+          {/* Current user */}
+          {me && (
+            <div className="mb-4">
+              <div className="text-xs font-bold text-white/40 uppercase tracking-wider mb-2 px-1">
+                Your Profile
+              </div>
+              <MobileUserCard user={me} isMe themeColors={colors} />
+            </div>
+          )}
+
+          {/* Other users */}
+          <div>
+            <div className="text-xs font-bold text-white/40 uppercase tracking-wider mb-2 px-1">
+              Other Users — {others.length}
+            </div>
+
+            {others.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-8"
+              >
+                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3">
+                  <i className="fas fa-user-friends text-2xl text-white/20"></i>
+                </div>
+                <p className="text-white/40 text-sm">No one else is online</p>
+                <p className="text-white/25 text-xs mt-1">Invite friends to join!</p>
+              </motion.div>
+            ) : (
+              <AnimatePresence mode="popLayout">
+                {others.map((user, index) => (
+                  <motion.div
+                    key={user.peerId}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <MobileUserCard
+                      user={user}
+                      onConnect={() => onConnectToUser(user.peerId)}
+                      themeColors={colors}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            )}
+          </div>
+
+          {/* P2P status indicator */}
+          {connectionState === ConnectionState.CONNECTED && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 p-3 rounded-xl bg-green-500/10 border border-green-500/20"
+            >
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <span className="text-green-400 text-sm font-medium">P2P Connection Active</span>
+              </div>
+            </motion.div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // Collapsed view - just a toggle button
   if (isCollapsed) {

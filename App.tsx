@@ -13,13 +13,17 @@ import { ToastContainer, useToast } from './components/Toast';
 import { ConfirmModal } from './components/ConfirmModal';
 import { ContextMenu, useContextMenu } from './components/ContextMenu';
 import { JoinRequestPanel } from './components/JoinRequestPanel';
-import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs, JoinRequest } from './types';
+import { MobileNav, MobileView } from './components/MobileNav';
+import { SplashScreen } from './components/SplashScreen';
+import { useIsMobile } from './hooks/useIsMobile';
+import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs, JoinRequest, AppSettings, AppTheme } from './types';
+import { ThemeProvider, themeColors } from './contexts/ThemeContext';
 import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages, cleanupOldMessages, getPissbotConfig, PissbotConfig, checkForMOTD, sendJoinRequest, subscribeToJoinRequests, removeJoinRequest } from './services/firebase';
 import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
 import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService } from './services/platform';
 
-const APP_VERSION = "1.1.1";
+const APP_VERSION = "1.3.0";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
@@ -48,6 +52,10 @@ const DEFAULT_DEVICES: DeviceSettings = {
     audioInputId: "",
     audioOutputId: "",
     videoInputId: ""
+};
+
+const DEFAULT_APP_SETTINGS: AppSettings = {
+    theme: 'purple'
 };
 
 export default function App() {
@@ -92,6 +100,10 @@ export default function App() {
       const saved = localStorage.getItem('pisscord_devices');
       return saved ? JSON.parse(saved) : DEFAULT_DEVICES;
   });
+  const [appSettings, setAppSettings] = useState<AppSettings>(() => {
+      const saved = localStorage.getItem('pisscord_app_settings');
+      return saved ? JSON.parse(saved) : DEFAULT_APP_SETTINGS;
+  });
   const [onlineUsers, setOnlineUsers] = useState<PresenceUser[]>([]);
   const [logs, setLogs] = useState<AppLogs[]>([]);
   
@@ -119,6 +131,9 @@ export default function App() {
 
   // --- UI STATE ---
   const [isUserListCollapsed, setIsUserListCollapsed] = useState(false);
+  const [mobileView, setMobileView] = useState<MobileView>('chat');
+  const [showSplash, setShowSplash] = useState(true);
+  const isMobile = useIsMobile();
 
   // --- REFS ---
   const peerInstance = useRef<Peer | null>(null);
@@ -278,16 +293,44 @@ export default function App() {
       });
     }
 
-    // Init PeerJS
+    // Init PeerJS with ICE server configuration for mobile/NAT traversal
     if (peerInstance.current) peerInstance.current.destroy();
-    
-    const peer = new Peer({ debug: 1 });
+
+    const peer = new Peer({
+      debug: 2, // More verbose logging for debugging
+      config: {
+        iceServers: [
+          // Google STUN servers
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          // OpenRelay free TURN servers for NAT traversal
+          {
+            urls: 'turn:openrelay.metered.ca:80',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          },
+          {
+            urls: 'turn:openrelay.metered.ca:443',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          },
+          {
+            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          }
+        ]
+      }
+    });
     
     peer.on('open', (id) => {
       if (!isMountedRef.current) return;
       setMyPeerId(id);
       registerPresence(id, userProfile);
       log(`PeerJS initialized with ID: ${id}`);
+      log(`Platform: ${navigator.userAgent}`, 'info');
+      log(`MediaDevices available: ${!!navigator.mediaDevices}`, 'info');
     });
 
     peer.on('error', (err) => {
@@ -295,7 +338,16 @@ export default function App() {
         if (err.type === 'peer-unavailable') {
             toast.error("Connection Failed", "Peer unavailable. They may have disconnected.");
             cleanupCall();
+        } else if (err.type === 'network') {
+            toast.error("Network Error", "Could not connect to signaling server.");
+        } else if (err.type === 'disconnected' || err.type === 'server-error') {
+            toast.error("Connection Lost", "Lost connection to server. Reconnecting...");
         }
+    });
+
+    peer.on('disconnected', () => {
+        log('PeerJS disconnected from signaling server, attempting reconnect...', 'error');
+        peer.reconnect();
     });
 
     peer.on('call', async (call) => {
@@ -399,6 +451,24 @@ export default function App() {
         return stream;
     } catch (err: any) {
         log(`GetUserMedia Error: ${err.name} - ${err.message}`, 'error');
+        // Provide more helpful error messages for common mobile issues
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            toast.error("Permission Denied", "Camera/microphone access was denied. Please allow access in your device settings.");
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+            toast.error("No Device Found", "No camera or microphone found. Please connect a device.");
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+            toast.error("Device In Use", "Camera/microphone is being used by another app.");
+        } else if (err.name === 'OverconstrainedError') {
+            log("Device constraints too strict, retrying with basic constraints...", 'webrtc');
+            // Fallback: try with minimal constraints
+            try {
+                const fallbackStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                setMyStream(fallbackStream);
+                return fallbackStream;
+            } catch (fallbackErr: any) {
+                log(`Fallback also failed: ${fallbackErr.message}`, 'error');
+            }
+        }
         throw err;
     }
   };
@@ -907,6 +977,11 @@ export default function App() {
       // Re-trigger stream if connected? Ideally yes, but for now user must reconnect.
   };
 
+  const handleSaveAppSettings = (newSettings: AppSettings) => {
+      setAppSettings(newSettings);
+      localStorage.setItem('pisscord_app_settings', JSON.stringify(newSettings));
+  };
+
   const handleCheckForUpdates = () => {
       log("Manually checking for updates...", 'info');
       checkForUpdates(APP_VERSION).then(update => {
@@ -996,13 +1071,19 @@ export default function App() {
   };
 
   return (
+    <ThemeProvider initialTheme={appSettings.theme}>
     <div
       className="flex w-full h-screen bg-discord-main text-discord-text overflow-hidden font-sans relative"
       onContextMenu={handleContextMenu}
     >
+      {/* Splash Screen */}
+      {showSplash && (
+        <SplashScreen theme={appSettings.theme} onComplete={() => setShowSplash(false)} />
+      )}
+
       {/* Global Audio Elements for persistent audio across views */}
       {Array.from(remoteStreams.entries()).map(([peerId, stream]) => (
-          <audio 
+          <audio
             key={peerId}
             ref={el => {
                 if (el) {
@@ -1013,11 +1094,19 @@ export default function App() {
                         (el as any).setSinkId(deviceSettings.audioOutputId)
                             .catch((e: any) => console.error("Failed to set audio output", e));
                     }
+                    // Mobile browsers require explicit play() call
+                    const playPromise = el.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch((e: any) => {
+                            log(`Audio play failed for ${peerId}: ${e.message}. Will retry on user interaction.`, 'error');
+                        });
+                    }
                 }
             }}
-            autoPlay 
-            playsInline 
-            className="hidden" 
+            autoPlay
+            playsInline
+            muted={false}
+            className="hidden"
           />
       ))}
 
@@ -1036,10 +1125,12 @@ export default function App() {
           <UserSettingsModal
             currentProfile={userProfile}
             currentDevices={deviceSettings}
+            currentAppSettings={appSettings}
             logs={logs}
             appVersion={APP_VERSION}
             onSaveProfile={handleSaveProfile}
             onSaveDevices={handleSaveDevices}
+            onSaveAppSettings={handleSaveAppSettings}
             onCheckForUpdates={handleCheckForUpdates}
             onClose={() => setShowSettingsModal(false)}
             onShowToast={(type, title, message) => toast[type](title, message)}
@@ -1062,102 +1153,325 @@ export default function App() {
           />
       )}
 
-      <Sidebar onServerClick={() => setActiveChannelId('1')} />
-      
-      {/* CHANNEL LIST + VOICE CONTROLS */}
-      <div className="flex flex-col h-full bg-discord-sidebar w-60">
-          <ChannelList
-            channels={INITIAL_CHANNELS}
-            activeChannelId={activeChannelId}
-            activeVoiceChannelId={activeVoiceChannelId}
-            onlineUsers={onlineUsers}
-            onSelectChannel={(id) => {
-                const ch = INITIAL_CHANNELS.find(c => c.id === id);
-                if (ch?.type === ChannelType.VOICE) {
-                    // If already connected to this voice channel, just switch view (don't rejoin)
-                    if (activeVoiceChannelId === id && connectionState === ConnectionState.CONNECTED) {
+      {/* ============ MOBILE LAYOUT ============ */}
+      {isMobile ? (
+        <>
+          {/* Mobile Main Content Area - safe area padding for status bar and nav bar */}
+          <div
+            className="flex-1 flex flex-col bg-[#16162a]"
+          >
+            {/* Mobile Channel List View */}
+            {mobileView === 'channels' && (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Glassmorphism Header - with top padding for status bar */}
+                <div
+                  className="relative px-5 py-4"
+                  style={{
+                    paddingTop: '3.5rem',
+                    background: 'linear-gradient(to bottom, rgba(18, 18, 26, 0.98), rgba(18, 18, 26, 0.92))',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                  }}
+                >
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-px"
+                    style={{ background: 'linear-gradient(90deg, transparent, rgba(240, 225, 48, 0.2), transparent)' }}
+                  />
+                  <h2
+                    className="font-semibold text-lg tracking-wide"
+                    style={{ color: '#f0e130' }}
+                  >
+                    Channels
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-0.5">Browse text and voice channels</p>
+                </div>
+                <div className="flex-1 bg-discord-sidebar overflow-y-auto pb-20">
+                  <ChannelList
+                  channels={INITIAL_CHANNELS}
+                  activeChannelId={activeChannelId}
+                  activeVoiceChannelId={activeVoiceChannelId}
+                  onlineUsers={onlineUsers}
+                  onSelectChannel={(id) => {
+                    const ch = INITIAL_CHANNELS.find(c => c.id === id);
+                    if (ch?.type === ChannelType.VOICE) {
+                      if (activeVoiceChannelId === id && connectionState === ConnectionState.CONNECTED) {
                         setActiveChannelId(id);
-                    } else {
+                        setMobileView('voice');
+                      } else {
                         joinVoiceChannel(id);
+                        setMobileView('voice');
+                      }
+                    } else {
+                      setActiveChannelId(id);
+                      setMobileView('chat');
                     }
-                } else {
-                    setActiveChannelId(id);
-                }
-            }}
+                  }}
+                  connectionState={connectionState}
+                  peerId={myPeerId}
+                  userProfile={userProfile}
+                  onCopyId={copyId}
+                  onOpenSettings={() => setShowSettingsModal(true)}
+                  onDisconnect={cleanupCall}
+                  isAudioEnabled={isAudioEnabled}
+                  isVideoEnabled={isVideoEnabled}
+                  onToggleAudio={toggleAudio}
+                  onToggleVideo={toggleVideo}
+                  remoteVolume={remoteVolume}
+                  onVolumeChange={setRemoteVolume}
+                  onShowToast={(type, title, message) => toast[type](title, message)}
+                />
+                </div>
+              </div>
+            )}
+
+            {/* Mobile Chat View */}
+            {mobileView === 'chat' && (() => {
+              // If activeChannel is a voice channel, show general text channel instead
+              const chatChannel = activeChannel.type === ChannelType.VOICE
+                ? INITIAL_CHANNELS.find(c => c.id === '1')! // Default to general
+                : activeChannel;
+              return (
+              <div className="flex-1 flex flex-col min-h-0">
+                {/* Glassmorphism Chat Header */}
+                <div
+                  className="relative flex items-center px-4 py-3"
+                  style={{
+                    background: 'linear-gradient(to bottom, rgba(18, 18, 26, 0.98), rgba(18, 18, 26, 0.92))',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                  }}
+                >
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-px"
+                    style={{ background: `linear-gradient(90deg, transparent, ${themeColors[appSettings.theme].glowLight}, transparent)` }}
+                  />
+                  <button
+                    onClick={() => setMobileView('channels')}
+                    className="mr-3 p-2.5 -ml-2 rounded-xl transition-all duration-200 active:scale-95"
+                    style={{ background: 'rgba(255, 255, 255, 0.06)' }}
+                  >
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                  </button>
+                  <div className="flex items-center">
+                    <span
+                      className="text-lg mr-1.5"
+                      style={{ color: chatChannel.type === 'AI' ? '#22c55e' : themeColors[appSettings.theme].primary }}
+                    >
+                      {chatChannel.type === 'AI' ? '🤖' : '#'}
+                    </span>
+                    <span className="font-semibold text-white">{chatChannel.name}</span>
+                  </div>
+                </div>
+                <ChatArea
+                  channel={chatChannel}
+                  messages={messages[chatChannel.id] || []}
+                  onlineUsers={onlineUsers}
+                  onSendMessage={(text, attachment) => addMessage(chatChannel.id, text, userProfile.displayName, false, attachment)}
+                  onSendAIMessage={(text, response) => addMessage(chatChannel.id, response, 'Pissbot', true)}
+                  onOpenReportModal={() => setShowReportModal(true)}
+                />
+              </div>
+              );
+            })()}
+
+            {/* Mobile Voice View */}
+            {mobileView === 'voice' && (
+              <div className="flex-1 flex flex-col min-h-0">
+                {/* Glassmorphism Voice Header - with top padding for status bar */}
+                <div
+                  className="relative flex items-center justify-between px-4 py-3"
+                  style={{
+                    paddingTop: '3.5rem',
+                    background: 'linear-gradient(to bottom, rgba(18, 18, 26, 0.98), rgba(18, 18, 26, 0.92))',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                  }}
+                >
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-px"
+                    style={{ background: `linear-gradient(90deg, transparent, ${connectionState === ConnectionState.CONNECTED ? 'rgba(34, 197, 94, 0.3)' : themeColors[appSettings.theme].glowLight}, transparent)` }}
+                  />
+                  <div className="flex items-center">
+                    <div
+                      className="w-2.5 h-2.5 rounded-full mr-3"
+                      style={{
+                        background: connectionState === ConnectionState.CONNECTED ? '#22c55e' : '#6b7280',
+                        boxShadow: connectionState === ConnectionState.CONNECTED ? '0 0 8px rgba(34, 197, 94, 0.6)' : 'none',
+                        animation: connectionState === ConnectionState.CONNECTED ? 'pulse 2s infinite' : 'none',
+                      }}
+                    />
+                    <div>
+                      <span
+                        className="font-semibold"
+                        style={{ color: connectionState === ConnectionState.CONNECTED ? '#22c55e' : themeColors[appSettings.theme].primary }}
+                      >
+                        {connectionState === ConnectionState.CONNECTED ? 'Voice Connected' : 'Voice Lounge'}
+                      </span>
+                      {connectionState === ConnectionState.CONNECTED && (
+                        <p className="text-xs text-gray-500">{remoteStreams.size + 1} in call</p>
+                      )}
+                    </div>
+                  </div>
+                  {connectionState === ConnectionState.CONNECTED && (
+                    <button
+                      onClick={cleanupCall}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95"
+                      style={{
+                        background: 'rgba(239, 68, 68, 0.15)',
+                        color: '#ef4444',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                      }}
+                    >
+                      Leave
+                    </button>
+                  )}
+                </div>
+                <div className="flex-1 relative pb-20">
+                  <VoiceStage
+                  myStream={myStream}
+                  remoteStreams={remoteStreams}
+                  connectionState={connectionState}
+                  onToggleVideo={toggleVideo}
+                  onToggleAudio={toggleAudio}
+                  onShareScreen={handleShareScreen}
+                  onConnect={handleStartCall}
+                  onDisconnect={cleanupCall}
+                  isVideoEnabled={isVideoEnabled}
+                  isAudioEnabled={isAudioEnabled}
+                  isScreenSharing={isScreenSharing}
+                  myPeerId={myPeerId}
+                  userProfile={userProfile}
+                  onlineUsers={onlineUsers}
+                  onIdCopied={() => toast.success("Copied!", "Send this ID to your friend so they can call you.")}
+                />
+                <JoinRequestPanel
+                    requests={pendingJoinRequests}
+                    onApprove={handleApproveJoinRequest}
+                    onDeny={handleDenyJoinRequest}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Mobile Users View */}
+            {mobileView === 'users' && (
+              <div className="flex-1 flex flex-col overflow-hidden bg-gradient-to-b from-[#1a1a2e] to-[#16162a] pb-20">
+                <UserList
+                  connectionState={connectionState}
+                  onlineUsers={onlineUsers}
+                  myPeerId={myPeerId}
+                  onConnectToUser={handleStartCall}
+                  isCollapsed={false}
+                  onToggleCollapse={() => {}}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Mobile Bottom Navigation */}
+          <MobileNav
+            activeView={mobileView}
+            onViewChange={setMobileView}
             connectionState={connectionState}
-            peerId={myPeerId}
-            userProfile={userProfile}
-            onCopyId={copyId}
             onOpenSettings={() => setShowSettingsModal(true)}
-            onDisconnect={cleanupCall}
-            isAudioEnabled={isAudioEnabled}
-            isVideoEnabled={isVideoEnabled}
-            onToggleAudio={toggleAudio}
-            onToggleVideo={toggleVideo}
-            remoteVolume={remoteVolume}
-            onVolumeChange={setRemoteVolume}
-            onShowToast={(type, title, message) => toast[type](title, message)}
           />
-      </div>
-      
-      {/* MAIN VIEW AREA */}
-      {/* Render Voice Stage if active channel is VOICE OR if we are just "viewing" the call */}
-      {activeChannel.type === ChannelType.VOICE ? (
-         <div className="flex-1 flex min-w-0">
-           <div className="flex-1 relative">
-             <VoiceStage
-                myStream={myStream}
-                remoteStreams={remoteStreams}
-                connectionState={connectionState}
-                onToggleVideo={toggleVideo}
-                onToggleAudio={toggleAudio}
-                onShareScreen={handleShareScreen}
-                onConnect={handleStartCall}
-                onDisconnect={cleanupCall}
-                isVideoEnabled={isVideoEnabled}
-                isAudioEnabled={isAudioEnabled}
-                isScreenSharing={isScreenSharing}
-                myPeerId={myPeerId}
-                userProfile={userProfile}
-                onlineUsers={onlineUsers}
-                onIdCopied={() => toast.success("Copied!", "Send this ID to your friend so they can call you.")}
-             />
-             {/* Join Request Panel - shown when there are pending requests */}
-             <JoinRequestPanel
-               requests={pendingJoinRequests}
-               onApprove={handleApproveJoinRequest}
-               onDeny={handleDenyJoinRequest}
-             />
-           </div>
-           {/* User list in voice channel - collapsible */}
-           <UserList
-              connectionState={connectionState}
-              onlineUsers={onlineUsers}
-              myPeerId={myPeerId}
-              onConnectToUser={handleStartCall}
-              isCollapsed={isUserListCollapsed}
-              onToggleCollapse={() => setIsUserListCollapsed(!isUserListCollapsed)}
-           />
-         </div>
+        </>
       ) : (
-         <div className="flex-1 flex min-w-0">
-             <ChatArea
-                channel={activeChannel}
-                messages={messages[activeChannel.id] || []}
+        /* ============ DESKTOP LAYOUT ============ */
+        <>
+          <Sidebar onServerClick={() => setActiveChannelId('1')} />
+
+          {/* CHANNEL LIST + VOICE CONTROLS */}
+          <div className="flex flex-col h-full bg-discord-sidebar w-60">
+              <ChannelList
+                channels={INITIAL_CHANNELS}
+                activeChannelId={activeChannelId}
+                activeVoiceChannelId={activeVoiceChannelId}
                 onlineUsers={onlineUsers}
-                onSendMessage={(text, attachment) => addMessage(activeChannel.id, text, userProfile.displayName, false, attachment)}
-                onSendAIMessage={(text, response) => addMessage(activeChannel.id, response, 'Pissbot', true)}
-                onOpenReportModal={() => setShowReportModal(true)}
-             />
-             <UserList
+                onSelectChannel={(id) => {
+                    const ch = INITIAL_CHANNELS.find(c => c.id === id);
+                    if (ch?.type === ChannelType.VOICE) {
+                        if (activeVoiceChannelId === id && connectionState === ConnectionState.CONNECTED) {
+                            setActiveChannelId(id);
+                        } else {
+                            joinVoiceChannel(id);
+                        }
+                    } else {
+                        setActiveChannelId(id);
+                    }
+                }}
                 connectionState={connectionState}
-                onlineUsers={onlineUsers}
-                myPeerId={myPeerId}
-                onConnectToUser={handleStartCall}
-                isCollapsed={isUserListCollapsed}
-                onToggleCollapse={() => setIsUserListCollapsed(!isUserListCollapsed)}
-             />
-         </div>
+                peerId={myPeerId}
+                userProfile={userProfile}
+                onCopyId={copyId}
+                onOpenSettings={() => setShowSettingsModal(true)}
+                onDisconnect={cleanupCall}
+                isAudioEnabled={isAudioEnabled}
+                isVideoEnabled={isVideoEnabled}
+                onToggleAudio={toggleAudio}
+                onToggleVideo={toggleVideo}
+                remoteVolume={remoteVolume}
+                onVolumeChange={setRemoteVolume}
+                onShowToast={(type, title, message) => toast[type](title, message)}
+              />
+          </div>
+
+          {/* MAIN VIEW AREA */}
+          {activeChannel.type === ChannelType.VOICE ? (
+             <div className="flex-1 flex min-w-0">
+               <div className="flex-1 relative">
+                 <VoiceStage
+                    myStream={myStream}
+                    remoteStreams={remoteStreams}
+                    connectionState={connectionState}
+                    onToggleVideo={toggleVideo}
+                    onToggleAudio={toggleAudio}
+                    onShareScreen={handleShareScreen}
+                    onConnect={handleStartCall}
+                    onDisconnect={cleanupCall}
+                    isVideoEnabled={isVideoEnabled}
+                    isAudioEnabled={isAudioEnabled}
+                    isScreenSharing={isScreenSharing}
+                    myPeerId={myPeerId}
+                    userProfile={userProfile}
+                    onlineUsers={onlineUsers}
+                    onIdCopied={() => toast.success("Copied!", "Send this ID to your friend so they can call you.")}
+                 />
+                 <JoinRequestPanel
+                   requests={pendingJoinRequests}
+                   onApprove={handleApproveJoinRequest}
+                   onDeny={handleDenyJoinRequest}
+                 />
+               </div>
+               <UserList
+                  connectionState={connectionState}
+                  onlineUsers={onlineUsers}
+                  myPeerId={myPeerId}
+                  onConnectToUser={handleStartCall}
+                  isCollapsed={isUserListCollapsed}
+                  onToggleCollapse={() => setIsUserListCollapsed(!isUserListCollapsed)}
+               />
+             </div>
+          ) : (
+             <div className="flex-1 flex min-w-0">
+                 <ChatArea
+                    channel={activeChannel}
+                    messages={messages[activeChannel.id] || []}
+                    onlineUsers={onlineUsers}
+                    onSendMessage={(text, attachment) => addMessage(activeChannel.id, text, userProfile.displayName, false, attachment)}
+                    onSendAIMessage={(text, response) => addMessage(activeChannel.id, response, 'Pissbot', true)}
+                    onOpenReportModal={() => setShowReportModal(true)}
+                 />
+                 <UserList
+                    connectionState={connectionState}
+                    onlineUsers={onlineUsers}
+                    myPeerId={myPeerId}
+                    onConnectToUser={handleStartCall}
+                    isCollapsed={isUserListCollapsed}
+                    onToggleCollapse={() => setIsUserListCollapsed(!isUserListCollapsed)}
+                 />
+             </div>
+          )}
+        </>
       )}
 
       {/* Toast Notifications */}
@@ -1193,5 +1507,6 @@ export default function App() {
         />
       )}
     </div>
+    </ThemeProvider>
   );
 }

@@ -72,6 +72,12 @@ export interface AppLogs {
     message: string;
 }
 
+export type AppTheme = 'gold' | 'purple';
+
+export interface AppSettings {
+    theme: AppTheme;
+}
+
 // Electron API types
 declare global {
   interface Window {
