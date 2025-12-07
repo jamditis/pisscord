@@ -284,16 +284,44 @@ export default function App() {
       });
     }
 
-    // Init PeerJS
+    // Init PeerJS with ICE server configuration for mobile/NAT traversal
     if (peerInstance.current) peerInstance.current.destroy();
-    
-    const peer = new Peer({ debug: 1 });
+
+    const peer = new Peer({
+      debug: 2, // More verbose logging for debugging
+      config: {
+        iceServers: [
+          // Google STUN servers
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          // OpenRelay free TURN servers for NAT traversal
+          {
+            urls: 'turn:openrelay.metered.ca:80',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          },
+          {
+            urls: 'turn:openrelay.metered.ca:443',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          },
+          {
+            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+          }
+        ]
+      }
+    });
     
     peer.on('open', (id) => {
       if (!isMountedRef.current) return;
       setMyPeerId(id);
       registerPresence(id, userProfile);
       log(`PeerJS initialized with ID: ${id}`);
+      log(`Platform: ${navigator.userAgent}`, 'info');
+      log(`MediaDevices available: ${!!navigator.mediaDevices}`, 'info');
     });
 
     peer.on('error', (err) => {
@@ -301,7 +329,16 @@ export default function App() {
         if (err.type === 'peer-unavailable') {
             toast.error("Connection Failed", "Peer unavailable. They may have disconnected.");
             cleanupCall();
+        } else if (err.type === 'network') {
+            toast.error("Network Error", "Could not connect to signaling server.");
+        } else if (err.type === 'disconnected' || err.type === 'server-error') {
+            toast.error("Connection Lost", "Lost connection to server. Reconnecting...");
         }
+    });
+
+    peer.on('disconnected', () => {
+        log('PeerJS disconnected from signaling server, attempting reconnect...', 'error');
+        peer.reconnect();
     });
 
     peer.on('call', async (call) => {
@@ -405,6 +442,24 @@ export default function App() {
         return stream;
     } catch (err: any) {
         log(`GetUserMedia Error: ${err.name} - ${err.message}`, 'error');
+        // Provide more helpful error messages for common mobile issues
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            toast.error("Permission Denied", "Camera/microphone access was denied. Please allow access in your device settings.");
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+            toast.error("No Device Found", "No camera or microphone found. Please connect a device.");
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+            toast.error("Device In Use", "Camera/microphone is being used by another app.");
+        } else if (err.name === 'OverconstrainedError') {
+            log("Device constraints too strict, retrying with basic constraints...", 'webrtc');
+            // Fallback: try with minimal constraints
+            try {
+                const fallbackStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                setMyStream(fallbackStream);
+                return fallbackStream;
+            } catch (fallbackErr: any) {
+                log(`Fallback also failed: ${fallbackErr.message}`, 'error');
+            }
+        }
         throw err;
     }
   };
@@ -1013,7 +1068,7 @@ export default function App() {
 
       {/* Global Audio Elements for persistent audio across views */}
       {Array.from(remoteStreams.entries()).map(([peerId, stream]) => (
-          <audio 
+          <audio
             key={peerId}
             ref={el => {
                 if (el) {
@@ -1024,11 +1079,19 @@ export default function App() {
                         (el as any).setSinkId(deviceSettings.audioOutputId)
                             .catch((e: any) => console.error("Failed to set audio output", e));
                     }
+                    // Mobile browsers require explicit play() call
+                    const playPromise = el.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch((e: any) => {
+                            log(`Audio play failed for ${peerId}: ${e.message}. Will retry on user interaction.`, 'error');
+                        });
+                    }
                 }
             }}
-            autoPlay 
-            playsInline 
-            className="hidden" 
+            autoPlay
+            playsInline
+            muted={false}
+            className="hidden"
           />
       ))}
 

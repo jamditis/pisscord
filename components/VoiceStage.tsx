@@ -1,8 +1,118 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConnectionState, UserProfile, PresenceUser } from '../types';
 import { ClipboardService, HapticsService, Platform } from '../services/platform';
 import { useIsMobile } from '../hooks/useIsMobile';
+
+// Memoized Mobile Video Tile - defined OUTSIDE VoiceStage to prevent recreation
+const MobileVideoTile = memo(({
+  userId,
+  stream,
+  user,
+  isLocal,
+  isSpeaking,
+  hasVideo,
+  isSpotlighted,
+  isSmall,
+  isScreenSharing,
+  onTap
+}: {
+  userId: string;
+  stream: MediaStream | null;
+  user: { displayName: string; color: string; photoURL?: string } | undefined;
+  isLocal: boolean;
+  isSpeaking: boolean;
+  hasVideo: boolean;
+  isSpotlighted?: boolean;
+  isSmall?: boolean;
+  isScreenSharing?: boolean;
+  onTap?: () => void;
+}) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Attach stream to video element
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !stream) return;
+
+    if (el.srcObject !== stream) {
+      el.srcObject = stream;
+      // Mobile WebView needs explicit play
+      el.play().catch(e => console.log(`Video play error: ${e.message}`));
+    }
+
+    return () => {
+      // Cleanup: pause and clear srcObject when unmounting
+      el.pause();
+      el.srcObject = null;
+    };
+  }, [stream]);
+
+  return (
+    <div
+      onClick={onTap}
+      className={`relative rounded-2xl overflow-hidden ${
+        isSmall ? 'w-20 h-20' : 'w-full h-full'
+      }`}
+      style={{
+        background: 'linear-gradient(135deg, #2a2a4a 0%, #1a1a2e 100%)',
+        boxShadow: isSpeaking
+          ? '0 0 0 3px rgba(168, 85, 247, 0.8), 0 0 20px rgba(168, 85, 247, 0.4)'
+          : '0 4px 20px rgba(0, 0, 0, 0.3)'
+      }}
+    >
+      {hasVideo ? (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full h-full object-cover"
+          style={{ transform: isLocal && !isScreenSharing ? 'scaleX(-1)' : 'none' }}
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center">
+          <div
+            className={`rounded-full flex items-center justify-center overflow-hidden ${
+              isSmall ? 'w-12 h-12' : 'w-20 h-20'
+            }`}
+            style={{
+              backgroundColor: user?.photoURL ? 'transparent' : (user?.color || '#a855f7'),
+              boxShadow: isSpeaking ? '0 0 0 3px rgba(168, 85, 247, 0.8)' : undefined
+            }}
+          >
+            {user?.photoURL ? (
+              <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <i className={`fas fa-user text-white ${isSmall ? 'text-lg' : 'text-3xl'}`}></i>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Pinned indicator */}
+      {isSpotlighted && (
+        <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-purple-500/80 flex items-center justify-center">
+          <i className="fas fa-thumbtack text-white text-xs"></i>
+        </div>
+      )}
+
+      {/* Name badge */}
+      {!isSmall && (
+        <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+          <div className="bg-black/50 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center">
+            <span className="text-white text-xs font-medium">
+              {isLocal ? 'You' : (user?.displayName || 'Unknown')}
+            </span>
+            {isSpeaking && (
+              <i className="fas fa-volume-up ml-2 text-purple-400 text-xs"></i>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
 
 interface VoiceStageProps {
   myStream: MediaStream | null;
@@ -217,11 +327,25 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
       (myVideoRef as any).current = el;
       if (stream && el.srcObject !== stream) {
         el.srcObject = stream;
+        // Mobile WebView requires explicit play() call
+        const playPromise = el.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((e) => {
+            console.log(`Local video play failed: ${e.message}`);
+          });
+        }
       }
     } else {
       remoteVideoRefs.current.set(userId, el);
       if (stream && el.srcObject !== stream) {
         el.srcObject = stream;
+        // Mobile WebView requires explicit play() call for remote video
+        const playPromise = el.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((e) => {
+            console.log(`Remote video play failed for ${userId}: ${e.message}`);
+          });
+        }
       }
     }
   }, []);
@@ -292,95 +416,23 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
   // Get all participants for rendering
   const allParticipants = [
     { id: 'self', stream: myStream, isLocal: true, isSpeaking: isLocalSpeaking, hasVideo: isVideoEnabled || isScreenSharing },
-    ...Array.from(remoteStreams.entries()).map(([peerId, stream]) => ({
-      id: peerId,
-      stream,
-      isLocal: false,
-      isSpeaking: remoteSpeaking.get(peerId) || false,
-      hasVideo: stream?.getVideoTracks().length > 0 && stream.getVideoTracks()[0].enabled
-    }))
+    ...Array.from(remoteStreams.entries()).map(([peerId, stream]) => {
+      // Check for video tracks - on mobile, tracks may initially report as not enabled
+      const videoTracks = stream?.getVideoTracks() || [];
+      const hasVideoTrack = videoTracks.length > 0;
+      // Consider video available if track exists (don't rely solely on enabled state which can lag)
+      const hasVideo = hasVideoTrack;
+      return {
+        id: peerId,
+        stream,
+        isLocal: false,
+        isSpeaking: remoteSpeaking.get(peerId) || false,
+        hasVideo
+      };
+    })
   ];
 
   const isMobile = useIsMobile();
-
-  // Mobile Video Tile Component
-  const MobileVideoTile: React.FC<{
-    userId: string;
-    stream: MediaStream | null;
-    user: { displayName: string; color: string; photoURL?: string } | undefined;
-    isLocal: boolean;
-    isSpeaking: boolean;
-    hasVideo: boolean;
-    isSpotlighted?: boolean;
-    isSmall?: boolean;
-  }> = ({ userId, stream, user, isLocal, isSpeaking, hasVideo, isSpotlighted, isSmall }) => (
-    <motion.div
-      onClick={() => toggleSpotlight(userId)}
-      whileTap={{ scale: 0.98 }}
-      className={`relative rounded-2xl overflow-hidden ${
-        isSmall ? 'w-20 h-20' : 'w-full h-full'
-      }`}
-      style={{
-        background: 'linear-gradient(135deg, #2a2a4a 0%, #1a1a2e 100%)',
-        boxShadow: isSpeaking
-          ? '0 0 0 3px rgba(168, 85, 247, 0.8), 0 0 20px rgba(168, 85, 247, 0.4)'
-          : '0 4px 20px rgba(0, 0, 0, 0.3)'
-      }}
-    >
-      {hasVideo ? (
-        <video
-          ref={el => setVideoRef(el, userId, stream, isLocal)}
-          autoPlay
-          playsInline
-          muted
-          className="w-full h-full object-cover"
-          style={{ transform: isLocal && !isScreenSharing ? 'scaleX(-1)' : 'none' }}
-        />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center">
-          <div
-            className={`rounded-full flex items-center justify-center overflow-hidden ${
-              isSmall ? 'w-12 h-12' : 'w-20 h-20'
-            }`}
-            style={{
-              backgroundColor: user?.photoURL ? 'transparent' : (user?.color || '#a855f7'),
-              boxShadow: isSpeaking ? '0 0 0 3px rgba(168, 85, 247, 0.8)' : undefined
-            }}
-          >
-            {user?.photoURL ? (
-              <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <i className={`fas fa-user text-white ${isSmall ? 'text-lg' : 'text-3xl'}`}></i>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Pinned indicator */}
-      {isSpotlighted && (
-        <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-purple-500/80 flex items-center justify-center">
-          <i className="fas fa-thumbtack text-white text-xs"></i>
-        </div>
-      )}
-
-      {/* Name badge */}
-      {!isSmall && (
-        <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
-          <div className="bg-black/50 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center">
-            <span className="text-white text-xs font-medium">
-              {isLocal ? 'You' : (user?.displayName || 'Unknown')}
-            </span>
-            {isLocal && !isAudioEnabled && (
-              <i className="fas fa-microphone-slash ml-2 text-red-400 text-xs"></i>
-            )}
-            {isSpeaking && (
-              <i className="fas fa-volume-up ml-2 text-purple-400 text-xs animate-pulse"></i>
-            )}
-          </div>
-        </div>
-      )}
-    </motion.div>
-  );
 
   // Mobile control button component
   const MobileControlButton: React.FC<{
@@ -548,6 +600,8 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
                         isSpeaking={p.isSpeaking}
                         hasVideo={p.hasVideo}
                         isSpotlighted
+                        isScreenSharing={p.isLocal && isScreenSharing}
+                        onTap={() => toggleSpotlight(p.id)}
                       />
                     );
                   })()}
@@ -568,6 +622,8 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
                           isSpeaking={p.isSpeaking}
                           hasVideo={p.hasVideo}
                           isSmall
+                          isScreenSharing={p.isLocal && isScreenSharing}
+                          onTap={() => toggleSpotlight(p.id)}
                         />
                       );
                     })}
@@ -601,6 +657,8 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
                         isLocal={p.isLocal}
                         isSpeaking={p.isSpeaking}
                         hasVideo={p.hasVideo}
+                        isScreenSharing={p.isLocal && isScreenSharing}
+                        onTap={() => toggleSpotlight(p.id)}
                       />
                     </div>
                   );
