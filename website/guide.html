@@ -1,0 +1,2321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PISSCORD - User Guide</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --void: #0a0a0f;
+            --abyss: #12121a;
+            --surface: #1a1a26;
+            --elevated: #252533;
+            --muted: #4a4a5a;
+            --text: #e8e8f0;
+            --text-dim: #9898a8;
+
+            --piss-yellow: #f0e130;
+            --piss-gold: #ffd700;
+            --angry-purple: #8b5cf6;
+            --electric-violet: #a855f7;
+            --hot-pink: #ec4899;
+            --neon-cyan: #22d3ee;
+            --sick-green: #84cc16;
+
+            --glow-yellow: rgba(240, 225, 48, 0.4);
+            --glow-purple: rgba(139, 92, 246, 0.4);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--void);
+            color: var(--text);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Noise texture overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Scanlines */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.1) 0px,
+                rgba(0, 0, 0, 0.1) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+            pointer-events: none;
+            z-index: 9998;
+            opacity: 0.3;
+        }
+
+        ::selection {
+            background: var(--piss-yellow);
+            color: var(--void);
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            background: linear-gradient(to bottom, var(--void), transparent);
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 1.4rem;
+            color: var(--piss-yellow);
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .nav-logo img {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            border: 2px solid var(--piss-yellow);
+            box-shadow: 0 0 20px var(--glow-yellow);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            position: relative;
+            padding: 4px 0;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--piss-yellow);
+            transition: width 0.3s;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--piss-yellow);
+        }
+
+        .nav-links a:hover::after,
+        .nav-links a.active::after {
+            width: 100%;
+        }
+
+        .nav-cta {
+            background: var(--piss-yellow);
+            color: var(--void);
+            padding: 12px 24px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+            transition: all 0.3s;
+        }
+
+        .nav-cta:hover {
+            background: var(--text);
+            transform: translate(-2px, -2px);
+            box-shadow: 4px 4px 0 var(--piss-yellow);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 60vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 120px 2rem 60px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .hero-bg-gradient {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.3;
+        }
+
+        .hero-bg-gradient.yellow {
+            background: var(--piss-yellow);
+            top: -200px;
+            right: 20%;
+            animation: pulse-slow 8s ease-in-out infinite;
+        }
+
+        .hero-bg-gradient.purple {
+            background: var(--angry-purple);
+            bottom: -100px;
+            left: 20%;
+            animation: pulse-slow 8s ease-in-out infinite 4s;
+        }
+
+        @keyframes pulse-slow {
+            0%, 100% { transform: scale(1); opacity: 0.2; }
+            50% { transform: scale(1.2); opacity: 0.4; }
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--surface);
+            border: 1px solid var(--angry-purple);
+            padding: 8px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--electric-violet);
+            margin-bottom: 1.5rem;
+            animation: fade-in 0.6s ease-out;
+        }
+
+        .hero-badge i {
+            color: var(--piss-yellow);
+        }
+
+        .hero-title {
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 4rem;
+            line-height: 1;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            animation: slide-up 0.8s ease-out;
+        }
+
+        .hero-title .yellow {
+            color: var(--piss-yellow);
+            text-shadow: 0 0 40px var(--glow-yellow);
+        }
+
+        .hero-subtitle {
+            font-size: 1.3rem;
+            color: var(--text-dim);
+            max-width: 600px;
+            margin-bottom: 2rem;
+            animation: slide-up 0.8s ease-out 0.1s both;
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slide-up {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Quick Nav Pills */
+        .quick-nav {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.75rem;
+            animation: slide-up 0.8s ease-out 0.2s both;
+        }
+
+        .quick-nav a {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            background: var(--surface);
+            border: 1px solid var(--elevated);
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .quick-nav a:hover {
+            border-color: var(--piss-yellow);
+            color: var(--piss-yellow);
+            transform: translateY(-2px);
+        }
+
+        .quick-nav a i {
+            font-size: 0.85rem;
+        }
+
+        /* Table of Contents - Sidebar */
+        .guide-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 4rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 3rem 100px;
+        }
+
+        .toc {
+            position: sticky;
+            top: 100px;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            padding: 2rem;
+            background: var(--surface);
+            border: 1px solid var(--elevated);
+        }
+
+        .toc::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .toc::-webkit-scrollbar-track {
+            background: var(--abyss);
+        }
+
+        .toc::-webkit-scrollbar-thumb {
+            background: var(--elevated);
+            border-radius: 3px;
+        }
+
+        .toc::-webkit-scrollbar-thumb:hover {
+            background: var(--piss-yellow);
+        }
+
+        .toc-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--muted);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toc-title::before {
+            content: '';
+            width: 12px;
+            height: 2px;
+            background: var(--piss-yellow);
+        }
+
+        .toc-list {
+            list-style: none;
+        }
+
+        .toc-list li {
+            margin-bottom: 0.5rem;
+        }
+
+        .toc-list a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            border-left: 2px solid transparent;
+            margin-left: -2px;
+        }
+
+        .toc-list a:hover,
+        .toc-list a.active {
+            color: var(--piss-yellow);
+            background: rgba(240, 225, 48, 0.05);
+            border-left-color: var(--piss-yellow);
+        }
+
+        .toc-list a i {
+            width: 18px;
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+
+        .toc-list .toc-section {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted);
+            padding: 16px 12px 8px;
+            margin-top: 8px;
+        }
+
+        /* Main Content */
+        .guide-content {
+            min-width: 0;
+        }
+
+        .guide-section {
+            margin-bottom: 5rem;
+            scroll-margin-top: 100px;
+        }
+
+        .section-header {
+            margin-bottom: 2rem;
+        }
+
+        .section-number {
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 5rem;
+            color: var(--elevated);
+            line-height: 1;
+            margin-bottom: -1.5rem;
+            margin-left: -4px;
+        }
+
+        .section-title {
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 2rem;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-title i {
+            color: var(--piss-yellow);
+            font-size: 1.5rem;
+        }
+
+        .section-title span {
+            color: var(--piss-yellow);
+        }
+
+        .section-intro {
+            font-size: 1.1rem;
+            color: var(--text-dim);
+            max-width: 700px;
+            margin-top: 1rem;
+            line-height: 1.8;
+        }
+
+        /* Feature Cards */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid var(--elevated);
+            padding: 1.5rem;
+            position: relative;
+            transition: all 0.3s;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--piss-yellow), var(--angry-purple));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.4s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--piss-yellow);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-card-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--piss-yellow), var(--angry-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: var(--void);
+            margin-bottom: 1rem;
+            clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+        }
+
+        .feature-card h4 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .feature-card p {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            line-height: 1.6;
+        }
+
+        /* Step-by-Step Guide */
+        .steps-container {
+            margin-top: 2rem;
+        }
+
+        .step-item {
+            display: grid;
+            grid-template-columns: 80px 1fr;
+            gap: 2rem;
+            padding: 2rem 0;
+            border-bottom: 1px solid var(--elevated);
+            position: relative;
+        }
+
+        .step-item:last-child {
+            border-bottom: none;
+        }
+
+        .step-number-large {
+            width: 64px;
+            height: 64px;
+            background: var(--surface);
+            border: 2px solid var(--piss-yellow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 1.8rem;
+            color: var(--piss-yellow);
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .step-item:hover .step-number-large {
+            background: var(--piss-yellow);
+            color: var(--void);
+            transform: rotate(-5deg) scale(1.05);
+        }
+
+        .step-content h4 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: var(--text);
+        }
+
+        .step-content p {
+            color: var(--text-dim);
+            line-height: 1.7;
+            margin-bottom: 1rem;
+        }
+
+        .step-tip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--electric-violet);
+        }
+
+        .step-tip i {
+            color: var(--angry-purple);
+        }
+
+        /* Interactive Demo Boxes */
+        .demo-box {
+            background: var(--abyss);
+            border: 1px solid var(--elevated);
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 2rem 0;
+        }
+
+        .demo-header {
+            background: var(--surface);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--elevated);
+        }
+
+        .demo-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .demo-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .demo-dot.red { background: #ff5f57; }
+        .demo-dot.yellow { background: #febc2e; }
+        .demo-dot.green { background: #28c840; }
+
+        .demo-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--muted);
+            flex: 1;
+            text-align: center;
+        }
+
+        .demo-content {
+            padding: 2rem;
+        }
+
+        /* Keyboard Shortcuts Table */
+        .shortcuts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .shortcut-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--surface);
+            border: 1px solid var(--elevated);
+            transition: all 0.2s;
+        }
+
+        .shortcut-item:hover {
+            border-color: var(--piss-yellow);
+        }
+
+        .shortcut-action {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+        }
+
+        .shortcut-keys {
+            display: flex;
+            gap: 4px;
+        }
+
+        .key {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 28px;
+            height: 28px;
+            padding: 0 8px;
+            background: var(--abyss);
+            border: 1px solid var(--elevated);
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--piss-yellow);
+        }
+
+        /* Channel Type Explainer */
+        .channel-types {
+            display: grid;
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .channel-type {
+            display: grid;
+            grid-template-columns: 60px 1fr;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            background: var(--surface);
+            border: 1px solid var(--elevated);
+            transition: all 0.3s;
+        }
+
+        .channel-type:hover {
+            border-color: var(--piss-yellow);
+            transform: translateX(8px);
+        }
+
+        .channel-icon-large {
+            width: 56px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            border-radius: 12px;
+        }
+
+        .channel-icon-large.text {
+            background: rgba(139, 92, 246, 0.2);
+            color: var(--electric-violet);
+        }
+
+        .channel-icon-large.voice {
+            background: rgba(132, 204, 22, 0.2);
+            color: var(--sick-green);
+        }
+
+        .channel-icon-large.ai {
+            background: rgba(240, 225, 48, 0.2);
+            color: var(--piss-yellow);
+        }
+
+        .channel-icon-large.dev {
+            background: rgba(34, 211, 238, 0.2);
+            color: var(--neon-cyan);
+        }
+
+        .channel-type-content h4 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .channel-type-content h4 code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            background: var(--abyss);
+            padding: 2px 8px;
+            color: var(--piss-yellow);
+        }
+
+        .channel-type-content p {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Accordion FAQ Style */
+        .accordion {
+            margin-top: 2rem;
+        }
+
+        .accordion-item {
+            border: 1px solid var(--elevated);
+            margin-bottom: 0.75rem;
+            background: var(--surface);
+            overflow: hidden;
+        }
+
+        .accordion-header {
+            padding: 1.25rem 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: var(--text);
+            transition: all 0.2s;
+        }
+
+        .accordion-header:hover {
+            background: var(--elevated);
+        }
+
+        .accordion-header i {
+            color: var(--piss-yellow);
+            transition: transform 0.3s;
+        }
+
+        .accordion-item.active .accordion-header {
+            border-bottom: 1px solid var(--elevated);
+        }
+
+        .accordion-item.active .accordion-header i {
+            transform: rotate(180deg);
+        }
+
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .accordion-item.active .accordion-content {
+            max-height: 500px;
+        }
+
+        .accordion-content-inner {
+            padding: 1.5rem;
+            color: var(--text-dim);
+            line-height: 1.7;
+        }
+
+        .accordion-content-inner code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--abyss);
+            padding: 2px 6px;
+            font-size: 0.85rem;
+            color: var(--piss-yellow);
+        }
+
+        /* Warning/Info Boxes */
+        .info-box {
+            display: flex;
+            gap: 1rem;
+            padding: 1.25rem;
+            margin: 1.5rem 0;
+            border-left: 3px solid;
+        }
+
+        .info-box.tip {
+            background: rgba(132, 204, 22, 0.1);
+            border-color: var(--sick-green);
+        }
+
+        .info-box.warning {
+            background: rgba(240, 225, 48, 0.1);
+            border-color: var(--piss-yellow);
+        }
+
+        .info-box.note {
+            background: rgba(139, 92, 246, 0.1);
+            border-color: var(--angry-purple);
+        }
+
+        .info-box i {
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .info-box.tip i { color: var(--sick-green); }
+        .info-box.warning i { color: var(--piss-yellow); }
+        .info-box.note i { color: var(--angry-purple); }
+
+        .info-box-content {
+            flex: 1;
+        }
+
+        .info-box-content strong {
+            display: block;
+            margin-bottom: 0.25rem;
+            color: var(--text);
+        }
+
+        .info-box-content p {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Interactive Voice Demo */
+        .voice-demo {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .voice-control-panel {
+            background: var(--surface);
+            border: 1px solid var(--elevated);
+            padding: 1.5rem;
+        }
+
+        .voice-control-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--muted);
+            margin-bottom: 1rem;
+        }
+
+        .voice-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .voice-control-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--abyss);
+            border: 1px solid var(--elevated);
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .voice-control-btn:hover {
+            border-color: var(--piss-yellow);
+            color: var(--text);
+        }
+
+        .voice-control-btn.active {
+            border-color: var(--sick-green);
+            color: var(--sick-green);
+        }
+
+        .voice-control-btn.muted {
+            border-color: var(--hot-pink);
+            color: var(--hot-pink);
+        }
+
+        .voice-control-btn i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .voice-users-panel {
+            background: var(--surface);
+            border: 1px solid var(--elevated);
+            padding: 1.5rem;
+        }
+
+        .voice-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: var(--abyss);
+            border-radius: 6px;
+            transition: all 0.3s;
+        }
+
+        .voice-user.speaking {
+            box-shadow: 0 0 0 2px var(--sick-green);
+        }
+
+        .voice-user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .voice-user-info {
+            flex: 1;
+        }
+
+        .voice-user-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text);
+        }
+
+        .voice-user-status {
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+
+        .voice-user-icons {
+            display: flex;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        .voice-user-icons i.active {
+            color: var(--sick-green);
+        }
+
+        .voice-user-icons i.muted {
+            color: var(--hot-pink);
+        }
+
+        /* Footer */
+        footer {
+            padding: 60px 3rem 40px;
+            background: var(--void);
+            border-top: 1px solid var(--elevated);
+            text-align: center;
+        }
+
+        .footer-logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            font-family: 'Dela Gothic One', cursive;
+            font-size: 1.3rem;
+            color: var(--piss-yellow);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 1rem;
+        }
+
+        .footer-logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-links a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--piss-yellow);
+        }
+
+        .footer-bottom {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+
+        .footer-bottom a {
+            color: var(--piss-yellow);
+            text-decoration: none;
+        }
+
+        /* Mobile Navigation */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 8px;
+        }
+
+        .mobile-nav {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: var(--void);
+            z-index: 999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+        }
+
+        .mobile-nav.active {
+            display: flex;
+        }
+
+        .mobile-nav-close {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: none;
+            border: none;
+            color: var(--text);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .mobile-nav a {
+            color: var(--text);
+            text-decoration: none;
+            font-size: 1.5rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: color 0.2s;
+        }
+
+        .mobile-nav a:hover {
+            color: var(--piss-yellow);
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 1024px) {
+            .guide-layout {
+                grid-template-columns: 1fr;
+                padding: 0 2rem 60px;
+            }
+
+            .toc {
+                display: none;
+            }
+
+            .hero-title {
+                font-size: 2.5rem;
+            }
+
+            .voice-demo {
+                grid-template-columns: 1fr;
+            }
+
+            nav {
+                padding: 1rem 1.5rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .step-item {
+                grid-template-columns: 60px 1fr;
+                gap: 1rem;
+            }
+
+            .step-number-large {
+                width: 48px;
+                height: 48px;
+                font-size: 1.4rem;
+            }
+
+            .section-title {
+                font-size: 1.5rem;
+            }
+
+            .section-number {
+                font-size: 3.5rem;
+            }
+
+            .channel-type {
+                grid-template-columns: 50px 1fr;
+                gap: 1rem;
+            }
+
+            .channel-icon-large {
+                width: 48px;
+                height: 48px;
+                font-size: 1.2rem;
+            }
+
+            .quick-nav {
+                gap: 0.5rem;
+            }
+
+            .quick-nav a {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+            }
+
+            footer {
+                padding: 40px 2rem 30px;
+            }
+
+            .footer-links {
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero {
+                padding: 100px 1rem 40px;
+            }
+
+            .hero-title {
+                font-size: 2rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1rem;
+            }
+
+            .guide-layout {
+                padding: 0 1rem 40px;
+            }
+
+            .section-title {
+                font-size: 1.3rem;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .section-title i {
+                font-size: 1.2rem;
+            }
+
+            .section-number {
+                font-size: 2.5rem;
+                margin-bottom: -1rem;
+            }
+
+            .section-intro {
+                font-size: 1rem;
+            }
+
+            .step-item {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+
+            .step-number-large {
+                width: 40px;
+                height: 40px;
+                font-size: 1.2rem;
+            }
+
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .feature-card {
+                padding: 1.25rem;
+            }
+
+            .channel-type {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+
+            .channel-icon-large {
+                margin: 0 auto 0.5rem;
+            }
+
+            .shortcuts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .shortcut-item {
+                padding: 10px 12px;
+            }
+
+            .key {
+                min-width: 24px;
+                height: 24px;
+                font-size: 0.65rem;
+            }
+
+            .quick-nav {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .quick-nav a {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .accordion-header {
+                padding: 1rem;
+                font-size: 0.9rem;
+            }
+
+            .accordion-content-inner {
+                padding: 1rem;
+                font-size: 0.9rem;
+            }
+
+            .info-box {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .nav-cta {
+                padding: 10px 16px;
+                font-size: 0.75rem;
+            }
+
+            .nav-logo {
+                font-size: 1.1rem;
+            }
+
+            .nav-logo img {
+                width: 36px;
+                height: 36px;
+            }
+
+            .back-to-top {
+                width: 44px;
+                height: 44px;
+                bottom: 1rem;
+                right: 1rem;
+            }
+
+            footer {
+                padding: 30px 1rem 20px;
+            }
+
+            .footer-logo {
+                font-size: 1.1rem;
+            }
+
+            .footer-links {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+        }
+
+        /* Scroll Animations */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Back to Top Button */
+        .back-to-top {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 50px;
+            height: 50px;
+            background: var(--piss-yellow);
+            color: var(--void);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+            z-index: 100;
+        }
+
+        .back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .back-to-top:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px var(--glow-yellow);
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--piss-yellow), var(--angry-purple));
+            width: 0%;
+            z-index: 1001;
+            transition: width 0.1s;
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+
+    <!-- Navigation -->
+    <nav>
+        <a href="index.html" class="nav-logo">
+            <img src="../public/pisscord-dark.png" alt="Pisscord">
+            Pisscord
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="guide.html" class="active">User Guide</a></li>
+            <li><a href="index.html#features">Features</a></li>
+            <li><a href="index.html#mobile">Mobile</a></li>
+            <li><a href="index.html#faq">FAQ</a></li>
+        </ul>
+        <button class="mobile-menu-btn" onclick="toggleMobileNav()">
+            <i class="fas fa-bars"></i>
+        </button>
+        <a href="https://github.com/jamditis/pisscord/releases/latest" class="nav-cta">
+            Download
+        </a>
+    </nav>
+
+    <!-- Mobile Navigation Overlay -->
+    <div class="mobile-nav" id="mobileNav">
+        <button class="mobile-nav-close" onclick="toggleMobileNav()">
+            <i class="fas fa-times"></i>
+        </button>
+        <a href="index.html" onclick="toggleMobileNav()">Home</a>
+        <a href="guide.html" onclick="toggleMobileNav()">User Guide</a>
+        <a href="index.html#features" onclick="toggleMobileNav()">Features</a>
+        <a href="index.html#mobile" onclick="toggleMobileNav()">Mobile</a>
+        <a href="index.html#faq" onclick="toggleMobileNav()">FAQ</a>
+        <a href="https://github.com/jamditis/pisscord/releases/latest" style="color: var(--piss-yellow);">Download</a>
+    </div>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="hero-bg">
+            <div class="hero-bg-gradient yellow"></div>
+            <div class="hero-bg-gradient purple"></div>
+        </div>
+
+        <div class="hero-badge">
+            <i class="fas fa-book"></i>
+            <span>COMPLETE USER GUIDE</span>
+        </div>
+        <h1 class="hero-title">
+            LEARN <span class="yellow">PISSCORD</span>
+        </h1>
+        <p class="hero-subtitle">
+            Everything you need to master pee-to-pee communication. From first launch to power-user status in minutes.
+        </p>
+
+        <div class="quick-nav">
+            <a href="#getting-started"><i class="fas fa-rocket"></i> Getting Started</a>
+            <a href="#channels"><i class="fas fa-hashtag"></i> Channels</a>
+            <a href="#voice-video"><i class="fas fa-video"></i> Voice & Video</a>
+            <a href="#pissbot"><i class="fas fa-robot"></i> Pissbot AI</a>
+            <a href="#settings"><i class="fas fa-cog"></i> Settings</a>
+            <a href="#troubleshooting"><i class="fas fa-wrench"></i> Troubleshooting</a>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <div class="guide-layout">
+        <!-- Table of Contents Sidebar -->
+        <aside class="toc">
+            <div class="toc-title">Contents</div>
+            <ul class="toc-list">
+                <li><a href="#getting-started"><i class="fas fa-rocket"></i> Getting Started</a></li>
+                <li><a href="#interface"><i class="fas fa-desktop"></i> Interface Overview</a></li>
+                <li class="toc-section">Communication</li>
+                <li><a href="#channels"><i class="fas fa-hashtag"></i> Channels</a></li>
+                <li><a href="#voice-video"><i class="fas fa-video"></i> Voice & Video</a></li>
+                <li><a href="#screen-share"><i class="fas fa-display"></i> Screen Sharing</a></li>
+                <li><a href="#messaging"><i class="fas fa-comment"></i> Messaging</a></li>
+                <li class="toc-section">Features</li>
+                <li><a href="#pissbot"><i class="fas fa-robot"></i> Pissbot AI</a></li>
+                <li><a href="#files"><i class="fas fa-file"></i> File Sharing</a></li>
+                <li><a href="#profiles"><i class="fas fa-user"></i> Profiles</a></li>
+                <li class="toc-section">Reference</li>
+                <li><a href="#settings"><i class="fas fa-cog"></i> Settings</a></li>
+                <li><a href="#shortcuts"><i class="fas fa-keyboard"></i> Shortcuts</a></li>
+                <li><a href="#troubleshooting"><i class="fas fa-wrench"></i> Troubleshooting</a></li>
+            </ul>
+        </aside>
+
+        <!-- Guide Content -->
+        <main class="guide-content">
+            <!-- Getting Started -->
+            <section class="guide-section reveal" id="getting-started">
+                <div class="section-header">
+                    <div class="section-number">01</div>
+                    <h2 class="section-title"><i class="fas fa-rocket"></i> Getting <span>Started</span></h2>
+                    <p class="section-intro">
+                        Get up and running with Pisscord in three simple steps. No account creation, no email verification, no phone number required.
+                    </p>
+                </div>
+
+                <div class="steps-container">
+                    <div class="step-item">
+                        <div class="step-number-large">1</div>
+                        <div class="step-content">
+                            <h4>Download & install</h4>
+                            <p>
+                                Grab the latest Windows installer from GitHub releases. Run the setup wizard - it takes about 30 seconds. Pisscord installs to your AppData folder and creates a desktop shortcut.
+                            </p>
+                            <div class="step-tip">
+                                <i class="fas fa-shield-halved"></i>
+                                Windows may show "Unknown Publisher" - click "More Info" → "Run Anyway"
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number-large">2</div>
+                        <div class="step-content">
+                            <h4>Set your display name</h4>
+                            <p>
+                                On first launch, you'll be prompted to enter a display name. Pick something your friends will recognize. You can also choose a profile color and set a status message.
+                            </p>
+                            <div class="step-tip">
+                                <i class="fas fa-lightbulb"></i>
+                                Your profile is saved locally - change it anytime in Settings
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number-large">3</div>
+                        <div class="step-content">
+                            <h4>You're connected!</h4>
+                            <p>
+                                That's it. Pisscord automatically connects you to the presence server. Everyone online appears in the user list on the right. Jump into a voice channel or start chatting - all communication is pee-to-pee encrypted.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-box tip">
+                    <i class="fas fa-check-circle"></i>
+                    <div class="info-box-content">
+                        <strong>Auto-Updates Enabled</strong>
+                        <p>Pisscord checks for updates automatically. When a new version is available, you'll be prompted to restart and install it.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Interface Overview -->
+            <section class="guide-section reveal" id="interface">
+                <div class="section-header">
+                    <div class="section-number">02</div>
+                    <h2 class="section-title"><i class="fas fa-desktop"></i> Interface <span>Overview</span></h2>
+                    <p class="section-intro">
+                        Pisscord's layout will feel familiar if you've used Discord. Here's a breakdown of each area.
+                    </p>
+                </div>
+
+                <div class="demo-box">
+                    <div class="demo-header">
+                        <div class="demo-dots">
+                            <div class="demo-dot red"></div>
+                            <div class="demo-dot yellow"></div>
+                            <div class="demo-dot green"></div>
+                        </div>
+                        <div class="demo-title">Pisscord Interface</div>
+                    </div>
+                    <div class="demo-content">
+                        <div class="feature-grid">
+                            <div class="feature-card">
+                                <div class="feature-card-icon"><i class="fas fa-bars"></i></div>
+                                <h4>Channel sidebar</h4>
+                                <p>Left side - lists all text and voice channels. Click to switch views. Voice controls appear here when connected.</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-card-icon"><i class="fas fa-comment-dots"></i></div>
+                                <h4>Main content area</h4>
+                                <p>Center - shows the current channel. Chat messages, voice stage, or AI conversation depending on selection.</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-card-icon"><i class="fas fa-users"></i></div>
+                                <h4>User list</h4>
+                                <p>Right side - shows everyone online. Click a user to view their profile or start a direct call.</p>
+                            </div>
+                            <div class="feature-card">
+                                <div class="feature-card-icon"><i class="fas fa-sliders-h"></i></div>
+                                <h4>Voice controls</h4>
+                                <p>Bottom left (when connected) - mute, camera, volume slider, and disconnect. Always accessible from any channel.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Channels -->
+            <section class="guide-section reveal" id="channels">
+                <div class="section-header">
+                    <div class="section-number">03</div>
+                    <h2 class="section-title"><i class="fas fa-hashtag"></i> Channel <span>Types</span></h2>
+                    <p class="section-intro">
+                        Pisscord has several channel types, each serving a different purpose.
+                    </p>
+                </div>
+
+                <div class="channel-types">
+                    <div class="channel-type">
+                        <div class="channel-icon-large text"><i class="fas fa-hashtag"></i></div>
+                        <div class="channel-type-content">
+                            <h4><code>#general</code> Text Channel</h4>
+                            <p>The main chat room. Messages are sent pee-to-pee to everyone online. Supports full markdown formatting, image uploads, and file sharing. Messages are retained for 14 days.</p>
+                        </div>
+                    </div>
+
+                    <div class="channel-type">
+                        <div class="channel-icon-large voice"><i class="fas fa-volume-up"></i></div>
+                        <div class="channel-type-content">
+                            <h4><code>Voice Lounge</code> Voice Channel</h4>
+                            <p>Open voice/video room for casual hangouts. Click to join, and your mic/camera activate automatically. Multiple people can be in the same voice channel - true mesh networking, not 1:1 calls.</p>
+                        </div>
+                    </div>
+
+                    <div class="channel-type">
+                        <div class="channel-icon-large voice"><i class="fas fa-gamepad"></i></div>
+                        <div class="channel-type-content">
+                            <h4><code>Gaming</code> Voice Channel (Approval Required)</h4>
+                            <p>Same as Voice Lounge, but requires approval to join when others are already in the channel. A lock icon indicates this. Users inside will see approve/deny buttons when someone requests to join.</p>
+                        </div>
+                    </div>
+
+                    <div class="channel-type">
+                        <div class="channel-icon-large ai"><i class="fas fa-robot"></i></div>
+                        <div class="channel-type-content">
+                            <h4><code>#pissbot</code> AI Channel</h4>
+                            <p>Chat with Pissbot, our built-in AI assistant powered by Google Gemini. Ask questions, get recommendations, or just have a conversation. Pissbot knows everything about Pisscord.</p>
+                        </div>
+                    </div>
+
+                    <div class="channel-type">
+                        <div class="channel-icon-large dev"><i class="fas fa-code"></i></div>
+                        <div class="channel-type-content">
+                            <h4><code>#dev-updates</code> Development Feed</h4>
+                            <p>Live feed of GitHub commits and development activity. See what's being worked on in real-time. Read-only channel - just for keeping up with the project.</p>
+                        </div>
+                    </div>
+
+                    <div class="channel-type">
+                        <div class="channel-icon-large dev"><i class="fas fa-bug"></i></div>
+                        <div class="channel-type-content">
+                            <h4><code>#issues</code> Bug Reports</h4>
+                            <p>Report bugs directly from the app. Your reports are sent to Firebase and reviewed by the development team. Include steps to reproduce for faster fixes.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Voice & Video -->
+            <section class="guide-section reveal" id="voice-video">
+                <div class="section-header">
+                    <div class="section-number">04</div>
+                    <h2 class="section-title"><i class="fas fa-video"></i> Voice & <span>Video</span></h2>
+                    <p class="section-intro">
+                        Crystal-clear pee-to-pee voice and video with no relay servers. Here's how to use it effectively.
+                    </p>
+                </div>
+
+                <div class="voice-demo">
+                    <div class="voice-control-panel">
+                        <div class="voice-control-title">Voice Controls</div>
+                        <div class="voice-controls">
+                            <div class="voice-control-btn active">
+                                <i class="fas fa-microphone"></i>
+                                <span>Microphone On</span>
+                            </div>
+                            <div class="voice-control-btn muted">
+                                <i class="fas fa-video-slash"></i>
+                                <span>Camera Off</span>
+                            </div>
+                            <div class="voice-control-btn">
+                                <i class="fas fa-display"></i>
+                                <span>Share Screen</span>
+                            </div>
+                            <div class="voice-control-btn">
+                                <i class="fas fa-volume-high"></i>
+                                <span>Volume: 100%</span>
+                            </div>
+                            <div class="voice-control-btn" style="border-color: var(--hot-pink); color: var(--hot-pink);">
+                                <i class="fas fa-phone-slash"></i>
+                                <span>Disconnect</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="voice-users-panel">
+                        <div class="voice-control-title">Users in Channel</div>
+                        <div class="voice-user speaking">
+                            <div class="voice-user-avatar" style="background: linear-gradient(135deg, #3ba55c, #2d7d46); color: white;">A</div>
+                            <div class="voice-user-info">
+                                <div class="voice-user-name">Alex</div>
+                                <div class="voice-user-status">Speaking...</div>
+                            </div>
+                            <div class="voice-user-icons">
+                                <i class="fas fa-microphone active"></i>
+                                <i class="fas fa-video active"></i>
+                            </div>
+                        </div>
+                        <div class="voice-user">
+                            <div class="voice-user-avatar" style="background: linear-gradient(135deg, #5865F2, #4752c4); color: white;">Y</div>
+                            <div class="voice-user-info">
+                                <div class="voice-user-name">You</div>
+                                <div class="voice-user-status">Connected</div>
+                            </div>
+                            <div class="voice-user-icons">
+                                <i class="fas fa-microphone active"></i>
+                                <i class="fas fa-video-slash muted"></i>
+                            </div>
+                        </div>
+                        <div class="voice-user">
+                            <div class="voice-user-avatar" style="background: linear-gradient(135deg, #f0e130, #c9bc28); color: #111;">S</div>
+                            <div class="voice-user-info">
+                                <div class="voice-user-name">Sam</div>
+                                <div class="voice-user-status">Connected</div>
+                            </div>
+                            <div class="voice-user-icons">
+                                <i class="fas fa-microphone-slash muted"></i>
+                                <i class="fas fa-video active"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-box note">
+                    <i class="fas fa-info-circle"></i>
+                    <div class="info-box-content">
+                        <strong>Speaking Indicators</strong>
+                        <p>A green ring appears around avatars when someone is speaking. This uses Web Audio API for real-time voice activity detection.</p>
+                    </div>
+                </div>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-card-icon"><i class="fas fa-thumbtack"></i></div>
+                        <h4>Video spotlight</h4>
+                        <p>Click any video tile to pin and maximize it. Perfect for presentations or focusing on one person. Click again to unpin.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-icon"><i class="fas fa-volume-up"></i></div>
+                        <h4>Volume boost</h4>
+                        <p>Volume slider goes up to 200%, letting you boost quiet participants. Great for people with soft mics.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-icon"><i class="fas fa-arrows-left-right"></i></div>
+                        <h4>Browse while talking</h4>
+                        <p>Switch to text channels while in a voice call. Audio persists - you won't get disconnected.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Screen Sharing -->
+            <section class="guide-section reveal" id="screen-share">
+                <div class="section-header">
+                    <div class="section-number">05</div>
+                    <h2 class="section-title"><i class="fas fa-display"></i> Screen <span>Sharing</span></h2>
+                    <p class="section-intro">
+                        Share your screen with one click. No additional software required.
+                    </p>
+                </div>
+
+                <div class="steps-container">
+                    <div class="step-item">
+                        <div class="step-number-large">1</div>
+                        <div class="step-content">
+                            <h4>Join a voice channel</h4>
+                            <p>You must be connected to a voice channel before you can share your screen.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number-large">2</div>
+                        <div class="step-content">
+                            <h4>Click the screen share button</h4>
+                            <p>In the voice controls panel, click the monitor icon. A dialog will appear letting you choose what to share.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number-large">3</div>
+                        <div class="step-content">
+                            <h4>Select your screen or window</h4>
+                            <p>Choose to share your entire screen, a specific application window, or a browser tab. Click "Share" to begin.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-box tip">
+                    <i class="fas fa-check-circle"></i>
+                    <div class="info-box-content">
+                        <strong>Stop Sharing</strong>
+                        <p>Click the screen share button again, or use the browser's native "Stop Sharing" button that appears at the bottom of your screen.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Messaging -->
+            <section class="guide-section reveal" id="messaging">
+                <div class="section-header">
+                    <div class="section-number">06</div>
+                    <h2 class="section-title"><i class="fas fa-comment"></i> Text <span>Messaging</span></h2>
+                    <p class="section-intro">
+                        Pee-to-pee encrypted chat with full markdown support. Express yourself properly.
+                    </p>
+                </div>
+
+                <div class="demo-box">
+                    <div class="demo-header">
+                        <div class="demo-dots">
+                            <div class="demo-dot red"></div>
+                            <div class="demo-dot yellow"></div>
+                            <div class="demo-dot green"></div>
+                        </div>
+                        <div class="demo-title">Markdown Examples</div>
+                    </div>
+                    <div class="demo-content">
+                        <div class="shortcuts-grid">
+                            <div class="shortcut-item">
+                                <span class="shortcut-action">Bold text</span>
+                                <code style="color: var(--piss-yellow);">**bold**</code>
+                            </div>
+                            <div class="shortcut-item">
+                                <span class="shortcut-action">Italic text</span>
+                                <code style="color: var(--piss-yellow);">*italic*</code>
+                            </div>
+                            <div class="shortcut-item">
+                                <span class="shortcut-action">Strikethrough</span>
+                                <code style="color: var(--piss-yellow);">~~strike~~</code>
+                            </div>
+                            <div class="shortcut-item">
+                                <span class="shortcut-action">Inline code</span>
+                                <code style="color: var(--piss-yellow);">`code`</code>
+                            </div>
+                            <div class="shortcut-item">
+                                <span class="shortcut-action">Code block</span>
+                                <code style="color: var(--piss-yellow);">```code```</code>
+                            </div>
+                            <div class="shortcut-item">
+                                <span class="shortcut-action">Link</span>
+                                <code style="color: var(--piss-yellow);">[text](url)</code>
+                            </div>
+                            <div class="shortcut-item">
+                                <span class="shortcut-action">Header</span>
+                                <code style="color: var(--piss-yellow);"># Header</code>
+                            </div>
+                            <div class="shortcut-item">
+                                <span class="shortcut-action">List item</span>
+                                <code style="color: var(--piss-yellow);">- item</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-box warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div class="info-box-content">
+                        <strong>14-Day Retention</strong>
+                        <p>Messages are automatically deleted after 14 days. This keeps the system lightweight and respects privacy. Save important info elsewhere.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Pissbot AI -->
+            <section class="guide-section reveal" id="pissbot">
+                <div class="section-header">
+                    <div class="section-number">07</div>
+                    <h2 class="section-title"><i class="fas fa-robot"></i> Pissbot <span>AI</span></h2>
+                    <p class="section-intro">
+                        Your built-in AI assistant. Powered by Google Gemini 2.5 Flash. Ask anything.
+                    </p>
+                </div>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-card-icon"><i class="fas fa-question-circle"></i></div>
+                        <h4>Ask questions</h4>
+                        <p>Pissbot knows everything about Pisscord - features, troubleshooting, release notes. Just ask in natural language.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-icon"><i class="fas fa-laugh"></i></div>
+                        <h4>Entertainment</h4>
+                        <p>Ask for jokes, stories, or random facts. Pissbot has personality and isn't afraid to use it.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-icon"><i class="fas fa-brain"></i></div>
+                        <h4>General knowledge</h4>
+                        <p>Programming help, writing assistance, research questions - Gemini handles it all.</p>
+                    </div>
+                </div>
+
+                <div class="info-box note">
+                    <i class="fas fa-info-circle"></i>
+                    <div class="info-box-content">
+                        <strong>Context Awareness</strong>
+                        <p>Pissbot's knowledge is updated via Firebase - no app rebuild required when we add new features or fix bugs.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- File Sharing -->
+            <section class="guide-section reveal" id="files">
+                <div class="section-header">
+                    <div class="section-number">08</div>
+                    <h2 class="section-title"><i class="fas fa-file"></i> File <span>Sharing</span></h2>
+                    <p class="section-intro">
+                        Share images and files directly in chat. Drag, drop, done.
+                    </p>
+                </div>
+
+                <div class="steps-container">
+                    <div class="step-item">
+                        <div class="step-number-large">1</div>
+                        <div class="step-content">
+                            <h4>Drag & drop</h4>
+                            <p>Drag any image or file into the chat area. Or click the attachment button in the message input.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number-large">2</div>
+                        <div class="step-content">
+                            <h4>Automatic upload</h4>
+                            <p>Files are uploaded to Firebase Storage. Images are automatically optimized for faster loading.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number-large">3</div>
+                        <div class="step-content">
+                            <h4>Preview & download</h4>
+                            <p>Images display inline. Click to view full size. Other files show a download link.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Profiles -->
+            <section class="guide-section reveal" id="profiles">
+                <div class="section-header">
+                    <div class="section-number">09</div>
+                    <h2 class="section-title"><i class="fas fa-user"></i> Your <span>Profile</span></h2>
+                    <p class="section-intro">
+                        Customize your presence. Stand out in the void.
+                    </p>
+                </div>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-card-icon"><i class="fas fa-signature"></i></div>
+                        <h4>Display name</h4>
+                        <p>Choose any name you want. Change it anytime in Settings → Profile.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-icon"><i class="fas fa-palette"></i></div>
+                        <h4>Avatar color</h4>
+                        <p>Pick a color for your avatar circle. Your initial is displayed in the chosen color.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-icon"><i class="fas fa-image"></i></div>
+                        <h4>Profile picture</h4>
+                        <p>Upload a custom avatar image. Synced to Firebase so everyone sees it.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-icon"><i class="fas fa-comment-dots"></i></div>
+                        <h4>Status message</h4>
+                        <p>Set a custom status that appears under your name. "Gaming", "AFK", whatever you want.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings -->
+            <section class="guide-section reveal" id="settings">
+                <div class="section-header">
+                    <div class="section-number">10</div>
+                    <h2 class="section-title"><i class="fas fa-cog"></i> App <span>Settings</span></h2>
+                    <p class="section-intro">
+                        Configure your devices, check for updates, and view debug logs.
+                    </p>
+                </div>
+
+                <div class="accordion">
+                    <div class="accordion-item active">
+                        <div class="accordion-header">
+                            <span>Profile Settings</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="accordion-content-inner">
+                                Change your display name, status message, and avatar color. Upload a custom profile picture. All changes save automatically to localStorage and sync to Firebase presence.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <div class="accordion-header">
+                            <span>Voice & Video Settings</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="accordion-content-inner">
+                                Select your preferred microphone, speakers, and camera from dropdown menus. <strong>Note:</strong> Changing devices requires disconnecting and reconnecting to apply. Volume preferences reset on app restart (this is intentional).
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <div class="accordion-header">
+                            <span>Debug Log</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="accordion-content-inner">
+                                Real-time display of app events. Color-coded by type: <code>info</code> (green), <code>error</code> (red), <code>webrtc</code> (blue). Helpful for troubleshooting connection issues. Shows last 50 entries.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <div class="accordion-header">
+                            <span>About & Updates</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="accordion-content-inner">
+                                View current app version and feature list. <strong>Check for Updates</strong> button manually triggers update check. If an update is found, you'll be prompted to download and install.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Keyboard Shortcuts -->
+            <section class="guide-section reveal" id="shortcuts">
+                <div class="section-header">
+                    <div class="section-number">11</div>
+                    <h2 class="section-title"><i class="fas fa-keyboard"></i> Keyboard <span>Shortcuts</span></h2>
+                    <p class="section-intro">
+                        Power-user shortcuts to navigate faster.
+                    </p>
+                </div>
+
+                <div class="shortcuts-grid">
+                    <div class="shortcut-item">
+                        <span class="shortcut-action">Toggle Mute</span>
+                        <div class="shortcut-keys">
+                            <span class="key">Ctrl</span>
+                            <span class="key">M</span>
+                        </div>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="shortcut-action">Toggle Video</span>
+                        <div class="shortcut-keys">
+                            <span class="key">Ctrl</span>
+                            <span class="key">Shift</span>
+                            <span class="key">V</span>
+                        </div>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="shortcut-action">Open Settings</span>
+                        <div class="shortcut-keys">
+                            <span class="key">Ctrl</span>
+                            <span class="key">,</span>
+                        </div>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="shortcut-action">Disconnect Call</span>
+                        <div class="shortcut-keys">
+                            <span class="key">Ctrl</span>
+                            <span class="key">D</span>
+                        </div>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="shortcut-action">Send Message</span>
+                        <div class="shortcut-keys">
+                            <span class="key">Enter</span>
+                        </div>
+                    </div>
+                    <div class="shortcut-item">
+                        <span class="shortcut-action">New Line</span>
+                        <div class="shortcut-keys">
+                            <span class="key">Shift</span>
+                            <span class="key">Enter</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Troubleshooting -->
+            <section class="guide-section reveal" id="troubleshooting">
+                <div class="section-header">
+                    <div class="section-number">12</div>
+                    <h2 class="section-title"><i class="fas fa-wrench"></i> Trouble<span>shooting</span></h2>
+                    <p class="section-intro">
+                        Common issues and how to fix them.
+                    </p>
+                </div>
+
+                <div class="accordion">
+                    <div class="accordion-item active">
+                        <div class="accordion-header">
+                            <span>Can't hear other people</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="accordion-content-inner">
+                                <p>Check Settings → Voice & video → Output device. Make sure the correct speakers/headphones are selected. Also check your system volume and that Pisscord isn't muted in Windows Volume Mixer.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <div class="accordion-header">
+                            <span>Others can't hear me</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="accordion-content-inner">
+                                <p>Check that you're not muted (microphone icon in voice controls). Verify the correct microphone is selected in Settings. Some browsers block mic access by default - check the address bar for permission icons.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <div class="accordion-header">
+                            <span>Connection keeps failing</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="accordion-content-inner">
+                                <p>Pee-to-pee connections can be blocked by strict firewalls or certain network configurations (corporate networks, some college dorms). Try a different network or contact your IT department about WebRTC/STUN/TURN firewall rules.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <div class="accordion-header">
+                            <span>Video is laggy or choppy</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="accordion-content-inner">
+                                <p>Video quality depends on your internet connection. Try closing other bandwidth-heavy apps. If issues persist, disable video and use voice-only. Pee-to-pee connections are sensitive to packet loss.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <div class="accordion-header">
+                            <span>App won't start / crashes on launch</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="accordion-content-inner">
+                                <p>Try deleting the app data folder at <code>%APPDATA%/pisscord</code> and reinstalling. If issues persist, check the Debug Log in Settings or report the bug in <code>#issues</code>.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item">
+                        <div class="accordion-header">
+                            <span>Pissbot isn't responding</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="accordion-content-inner">
+                                <p>Pissbot requires a valid Gemini API key. Self-hosted builds need <code>VITE_GEMINI_API_KEY</code> in environment variables. If you're using the official release, this might be a temporary API outage - try again in a few minutes or file a bug report in #issues if it persists.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-box warning" style="margin-top: 2rem;">
+                    <i class="fas fa-bug"></i>
+                    <div class="info-box-content">
+                        <strong>Still having issues?</strong>
+                        <p>Report bugs in the <code>#issues</code> channel or open an issue on <a href="https://github.com/jamditis/pisscord/issues" style="color: var(--piss-yellow);">GitHub</a>. Include your Pisscord version and steps to reproduce.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Back to Top -->
+    <div class="back-to-top" id="backToTop">
+        <i class="fas fa-arrow-up"></i>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-logo">
+            <img src="../public/pisscord-dark.png" alt="Pisscord">
+            Pisscord
+        </div>
+        <div class="footer-links">
+            <a href="index.html">Home</a>
+            <a href="guide.html">User Guide</a>
+            <a href="https://github.com/jamditis/pisscord/releases/latest">Download</a>
+            <a href="https://github.com/jamditis/pisscord">GitHub</a>
+        </div>
+        <div class="footer-bottom">
+            <p>Made with spite by <a href="https://github.com/jamditis">JawnPiece Productions</a></p>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile navigation toggle
+        function toggleMobileNav() {
+            const mobileNav = document.getElementById('mobileNav');
+            mobileNav.classList.toggle('active');
+            document.body.style.overflow = mobileNav.classList.contains('active') ? 'hidden' : '';
+        }
+
+        // Scroll reveal
+        function revealOnScroll() {
+            const reveals = document.querySelectorAll('.reveal');
+            const windowHeight = window.innerHeight;
+
+            reveals.forEach((element) => {
+                const elementTop = element.getBoundingClientRect().top;
+                const revealPoint = 100;
+
+                if (elementTop < windowHeight - revealPoint) {
+                    element.classList.add('visible');
+                }
+            });
+        }
+
+        // Accordion toggle
+        document.querySelectorAll('.accordion-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const item = header.parentElement;
+                const wasActive = item.classList.contains('active');
+
+                // Close all in same accordion
+                item.parentElement.querySelectorAll('.accordion-item').forEach(i => {
+                    i.classList.remove('active');
+                });
+
+                // Open clicked if it wasn't active
+                if (!wasActive) {
+                    item.classList.add('active');
+                }
+            });
+        });
+
+        // Progress bar
+        function updateProgressBar() {
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const progress = (scrollTop / docHeight) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+        }
+
+        // Back to top button
+        function updateBackToTop() {
+            const btn = document.getElementById('backToTop');
+            if (window.scrollY > 500) {
+                btn.classList.add('visible');
+            } else {
+                btn.classList.remove('visible');
+            }
+        }
+
+        document.getElementById('backToTop').addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // Active TOC link
+        function updateActiveTocLink() {
+            const sections = document.querySelectorAll('.guide-section');
+            const tocLinks = document.querySelectorAll('.toc-list a');
+
+            let currentSection = '';
+
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop - 150;
+                if (window.scrollY >= sectionTop) {
+                    currentSection = section.getAttribute('id');
+                }
+            });
+
+            tocLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + currentSection) {
+                    link.classList.add('active');
+                }
+            });
+        }
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            revealOnScroll();
+            updateProgressBar();
+            updateBackToTop();
+            updateActiveTocLink();
+        });
+
+        window.addEventListener('scroll', () => {
+            revealOnScroll();
+            updateProgressBar();
+            updateBackToTop();
+            updateActiveTocLink();
+        });
+
+        // Simulate speaking indicator animation
+        setInterval(() => {
+            const speakingUser = document.querySelector('.voice-user.speaking');
+            if (speakingUser) {
+                speakingUser.classList.toggle('speaking');
+                setTimeout(() => {
+                    speakingUser.classList.toggle('speaking');
+                }, 300);
+            }
+        }, 2000);
+    </script>
+</body>
+</html>
