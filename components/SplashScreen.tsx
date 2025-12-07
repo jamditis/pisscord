@@ -12,7 +12,7 @@ interface SplashScreenProps {
 // Theme color configurations
 const themes = {
   gold: {
-    logo: '/pisscord-gold.png',
+    logo: './pisscord-gold.png',
     primary: '#f0e130',
     primaryRgb: '240, 225, 48',
     glow: 'rgba(240, 225, 48, 0.6)',
@@ -21,7 +21,7 @@ const themes = {
     particle: '#f0e130',
   },
   purple: {
-    logo: '/pisscord-purple.png',
+    logo: './pisscord-purple.png',
     primary: '#a855f7',
     primaryRgb: '168, 85, 247',
     glow: 'rgba(168, 85, 247, 0.6)',

@@ -47,7 +47,6 @@ export interface Channel {
   id: string;
   name: string;
   type: ChannelType;
-  requireApproval?: boolean; // If true, users must be approved to join voice channels
 }
 
 export interface JoinRequest {
