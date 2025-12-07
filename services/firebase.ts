@@ -17,7 +17,7 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "fire
 import { UserProfile, PresenceUser, JoinRequest } from "../types";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAHXVi7SSSCOYQswb_MxeydAlNWq86XYXI",
+  apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY,
   authDomain: "pisscord-edbca.firebaseapp.com",
   databaseURL: "https://pisscord-edbca-default-rtdb.firebaseio.com",
   projectId: "pisscord-edbca",

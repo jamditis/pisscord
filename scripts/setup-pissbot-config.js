@@ -1,11 +1,19 @@
 // Script to initialize Pissbot config in Firebase
 // Run with: node scripts/setup-pissbot-config.js
+// Requires VITE_FIREBASE_API_KEY environment variable
 
+require('dotenv').config();
 const { initializeApp } = require('firebase/app');
 const { getDatabase, ref, set } = require('firebase/database');
 
+if (!process.env.VITE_FIREBASE_API_KEY) {
+  console.error('Error: VITE_FIREBASE_API_KEY environment variable is not set.');
+  console.error('Create a .env file with: VITE_FIREBASE_API_KEY=your_key_here');
+  process.exit(1);
+}
+
 const firebaseConfig = {
-  apiKey: "AIzaSyAHXVi7SSSCOYQswb_MxeydAlNWq86XYXI",
+  apiKey: process.env.VITE_FIREBASE_API_KEY,
   authDomain: "pisscord-edbca.firebaseapp.com",
   databaseURL: "https://pisscord-edbca-default-rtdb.firebaseio.com",
   projectId: "pisscord-edbca",

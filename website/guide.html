@@ -1057,61 +1057,6 @@
             text-decoration: none;
         }
 
-        /* Mobile Navigation */
-        .mobile-menu-btn {
-            display: none;
-            background: none;
-            border: none;
-            color: var(--text);
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 8px;
-        }
-
-        .mobile-nav {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100vh;
-            background: var(--void);
-            z-index: 999;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 2rem;
-        }
-
-        .mobile-nav.active {
-            display: flex;
-        }
-
-        .mobile-nav-close {
-            position: absolute;
-            top: 1.5rem;
-            right: 1.5rem;
-            background: none;
-            border: none;
-            color: var(--text);
-            font-size: 1.5rem;
-            cursor: pointer;
-        }
-
-        .mobile-nav a {
-            color: var(--text);
-            text-decoration: none;
-            font-size: 1.5rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            transition: color 0.2s;
-        }
-
-        .mobile-nav a:hover {
-            color: var(--piss-yellow);
-        }
-
         /* Mobile Responsiveness */
         @media (max-width: 1024px) {
             .guide-layout {
@@ -1139,10 +1084,6 @@
                 display: none;
             }
 
-            .mobile-menu-btn {
-                display: block;
-            }
-
             .step-item {
                 grid-template-columns: 60px 1fr;
                 gap: 1rem;
@@ -1152,182 +1093,6 @@
                 width: 48px;
                 height: 48px;
                 font-size: 1.4rem;
-            }
-
-            .section-title {
-                font-size: 1.5rem;
-            }
-
-            .section-number {
-                font-size: 3.5rem;
-            }
-
-            .channel-type {
-                grid-template-columns: 50px 1fr;
-                gap: 1rem;
-            }
-
-            .channel-icon-large {
-                width: 48px;
-                height: 48px;
-                font-size: 1.2rem;
-            }
-
-            .quick-nav {
-                gap: 0.5rem;
-            }
-
-            .quick-nav a {
-                padding: 8px 12px;
-                font-size: 0.8rem;
-            }
-
-            footer {
-                padding: 40px 2rem 30px;
-            }
-
-            .footer-links {
-                flex-wrap: wrap;
-                gap: 1rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .hero {
-                padding: 100px 1rem 40px;
-            }
-
-            .hero-title {
-                font-size: 2rem;
-            }
-
-            .hero-subtitle {
-                font-size: 1rem;
-            }
-
-            .guide-layout {
-                padding: 0 1rem 40px;
-            }
-
-            .section-title {
-                font-size: 1.3rem;
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
-            }
-
-            .section-title i {
-                font-size: 1.2rem;
-            }
-
-            .section-number {
-                font-size: 2.5rem;
-                margin-bottom: -1rem;
-            }
-
-            .section-intro {
-                font-size: 1rem;
-            }
-
-            .step-item {
-                grid-template-columns: 1fr;
-                gap: 0.75rem;
-            }
-
-            .step-number-large {
-                width: 40px;
-                height: 40px;
-                font-size: 1.2rem;
-            }
-
-            .feature-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .feature-card {
-                padding: 1.25rem;
-            }
-
-            .channel-type {
-                grid-template-columns: 1fr;
-                text-align: center;
-            }
-
-            .channel-icon-large {
-                margin: 0 auto 0.5rem;
-            }
-
-            .shortcuts-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .shortcut-item {
-                padding: 10px 12px;
-            }
-
-            .key {
-                min-width: 24px;
-                height: 24px;
-                font-size: 0.65rem;
-            }
-
-            .quick-nav {
-                flex-direction: column;
-                width: 100%;
-            }
-
-            .quick-nav a {
-                width: 100%;
-                justify-content: center;
-            }
-
-            .accordion-header {
-                padding: 1rem;
-                font-size: 0.9rem;
-            }
-
-            .accordion-content-inner {
-                padding: 1rem;
-                font-size: 0.9rem;
-            }
-
-            .info-box {
-                flex-direction: column;
-                gap: 0.75rem;
-            }
-
-            .nav-cta {
-                padding: 10px 16px;
-                font-size: 0.75rem;
-            }
-
-            .nav-logo {
-                font-size: 1.1rem;
-            }
-
-            .nav-logo img {
-                width: 36px;
-                height: 36px;
-            }
-
-            .back-to-top {
-                width: 44px;
-                height: 44px;
-                bottom: 1rem;
-                right: 1rem;
-            }
-
-            footer {
-                padding: 30px 1rem 20px;
-            }
-
-            .footer-logo {
-                font-size: 1.1rem;
-            }
-
-            .footer-links {
-                flex-direction: column;
-                gap: 0.75rem;
             }
         }
 
@@ -1400,29 +1165,12 @@
             <li><a href="index.html">Home</a></li>
             <li><a href="guide.html" class="active">User Guide</a></li>
             <li><a href="index.html#features">Features</a></li>
-            <li><a href="index.html#mobile">Mobile</a></li>
             <li><a href="index.html#faq">FAQ</a></li>
         </ul>
-        <button class="mobile-menu-btn" onclick="toggleMobileNav()">
-            <i class="fas fa-bars"></i>
-        </button>
         <a href="https://github.com/jamditis/pisscord/releases/latest" class="nav-cta">
             Download
         </a>
     </nav>
-
-    <!-- Mobile Navigation Overlay -->
-    <div class="mobile-nav" id="mobileNav">
-        <button class="mobile-nav-close" onclick="toggleMobileNav()">
-            <i class="fas fa-times"></i>
-        </button>
-        <a href="index.html" onclick="toggleMobileNav()">Home</a>
-        <a href="guide.html" onclick="toggleMobileNav()">User Guide</a>
-        <a href="index.html#features" onclick="toggleMobileNav()">Features</a>
-        <a href="index.html#mobile" onclick="toggleMobileNav()">Mobile</a>
-        <a href="index.html#faq" onclick="toggleMobileNav()">FAQ</a>
-        <a href="https://github.com/jamditis/pisscord/releases/latest" style="color: var(--piss-yellow);">Download</a>
-    </div>
 
     <!-- Hero -->
     <section class="hero">
@@ -2196,13 +1944,6 @@
     </footer>
 
     <script>
-        // Mobile navigation toggle
-        function toggleMobileNav() {
-            const mobileNav = document.getElementById('mobileNav');
-            mobileNav.classList.toggle('active');
-            document.body.style.overflow = mobileNav.classList.contains('active') ? 'hidden' : '';
-        }
-
         // Scroll reveal
         function revealOnScroll() {
             const reveals = document.querySelectorAll('.reveal');
