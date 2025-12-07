@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Message, Channel, ChannelType } from '../types';
 import { generateAIResponse } from '../services/geminiService';
 import { uploadFile } from '../services/firebase';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 // Simple Discord-style Markdown renderer
 const renderMarkdown = (text: string): React.ReactNode[] => {
@@ -156,6 +158,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
   const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -221,13 +224,263 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
   // Helper to find user avatar
   const getUserAvatar = (senderName: string) => {
       // Pissbot special case
-      if (senderName === 'Pissbot') return null; 
-      
+      if (senderName === 'Pissbot') return null;
+
       // Try to find user by display name (Not perfect, but works for now without senderId)
       const user = onlineUsers.find(u => u.displayName === senderName);
       return user?.photoURL;
   };
 
+  // Handle send button for mobile
+  const handleSend = async () => {
+    if (!inputValue.trim()) return;
+
+    const text = inputValue;
+    setInputValue('');
+
+    if (channel.type === ChannelType.AI) {
+      setIsTypingAI(true);
+      onSendMessage(text);
+
+      try {
+          const response = await generateAIResponse(text);
+          onSendAIMessage(text, response);
+      } catch (err: any) {
+          const errorMsg = `AI Error: ${err.message || "Unknown error"}`;
+          console.error(errorMsg);
+          onSendAIMessage(text, "😵 Pissbot crashed! Check debug logs.");
+      } finally {
+          setIsTypingAI(false);
+      }
+    } else {
+      onSendMessage(text);
+    }
+  };
+
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <div className="flex-1 flex flex-col bg-gradient-to-b from-[#1a1a2e] to-[#16162a] h-full min-w-0 overflow-hidden">
+        {/* Mobile Header */}
+        <div className="px-4 py-3 border-b border-white/5 flex items-center shrink-0 bg-[#1a1a2e]/80 backdrop-blur-sm">
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center mr-3 ${
+            channel.type === ChannelType.AI
+              ? 'bg-gradient-to-br from-purple-500 to-indigo-600'
+              : 'bg-white/10'
+          }`}>
+            <i className={`text-white ${channel.type === ChannelType.AI ? 'fas fa-robot' : 'fas fa-hashtag'}`}></i>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-white truncate">{channel.name}</h3>
+            <p className="text-xs text-white/40">
+              {channel.type === ChannelType.AI ? 'AI Assistant' : `${messages.length} messages`}
+            </p>
+          </div>
+          {channel.id === '5' && (
+            <motion.button
+              onClick={onOpenReportModal}
+              whileTap={{ scale: 0.95 }}
+              className="bg-green-500/20 text-green-400 px-3 py-2 rounded-xl text-sm font-medium flex items-center"
+            >
+              <i className="fas fa-bug mr-2"></i> Report
+            </motion.button>
+          )}
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-3 py-3">
+          {messages.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col items-center justify-center h-full text-center px-4"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
+                <i className={`text-3xl text-white/20 ${channel.type === ChannelType.AI ? 'fas fa-robot' : 'fas fa-hashtag'}`}></i>
+              </div>
+              <h3 className="text-lg font-bold text-white/70 mb-1">Welcome to #{channel.name}!</h3>
+              <p className="text-white/40 text-sm">This is the start of the conversation.</p>
+            </motion.div>
+          )}
+
+          <AnimatePresence mode="popLayout">
+            {messages.map((msg, index) => {
+              const avatarUrl = getUserAvatar(msg.sender);
+              return (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.02 }}
+                  className={`flex mb-3 ${msg.isAi ? '' : ''}`}
+                >
+                  {/* Avatar */}
+                  <div className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden ${
+                    msg.isAi ? 'bg-gradient-to-br from-purple-500 to-indigo-600' : 'bg-white/10'
+                  }`}>
+                    {msg.isAi ? (
+                      <i className="fas fa-robot text-white text-sm"></i>
+                    ) : avatarUrl ? (
+                      <img src={avatarUrl} alt={msg.sender} className="w-full h-full object-cover" />
+                    ) : (
+                      <i className="fas fa-user text-white/50 text-sm"></i>
+                    )}
+                  </div>
+
+                  {/* Message bubble */}
+                  <div className="ml-2 flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className={`font-medium text-sm ${msg.isAi ? 'text-purple-400' : 'text-white/90'}`}>
+                        {msg.sender}
+                      </span>
+                      {msg.isAi && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/30 text-purple-300 uppercase font-bold">
+                          Bot
+                        </span>
+                      )}
+                      <span className="text-[10px] text-white/30">
+                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <div className={`text-sm text-white/80 break-words leading-relaxed rounded-2xl px-3 py-2 ${
+                      msg.isAi
+                        ? 'bg-purple-500/10 border border-purple-500/20'
+                        : 'bg-white/5'
+                    }`}>
+                      {renderMarkdown(msg.content)}
+                    </div>
+
+                    {/* Attachment */}
+                    {msg.attachment && (
+                      <div className="mt-2">
+                        {msg.attachment.type === 'image' ? (
+                          <a href={msg.attachment.url} target="_blank" rel="noopener noreferrer" className="block">
+                            <img
+                              src={msg.attachment.url}
+                              alt={msg.attachment.name}
+                              className="rounded-xl max-h-60 border border-white/10"
+                            />
+                          </a>
+                        ) : (
+                          <div className="flex items-center bg-white/5 p-3 rounded-xl border border-white/10">
+                            <i className="fas fa-file-download text-xl text-purple-400 mr-3"></i>
+                            <div className="overflow-hidden flex-1">
+                              <div className="text-white/80 text-sm font-medium truncate">{msg.attachment.name}</div>
+                              <div className="text-[10px] text-white/40">Attachment</div>
+                            </div>
+                            <a
+                              href={msg.attachment.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-2 w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center"
+                            >
+                              <i className="fas fa-download text-white/60 text-sm"></i>
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+
+          {isTypingAI && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center px-3 py-2"
+            >
+              <div className="flex gap-1">
+                <div className="w-2 h-2 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-2 h-2 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-2 h-2 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              </div>
+              <span className="text-purple-400 text-sm ml-2">Pissbot is thinking...</span>
+            </motion.div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Mobile Input Area */}
+        <div className="px-3 pb-4 pt-2 shrink-0 border-t border-white/5 bg-[#16162a]/80 backdrop-blur-sm">
+          {channel.id === '5' ? (
+            <motion.button
+              onClick={onOpenReportModal}
+              whileTap={{ scale: 0.98 }}
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-3.5 rounded-xl flex items-center justify-center shadow-lg"
+            >
+              <i className="fas fa-bug mr-2"></i> Report Issue / Request Feature
+            </motion.button>
+          ) : channel.id === '4' ? (
+            <div className="bg-white/5 rounded-xl px-4 py-3 flex items-center justify-center border border-white/5">
+              <i className="fas fa-lock mr-2 text-white/30"></i>
+              <span className="text-white/40 text-sm">Read-only channel</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              {/* Hidden File Input */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+
+              {/* Upload Button */}
+              <motion.button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                whileTap={{ scale: 0.95 }}
+                className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center border border-white/10"
+              >
+                {isUploading ? (
+                  <i className="fas fa-spinner fa-spin text-purple-400"></i>
+                ) : (
+                  <i className="fas fa-plus text-white/50"></i>
+                )}
+              </motion.button>
+
+              {/* Text Input */}
+              <div className="flex-1 bg-white/5 rounded-xl border border-white/10 flex items-center overflow-hidden">
+                <input
+                  type="text"
+                  className="flex-1 bg-transparent border-none outline-none text-white px-4 py-3 placeholder-white/30"
+                  placeholder={`Message #${channel.name}`}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                />
+              </div>
+
+              {/* Send Button */}
+              <motion.button
+                onClick={handleSend}
+                disabled={!inputValue.trim()}
+                whileTap={{ scale: 0.95 }}
+                className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${
+                  inputValue.trim()
+                    ? 'bg-gradient-to-r from-purple-500 to-indigo-600 shadow-lg'
+                    : 'bg-white/5 border border-white/10'
+                }`}
+              >
+                <i className={`fas fa-paper-plane text-sm ${inputValue.trim() ? 'text-white' : 'text-white/30'}`}></i>
+              </motion.button>
+            </div>
+          )}
+
+          {channel.type === ChannelType.AI && (
+            <div className="text-[10px] text-white/30 mt-2 text-center">
+              Powered by Pissbot AI
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop layout
   return (
     <div className="flex-1 flex flex-col bg-discord-main h-full min-w-0">
       {/* Channel Header */}

@@ -1,5 +1,7 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { Channel, ChannelType, UserProfile, ConnectionState, PresenceUser } from '../types';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 interface ChannelListProps {
   channels: Channel[];
@@ -47,6 +49,205 @@ export const ChannelList: React.FC<ChannelListProps> = ({
     return onlineUsers.filter(u => u.voiceChannelId === channelId);
   };
   const [showVolumeSlider, setShowVolumeSlider] = React.useState(false);
+  const isMobile = useIsMobile();
+
+  // Mobile-optimized channel item component
+  const MobileChannelItem: React.FC<{
+    channel: Channel;
+    isActive: boolean;
+    onClick: () => void;
+    usersInChannel?: PresenceUser[];
+  }> = ({ channel, isActive, onClick, usersInChannel = [] }) => {
+    const isVoice = channel.type === ChannelType.VOICE;
+    const isAI = channel.type === ChannelType.AI;
+
+    return (
+      <motion.button
+        onClick={onClick}
+        className={`w-full flex items-center px-4 py-3.5 rounded-xl mb-2 transition-all ${
+          isActive
+            ? 'bg-gradient-to-r from-purple-500/20 to-purple-500/10 border border-purple-500/30'
+            : 'bg-white/5 border border-transparent active:bg-white/10'
+        }`}
+        whileTap={{ scale: 0.98 }}
+        style={{
+          boxShadow: isActive ? '0 0 20px rgba(168, 85, 247, 0.15)' : 'none',
+        }}
+      >
+        {/* Icon */}
+        <div
+          className={`w-10 h-10 rounded-xl flex items-center justify-center mr-3 ${
+            isActive
+              ? isVoice ? 'bg-green-500/20 text-green-400' : isAI ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-500/20 text-purple-400'
+              : 'bg-white/10 text-gray-400'
+          }`}
+        >
+          {isVoice ? (
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+              <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+            </svg>
+          ) : isAI ? (
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 011 1v3a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2v-1H2a1 1 0 01-1-1v-3a1 1 0 011-1h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2M7.5 13A2.5 2.5 0 005 15.5 2.5 2.5 0 007.5 18a2.5 2.5 0 002.5-2.5A2.5 2.5 0 007.5 13m9 0a2.5 2.5 0 00-2.5 2.5 2.5 2.5 0 002.5 2.5 2.5 2.5 0 002.5-2.5 2.5 2.5 0 00-2.5-2.5z"/>
+            </svg>
+          ) : (
+            <span className="text-lg font-bold">#</span>
+          )}
+        </div>
+
+        {/* Channel Info */}
+        <div className="flex-1 text-left">
+          <div className={`font-semibold ${isActive ? 'text-white' : 'text-gray-300'}`}>
+            {channel.name}
+          </div>
+          {isVoice && usersInChannel.length > 0 && (
+            <div className="text-xs text-gray-500 mt-0.5">
+              {usersInChannel.length} {usersInChannel.length === 1 ? 'user' : 'users'} connected
+            </div>
+          )}
+        </div>
+
+        {/* Right side indicators */}
+        <div className="flex items-center space-x-2">
+          {channel.requireApproval && (
+            <div className="w-6 h-6 rounded-full bg-yellow-500/20 flex items-center justify-center">
+              <svg className="w-3 h-3 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
+              </svg>
+            </div>
+          )}
+          {usersInChannel.length > 0 && (
+            <div className="px-2 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-bold">
+              {usersInChannel.length}
+            </div>
+          )}
+          {isActive && (
+            <div className="w-2 h-2 rounded-full bg-purple-500" />
+          )}
+        </div>
+      </motion.button>
+    );
+  };
+
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <div className="flex-1 flex flex-col min-h-0 px-2">
+        {/* Text Channels Section */}
+        <div className="mb-4">
+          <div className="flex items-center px-2 mb-3">
+            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Text Channels</div>
+            <div className="flex-1 h-px bg-gray-700/50 ml-3" />
+          </div>
+          {channels.filter(c => c.type === ChannelType.TEXT || c.type === ChannelType.AI).map(channel => (
+            <MobileChannelItem
+              key={channel.id}
+              channel={channel}
+              isActive={activeChannelId === channel.id}
+              onClick={() => onSelectChannel(channel.id)}
+            />
+          ))}
+        </div>
+
+        {/* Voice Channels Section */}
+        <div className="mb-4">
+          <div className="flex items-center px-2 mb-3">
+            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Voice Channels</div>
+            <div className="flex-1 h-px bg-gray-700/50 ml-3" />
+          </div>
+          {channels.filter(c => c.type === ChannelType.VOICE).map(channel => (
+            <MobileChannelItem
+              key={channel.id}
+              channel={channel}
+              isActive={activeChannelId === channel.id}
+              onClick={() => onSelectChannel(channel.id)}
+              usersInChannel={getUsersInVoiceChannel(channel.id)}
+            />
+          ))}
+        </div>
+
+        {/* Voice Control Panel (when connected) */}
+        {connectionState === ConnectionState.CONNECTED && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-auto mx-2 mb-4 p-4 rounded-2xl"
+            style={{
+              background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.05))',
+              border: '1px solid rgba(34, 197, 94, 0.2)',
+            }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse mr-2" />
+                <span className="text-green-400 text-sm font-semibold">Voice Connected</span>
+              </div>
+              <button
+                onClick={() => {
+                  onDisconnect?.();
+                  onShowToast?.('info', 'Disconnected', 'You left the voice channel.');
+                }}
+                className="p-2 rounded-lg bg-red-500/20 text-red-400 active:bg-red-500/30"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M5 3a2 2 0 00-2 2v1c0 8.284 6.716 15 15 15h1a2 2 0 002-2v-3.28a1 1 0 00-.684-.948l-4.493-1.498a1 1 0 00-1.21.502l-1.13 2.257a11.042 11.042 0 01-5.516-5.517l2.257-1.128a1 1 0 00.502-1.21L9.228 3.683A1 1 0 008.279 3H5z" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex space-x-2">
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  onToggleAudio?.();
+                  onShowToast?.('info', isAudioEnabled ? 'Muted' : 'Unmuted');
+                }}
+                className={`flex-1 py-3 rounded-xl font-medium text-sm flex items-center justify-center space-x-2 ${
+                  isAudioEnabled
+                    ? 'bg-white/10 text-white'
+                    : 'bg-red-500/20 text-red-400'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {isAudioEnabled ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  )}
+                </svg>
+                <span>{isAudioEnabled ? 'Mute' : 'Unmute'}</span>
+              </motion.button>
+
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  onToggleVideo?.();
+                  onShowToast?.('info', isVideoEnabled ? 'Camera Off' : 'Camera On');
+                }}
+                className={`flex-1 py-3 rounded-xl font-medium text-sm flex items-center justify-center space-x-2 ${
+                  isVideoEnabled
+                    ? 'bg-white/10 text-white'
+                    : 'bg-red-500/20 text-red-400'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {isVideoEnabled ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                  )}
+                </svg>
+                <span>{isVideoEnabled ? 'Video' : 'No Video'}</span>
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </div>
+    );
+  }
+
+  // Desktop layout (original)
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Header */}

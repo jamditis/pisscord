@@ -13,6 +13,9 @@ import { ToastContainer, useToast } from './components/Toast';
 import { ConfirmModal } from './components/ConfirmModal';
 import { ContextMenu, useContextMenu } from './components/ContextMenu';
 import { JoinRequestPanel } from './components/JoinRequestPanel';
+import { MobileNav, MobileView } from './components/MobileNav';
+import { SplashScreen } from './components/SplashScreen';
+import { useIsMobile } from './hooks/useIsMobile';
 import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs, JoinRequest } from './types';
 import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages, cleanupOldMessages, getPissbotConfig, PissbotConfig, checkForMOTD, sendJoinRequest, subscribeToJoinRequests, removeJoinRequest } from './services/firebase';
 import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
@@ -119,6 +122,9 @@ export default function App() {
 
   // --- UI STATE ---
   const [isUserListCollapsed, setIsUserListCollapsed] = useState(false);
+  const [mobileView, setMobileView] = useState<MobileView>('chat');
+  const [showSplash, setShowSplash] = useState(true);
+  const isMobile = useIsMobile();
 
   // --- REFS ---
   const peerInstance = useRef<Peer | null>(null);
@@ -1000,6 +1006,11 @@ export default function App() {
       className="flex w-full h-screen bg-discord-main text-discord-text overflow-hidden font-sans relative"
       onContextMenu={handleContextMenu}
     >
+      {/* Splash Screen */}
+      {showSplash && (
+        <SplashScreen theme="purple" onComplete={() => setShowSplash(false)} />
+      )}
+
       {/* Global Audio Elements for persistent audio across views */}
       {Array.from(remoteStreams.entries()).map(([peerId, stream]) => (
           <audio 
@@ -1062,102 +1073,351 @@ export default function App() {
           />
       )}
 
-      <Sidebar onServerClick={() => setActiveChannelId('1')} />
-      
-      {/* CHANNEL LIST + VOICE CONTROLS */}
-      <div className="flex flex-col h-full bg-discord-sidebar w-60">
-          <ChannelList
-            channels={INITIAL_CHANNELS}
-            activeChannelId={activeChannelId}
-            activeVoiceChannelId={activeVoiceChannelId}
-            onlineUsers={onlineUsers}
-            onSelectChannel={(id) => {
-                const ch = INITIAL_CHANNELS.find(c => c.id === id);
-                if (ch?.type === ChannelType.VOICE) {
-                    // If already connected to this voice channel, just switch view (don't rejoin)
-                    if (activeVoiceChannelId === id && connectionState === ConnectionState.CONNECTED) {
+      {/* ============ MOBILE LAYOUT ============ */}
+      {isMobile ? (
+        <>
+          {/* Mobile Main Content Area - full screen with bottom padding for nav */}
+          <div
+            className="flex-1 flex flex-col"
+            style={{ paddingBottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}
+          >
+            {/* Mobile Channel List View */}
+            {mobileView === 'channels' && (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Glassmorphism Header */}
+                <div
+                  className="relative px-5 py-4"
+                  style={{
+                    background: 'linear-gradient(to bottom, rgba(18, 18, 26, 0.98), rgba(18, 18, 26, 0.92))',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                  }}
+                >
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-px"
+                    style={{ background: 'linear-gradient(90deg, transparent, rgba(240, 225, 48, 0.2), transparent)' }}
+                  />
+                  <h2
+                    className="font-semibold text-lg tracking-wide"
+                    style={{ color: '#f0e130' }}
+                  >
+                    Channels
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-0.5">Browse text and voice channels</p>
+                </div>
+                <div className="flex-1 bg-discord-sidebar overflow-y-auto">
+                  <ChannelList
+                  channels={INITIAL_CHANNELS}
+                  activeChannelId={activeChannelId}
+                  activeVoiceChannelId={activeVoiceChannelId}
+                  onlineUsers={onlineUsers}
+                  onSelectChannel={(id) => {
+                    const ch = INITIAL_CHANNELS.find(c => c.id === id);
+                    if (ch?.type === ChannelType.VOICE) {
+                      if (activeVoiceChannelId === id && connectionState === ConnectionState.CONNECTED) {
                         setActiveChannelId(id);
-                    } else {
+                        setMobileView('voice');
+                      } else {
                         joinVoiceChannel(id);
+                        setMobileView('voice');
+                      }
+                    } else {
+                      setActiveChannelId(id);
+                      setMobileView('chat');
                     }
-                } else {
-                    setActiveChannelId(id);
-                }
-            }}
+                  }}
+                  connectionState={connectionState}
+                  peerId={myPeerId}
+                  userProfile={userProfile}
+                  onCopyId={copyId}
+                  onOpenSettings={() => setShowSettingsModal(true)}
+                  onDisconnect={cleanupCall}
+                  isAudioEnabled={isAudioEnabled}
+                  isVideoEnabled={isVideoEnabled}
+                  onToggleAudio={toggleAudio}
+                  onToggleVideo={toggleVideo}
+                  remoteVolume={remoteVolume}
+                  onVolumeChange={setRemoteVolume}
+                  onShowToast={(type, title, message) => toast[type](title, message)}
+                />
+                </div>
+              </div>
+            )}
+
+            {/* Mobile Chat View */}
+            {mobileView === 'chat' && (
+              <div className="flex-1 flex flex-col min-h-0">
+                {/* Glassmorphism Chat Header */}
+                <div
+                  className="relative flex items-center px-4 py-3"
+                  style={{
+                    background: 'linear-gradient(to bottom, rgba(18, 18, 26, 0.98), rgba(18, 18, 26, 0.92))',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                  }}
+                >
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-px"
+                    style={{ background: 'linear-gradient(90deg, transparent, rgba(240, 225, 48, 0.2), transparent)' }}
+                  />
+                  <button
+                    onClick={() => setMobileView('channels')}
+                    className="mr-3 p-2.5 -ml-2 rounded-xl transition-all duration-200 active:scale-95"
+                    style={{ background: 'rgba(255, 255, 255, 0.06)' }}
+                  >
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                  </button>
+                  <div className="flex items-center">
+                    <span
+                      className="text-lg mr-1.5"
+                      style={{ color: activeChannel.type === 'AI' ? '#22c55e' : '#f0e130' }}
+                    >
+                      {activeChannel.type === 'AI' ? '🤖' : '#'}
+                    </span>
+                    <span className="font-semibold text-white">{activeChannel.name}</span>
+                  </div>
+                </div>
+                <ChatArea
+                  channel={activeChannel}
+                  messages={messages[activeChannel.id] || []}
+                  onlineUsers={onlineUsers}
+                  onSendMessage={(text, attachment) => addMessage(activeChannel.id, text, userProfile.displayName, false, attachment)}
+                  onSendAIMessage={(text, response) => addMessage(activeChannel.id, response, 'Pissbot', true)}
+                  onOpenReportModal={() => setShowReportModal(true)}
+                />
+              </div>
+            )}
+
+            {/* Mobile Voice View */}
+            {mobileView === 'voice' && (
+              <div className="flex-1 flex flex-col min-h-0">
+                {/* Glassmorphism Voice Header */}
+                <div
+                  className="relative flex items-center justify-between px-4 py-3"
+                  style={{
+                    background: 'linear-gradient(to bottom, rgba(18, 18, 26, 0.98), rgba(18, 18, 26, 0.92))',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                  }}
+                >
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-px"
+                    style={{ background: `linear-gradient(90deg, transparent, ${connectionState === ConnectionState.CONNECTED ? 'rgba(34, 197, 94, 0.3)' : 'rgba(240, 225, 48, 0.2)'}, transparent)` }}
+                  />
+                  <div className="flex items-center">
+                    <div
+                      className="w-2.5 h-2.5 rounded-full mr-3"
+                      style={{
+                        background: connectionState === ConnectionState.CONNECTED ? '#22c55e' : '#6b7280',
+                        boxShadow: connectionState === ConnectionState.CONNECTED ? '0 0 8px rgba(34, 197, 94, 0.6)' : 'none',
+                        animation: connectionState === ConnectionState.CONNECTED ? 'pulse 2s infinite' : 'none',
+                      }}
+                    />
+                    <div>
+                      <span
+                        className="font-semibold"
+                        style={{ color: connectionState === ConnectionState.CONNECTED ? '#22c55e' : '#f0e130' }}
+                      >
+                        {connectionState === ConnectionState.CONNECTED ? 'Voice Connected' : 'Voice Lounge'}
+                      </span>
+                      {connectionState === ConnectionState.CONNECTED && (
+                        <p className="text-xs text-gray-500">{remoteStreams.size + 1} in call</p>
+                      )}
+                    </div>
+                  </div>
+                  {connectionState === ConnectionState.CONNECTED && (
+                    <button
+                      onClick={cleanupCall}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 active:scale-95"
+                      style={{
+                        background: 'rgba(239, 68, 68, 0.15)',
+                        color: '#ef4444',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                      }}
+                    >
+                      Leave
+                    </button>
+                  )}
+                </div>
+                <div className="flex-1 relative">
+                  <VoiceStage
+                  myStream={myStream}
+                  remoteStreams={remoteStreams}
+                  connectionState={connectionState}
+                  onToggleVideo={toggleVideo}
+                  onToggleAudio={toggleAudio}
+                  onShareScreen={handleShareScreen}
+                  onConnect={handleStartCall}
+                  onDisconnect={cleanupCall}
+                  isVideoEnabled={isVideoEnabled}
+                  isAudioEnabled={isAudioEnabled}
+                  isScreenSharing={isScreenSharing}
+                  myPeerId={myPeerId}
+                  userProfile={userProfile}
+                  onlineUsers={onlineUsers}
+                  onIdCopied={() => toast.success("Copied!", "Send this ID to your friend so they can call you.")}
+                />
+                <JoinRequestPanel
+                    requests={pendingJoinRequests}
+                    onApprove={handleApproveJoinRequest}
+                    onDeny={handleDenyJoinRequest}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Mobile Users View */}
+            {mobileView === 'users' && (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Glassmorphism Header */}
+                <div
+                  className="relative px-5 py-4"
+                  style={{
+                    background: 'linear-gradient(to bottom, rgba(18, 18, 26, 0.98), rgba(18, 18, 26, 0.92))',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                  }}
+                >
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-px"
+                    style={{ background: 'linear-gradient(90deg, transparent, rgba(240, 225, 48, 0.2), transparent)' }}
+                  />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2
+                        className="font-semibold text-lg tracking-wide"
+                        style={{ color: '#f0e130' }}
+                      >
+                        Online
+                      </h2>
+                      <p className="text-xs text-gray-500 mt-0.5">{onlineUsers.length} {onlineUsers.length === 1 ? 'user' : 'users'} online</p>
+                    </div>
+                    <div
+                      className="flex items-center px-2 py-1 rounded-full text-xs"
+                      style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e' }}
+                    >
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 animate-pulse" />
+                      Live
+                    </div>
+                  </div>
+                </div>
+                <div className="flex-1 bg-discord-sidebar overflow-y-auto">
+                  <UserList
+                    connectionState={connectionState}
+                    onlineUsers={onlineUsers}
+                    myPeerId={myPeerId}
+                    onConnectToUser={handleStartCall}
+                    isCollapsed={false}
+                    onToggleCollapse={() => {}}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile Bottom Navigation */}
+          <MobileNav
+            activeView={mobileView}
+            onViewChange={setMobileView}
             connectionState={connectionState}
-            peerId={myPeerId}
-            userProfile={userProfile}
-            onCopyId={copyId}
             onOpenSettings={() => setShowSettingsModal(true)}
-            onDisconnect={cleanupCall}
-            isAudioEnabled={isAudioEnabled}
-            isVideoEnabled={isVideoEnabled}
-            onToggleAudio={toggleAudio}
-            onToggleVideo={toggleVideo}
-            remoteVolume={remoteVolume}
-            onVolumeChange={setRemoteVolume}
-            onShowToast={(type, title, message) => toast[type](title, message)}
           />
-      </div>
-      
-      {/* MAIN VIEW AREA */}
-      {/* Render Voice Stage if active channel is VOICE OR if we are just "viewing" the call */}
-      {activeChannel.type === ChannelType.VOICE ? (
-         <div className="flex-1 flex min-w-0">
-           <div className="flex-1 relative">
-             <VoiceStage
-                myStream={myStream}
-                remoteStreams={remoteStreams}
-                connectionState={connectionState}
-                onToggleVideo={toggleVideo}
-                onToggleAudio={toggleAudio}
-                onShareScreen={handleShareScreen}
-                onConnect={handleStartCall}
-                onDisconnect={cleanupCall}
-                isVideoEnabled={isVideoEnabled}
-                isAudioEnabled={isAudioEnabled}
-                isScreenSharing={isScreenSharing}
-                myPeerId={myPeerId}
-                userProfile={userProfile}
-                onlineUsers={onlineUsers}
-                onIdCopied={() => toast.success("Copied!", "Send this ID to your friend so they can call you.")}
-             />
-             {/* Join Request Panel - shown when there are pending requests */}
-             <JoinRequestPanel
-               requests={pendingJoinRequests}
-               onApprove={handleApproveJoinRequest}
-               onDeny={handleDenyJoinRequest}
-             />
-           </div>
-           {/* User list in voice channel - collapsible */}
-           <UserList
-              connectionState={connectionState}
-              onlineUsers={onlineUsers}
-              myPeerId={myPeerId}
-              onConnectToUser={handleStartCall}
-              isCollapsed={isUserListCollapsed}
-              onToggleCollapse={() => setIsUserListCollapsed(!isUserListCollapsed)}
-           />
-         </div>
+        </>
       ) : (
-         <div className="flex-1 flex min-w-0">
-             <ChatArea
-                channel={activeChannel}
-                messages={messages[activeChannel.id] || []}
+        /* ============ DESKTOP LAYOUT ============ */
+        <>
+          <Sidebar onServerClick={() => setActiveChannelId('1')} />
+
+          {/* CHANNEL LIST + VOICE CONTROLS */}
+          <div className="flex flex-col h-full bg-discord-sidebar w-60">
+              <ChannelList
+                channels={INITIAL_CHANNELS}
+                activeChannelId={activeChannelId}
+                activeVoiceChannelId={activeVoiceChannelId}
                 onlineUsers={onlineUsers}
-                onSendMessage={(text, attachment) => addMessage(activeChannel.id, text, userProfile.displayName, false, attachment)}
-                onSendAIMessage={(text, response) => addMessage(activeChannel.id, response, 'Pissbot', true)}
-                onOpenReportModal={() => setShowReportModal(true)}
-             />
-             <UserList
+                onSelectChannel={(id) => {
+                    const ch = INITIAL_CHANNELS.find(c => c.id === id);
+                    if (ch?.type === ChannelType.VOICE) {
+                        if (activeVoiceChannelId === id && connectionState === ConnectionState.CONNECTED) {
+                            setActiveChannelId(id);
+                        } else {
+                            joinVoiceChannel(id);
+                        }
+                    } else {
+                        setActiveChannelId(id);
+                    }
+                }}
                 connectionState={connectionState}
-                onlineUsers={onlineUsers}
-                myPeerId={myPeerId}
-                onConnectToUser={handleStartCall}
-                isCollapsed={isUserListCollapsed}
-                onToggleCollapse={() => setIsUserListCollapsed(!isUserListCollapsed)}
-             />
-         </div>
+                peerId={myPeerId}
+                userProfile={userProfile}
+                onCopyId={copyId}
+                onOpenSettings={() => setShowSettingsModal(true)}
+                onDisconnect={cleanupCall}
+                isAudioEnabled={isAudioEnabled}
+                isVideoEnabled={isVideoEnabled}
+                onToggleAudio={toggleAudio}
+                onToggleVideo={toggleVideo}
+                remoteVolume={remoteVolume}
+                onVolumeChange={setRemoteVolume}
+                onShowToast={(type, title, message) => toast[type](title, message)}
+              />
+          </div>
+
+          {/* MAIN VIEW AREA */}
+          {activeChannel.type === ChannelType.VOICE ? (
+             <div className="flex-1 flex min-w-0">
+               <div className="flex-1 relative">
+                 <VoiceStage
+                    myStream={myStream}
+                    remoteStreams={remoteStreams}
+                    connectionState={connectionState}
+                    onToggleVideo={toggleVideo}
+                    onToggleAudio={toggleAudio}
+                    onShareScreen={handleShareScreen}
+                    onConnect={handleStartCall}
+                    onDisconnect={cleanupCall}
+                    isVideoEnabled={isVideoEnabled}
+                    isAudioEnabled={isAudioEnabled}
+                    isScreenSharing={isScreenSharing}
+                    myPeerId={myPeerId}
+                    userProfile={userProfile}
+                    onlineUsers={onlineUsers}
+                    onIdCopied={() => toast.success("Copied!", "Send this ID to your friend so they can call you.")}
+                 />
+                 <JoinRequestPanel
+                   requests={pendingJoinRequests}
+                   onApprove={handleApproveJoinRequest}
+                   onDeny={handleDenyJoinRequest}
+                 />
+               </div>
+               <UserList
+                  connectionState={connectionState}
+                  onlineUsers={onlineUsers}
+                  myPeerId={myPeerId}
+                  onConnectToUser={handleStartCall}
+                  isCollapsed={isUserListCollapsed}
+                  onToggleCollapse={() => setIsUserListCollapsed(!isUserListCollapsed)}
+               />
+             </div>
+          ) : (
+             <div className="flex-1 flex min-w-0">
+                 <ChatArea
+                    channel={activeChannel}
+                    messages={messages[activeChannel.id] || []}
+                    onlineUsers={onlineUsers}
+                    onSendMessage={(text, attachment) => addMessage(activeChannel.id, text, userProfile.displayName, false, attachment)}
+                    onSendAIMessage={(text, response) => addMessage(activeChannel.id, response, 'Pissbot', true)}
+                    onOpenReportModal={() => setShowReportModal(true)}
+                 />
+                 <UserList
+                    connectionState={connectionState}
+                    onlineUsers={onlineUsers}
+                    myPeerId={myPeerId}
+                    onConnectToUser={handleStartCall}
+                    isCollapsed={isUserListCollapsed}
+                    onToggleCollapse={() => setIsUserListCollapsed(!isUserListCollapsed)}
+                 />
+             </div>
+          )}
+        </>
       )}
 
       {/* Toast Notifications */}
