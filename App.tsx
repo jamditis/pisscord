@@ -22,7 +22,7 @@ import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
 import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService } from './services/platform';
 
-const APP_VERSION = "1.3.0";
+const APP_VERSION = "1.3.1";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
