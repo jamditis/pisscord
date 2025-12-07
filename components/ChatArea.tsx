@@ -103,9 +103,9 @@ const renderMarkdown = (text: string): React.ReactNode[] => {
     const language = match[1] || '';
     const code = match[2].trim();
     elements.push(
-      <pre key={key++} className="bg-discord-dark rounded-lg p-3 my-2 overflow-x-auto">
+      <pre key={key++} className="bg-discord-dark rounded-lg p-3 my-2 overflow-x-auto max-w-full">
         {language && <div className="text-[10px] text-discord-muted uppercase mb-2">{language}</div>}
-        <code className="text-sm font-mono text-green-400 whitespace-pre">{code}</code>
+        <code className="text-sm font-mono text-green-400 whitespace-pre-wrap break-words">{code}</code>
       </pre>
     );
 
@@ -260,9 +260,9 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
   // Mobile layout
   if (isMobile) {
     return (
-      <div className="flex-1 flex flex-col bg-gradient-to-b from-[#1a1a2e] to-[#16162a] h-full min-w-0 overflow-hidden">
-        {/* Mobile Header */}
-        <div className="px-4 py-3 border-b border-white/5 flex items-center shrink-0 bg-[#1a1a2e]/80 backdrop-blur-sm">
+      <div className="flex-1 flex flex-col bg-gradient-to-b from-[#1a1a2e] to-[#16162a] h-full w-full max-w-full overflow-hidden">
+        {/* Mobile Header - with top padding for status bar */}
+        <div className="px-4 py-3 pt-6 border-b border-white/5 flex items-center shrink-0 bg-[#1a1a2e]/80 backdrop-blur-sm">
           <div className={`w-9 h-9 rounded-xl flex items-center justify-center mr-3 ${
             channel.type === ChannelType.AI
               ? 'bg-gradient-to-br from-purple-500 to-indigo-600'
@@ -288,7 +288,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-3 py-3">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3">
           {messages.length === 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -328,7 +328,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                   </div>
 
                   {/* Message bubble */}
-                  <div className="ml-2 flex-1 min-w-0">
+                  <div className="ml-2 flex-1 min-w-0 overflow-hidden">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className={`font-medium text-sm ${msg.isAi ? 'text-purple-400' : 'text-white/90'}`}>
                         {msg.sender}
@@ -342,11 +342,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                         {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <div className={`text-sm text-white/80 break-words leading-relaxed rounded-2xl px-3 py-2 ${
+                    <div className={`text-sm text-white/80 leading-relaxed rounded-2xl px-3 py-2 overflow-hidden max-w-full ${
                       msg.isAi
                         ? 'bg-purple-500/10 border border-purple-500/20'
                         : 'bg-white/5'
-                    }`}>
+                    }`} style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                       {renderMarkdown(msg.content)}
                     </div>
 
@@ -403,8 +403,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Mobile Input Area */}
-        <div className="px-3 pb-4 pt-2 shrink-0 border-t border-white/5 bg-[#16162a]/80 backdrop-blur-sm">
+        {/* Mobile Input Area - extra bottom padding for nav bar */}
+        <div className="px-3 pb-24 pt-2 shrink-0 border-t border-white/5 bg-[#16162a]">
           {channel.id === '5' ? (
             <motion.button
               onClick={onOpenReportModal}

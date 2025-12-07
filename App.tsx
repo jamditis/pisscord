@@ -1076,10 +1076,9 @@ export default function App() {
       {/* ============ MOBILE LAYOUT ============ */}
       {isMobile ? (
         <>
-          {/* Mobile Main Content Area - full screen with bottom padding for nav */}
+          {/* Mobile Main Content Area - safe area padding for status bar and nav bar */}
           <div
-            className="flex-1 flex flex-col"
-            style={{ paddingBottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}
+            className="flex-1 flex flex-col bg-[#16162a]"
           >
             {/* Mobile Channel List View */}
             {mobileView === 'channels' && (
@@ -1144,7 +1143,12 @@ export default function App() {
             )}
 
             {/* Mobile Chat View */}
-            {mobileView === 'chat' && (
+            {mobileView === 'chat' && (() => {
+              // If activeChannel is a voice channel, show general text channel instead
+              const chatChannel = activeChannel.type === ChannelType.VOICE
+                ? INITIAL_CHANNELS.find(c => c.id === '1')! // Default to general
+                : activeChannel;
+              return (
               <div className="flex-1 flex flex-col min-h-0">
                 {/* Glassmorphism Chat Header */}
                 <div
@@ -1170,23 +1174,24 @@ export default function App() {
                   <div className="flex items-center">
                     <span
                       className="text-lg mr-1.5"
-                      style={{ color: activeChannel.type === 'AI' ? '#22c55e' : '#f0e130' }}
+                      style={{ color: chatChannel.type === 'AI' ? '#22c55e' : '#f0e130' }}
                     >
-                      {activeChannel.type === 'AI' ? '🤖' : '#'}
+                      {chatChannel.type === 'AI' ? '🤖' : '#'}
                     </span>
-                    <span className="font-semibold text-white">{activeChannel.name}</span>
+                    <span className="font-semibold text-white">{chatChannel.name}</span>
                   </div>
                 </div>
                 <ChatArea
-                  channel={activeChannel}
-                  messages={messages[activeChannel.id] || []}
+                  channel={chatChannel}
+                  messages={messages[chatChannel.id] || []}
                   onlineUsers={onlineUsers}
-                  onSendMessage={(text, attachment) => addMessage(activeChannel.id, text, userProfile.displayName, false, attachment)}
-                  onSendAIMessage={(text, response) => addMessage(activeChannel.id, response, 'Pissbot', true)}
+                  onSendMessage={(text, attachment) => addMessage(chatChannel.id, text, userProfile.displayName, false, attachment)}
+                  onSendAIMessage={(text, response) => addMessage(chatChannel.id, response, 'Pissbot', true)}
                   onOpenReportModal={() => setShowReportModal(true)}
                 />
               </div>
-            )}
+              );
+            })()}
 
             {/* Mobile Voice View */}
             {mobileView === 'voice' && (
@@ -1267,48 +1272,15 @@ export default function App() {
 
             {/* Mobile Users View */}
             {mobileView === 'users' && (
-              <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Glassmorphism Header */}
-                <div
-                  className="relative px-5 py-4"
-                  style={{
-                    background: 'linear-gradient(to bottom, rgba(18, 18, 26, 0.98), rgba(18, 18, 26, 0.92))',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-                  }}
-                >
-                  <div
-                    className="absolute bottom-0 left-0 right-0 h-px"
-                    style={{ background: 'linear-gradient(90deg, transparent, rgba(240, 225, 48, 0.2), transparent)' }}
-                  />
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2
-                        className="font-semibold text-lg tracking-wide"
-                        style={{ color: '#f0e130' }}
-                      >
-                        Online
-                      </h2>
-                      <p className="text-xs text-gray-500 mt-0.5">{onlineUsers.length} {onlineUsers.length === 1 ? 'user' : 'users'} online</p>
-                    </div>
-                    <div
-                      className="flex items-center px-2 py-1 rounded-full text-xs"
-                      style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e' }}
-                    >
-                      <div className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 animate-pulse" />
-                      Live
-                    </div>
-                  </div>
-                </div>
-                <div className="flex-1 bg-discord-sidebar overflow-y-auto">
-                  <UserList
-                    connectionState={connectionState}
-                    onlineUsers={onlineUsers}
-                    myPeerId={myPeerId}
-                    onConnectToUser={handleStartCall}
-                    isCollapsed={false}
-                    onToggleCollapse={() => {}}
-                  />
-                </div>
+              <div className="flex-1 flex flex-col overflow-hidden bg-gradient-to-b from-[#1a1a2e] to-[#16162a]">
+                <UserList
+                  connectionState={connectionState}
+                  onlineUsers={onlineUsers}
+                  myPeerId={myPeerId}
+                  onConnectToUser={handleStartCall}
+                  isCollapsed={false}
+                  onToggleCollapse={() => {}}
+                />
               </div>
             )}
           </div>

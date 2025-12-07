@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { UserProfile, DeviceSettings, AppLogs } from '../types';
 import { uploadFile } from '../services/firebase';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 interface UserSettingsModalProps {
   currentProfile: UserProfile;
@@ -90,7 +92,320 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const audioInputs = devices.filter(d => d.kind === 'audioinput');
   const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
   const videoInputs = devices.filter(d => d.kind === 'videoinput');
+  const isMobile = useIsMobile();
 
+  // Mobile tab item component
+  const MobileTabItem: React.FC<{
+    tab: 'profile' | 'voice' | 'debug' | 'about';
+    icon: string;
+    label: string;
+  }> = ({ tab, icon, label }) => (
+    <motion.button
+      onClick={() => setActiveTab(tab)}
+      whileTap={{ scale: 0.95 }}
+      className={`flex flex-col items-center justify-center py-2 px-4 rounded-xl transition-all ${
+        activeTab === tab
+          ? 'bg-purple-500/20 text-purple-400'
+          : 'text-white/50'
+      }`}
+    >
+      <i className={`fas ${icon} text-lg mb-1`}></i>
+      <span className="text-[10px] font-medium">{label}</span>
+    </motion.button>
+  );
+
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[100] bg-gradient-to-b from-[#1a1a2e] to-[#0f0f1a] flex flex-col"
+      >
+        {/* Mobile Header */}
+        <div className="flex items-center justify-between px-4 py-4 border-b border-white/5">
+          <motion.button
+            onClick={onClose}
+            whileTap={{ scale: 0.95 }}
+            className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center"
+          >
+            <i className="fas fa-arrow-left text-white/70"></i>
+          </motion.button>
+          <h2 className="text-lg font-bold text-white">Settings</h2>
+          <motion.button
+            onClick={handleSave}
+            whileTap={{ scale: 0.95 }}
+            className="px-4 py-2 rounded-xl bg-purple-500 text-white text-sm font-medium"
+          >
+            Save
+          </motion.button>
+        </div>
+
+        {/* Tab Bar */}
+        <div className="flex items-center justify-around px-2 py-2 border-b border-white/5 bg-white/[0.02]">
+          <MobileTabItem tab="profile" icon="fa-user" label="Profile" />
+          <MobileTabItem tab="voice" icon="fa-microphone" label="Audio" />
+          <MobileTabItem tab="debug" icon="fa-bug" label="Debug" />
+          <MobileTabItem tab="about" icon="fa-info-circle" label="About" />
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-4 py-4">
+          <AnimatePresence mode="wait">
+            {/* PROFILE TAB */}
+            {activeTab === 'profile' && (
+              <motion.div
+                key="profile"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                {/* Avatar Section */}
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                  <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept="image/*" />
+
+                  <div className="flex items-center">
+                    <motion.div
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-20 h-20 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg shrink-0 relative overflow-hidden cursor-pointer border-2 border-white/20"
+                      style={{ backgroundColor: selectedColor }}
+                    >
+                      {photoURL ? (
+                        <img src={photoURL} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <i className="fas fa-user"></i>
+                      )}
+                      {isUploading && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                          <i className="fas fa-spinner fa-spin"></i>
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 active:opacity-100">
+                        <i className="fas fa-camera"></i>
+                      </div>
+                    </motion.div>
+
+                    <div className="ml-4 flex-1">
+                      <div className="text-white font-bold">{displayName || "Your Name"}</div>
+                      <div className="text-white/50 text-sm">{statusMessage || "No status"}</div>
+                      {photoURL && (
+                        <button
+                          onClick={handleRemoveAvatar}
+                          className="text-red-400 text-xs mt-2"
+                        >
+                          Remove photo
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form Fields */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-white/40 uppercase mb-2 tracking-wide">Display Name</label>
+                    <input
+                      type="text"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500/50 placeholder-white/30"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      maxLength={32}
+                      placeholder="Enter your name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-white/40 uppercase mb-2 tracking-wide">Status Message</label>
+                    <input
+                      type="text"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500/50 placeholder-white/30"
+                      value={statusMessage}
+                      onChange={(e) => setStatusMessage(e.target.value)}
+                      maxLength={64}
+                      placeholder="What's on your mind?"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-white/40 uppercase mb-2 tracking-wide">Avatar Color</label>
+                    <div className="flex gap-3 flex-wrap">
+                      {COLORS.map(color => (
+                        <motion.button
+                          key={color}
+                          onClick={() => setSelectedColor(color)}
+                          whileTap={{ scale: 0.9 }}
+                          className={`w-10 h-10 rounded-xl transition-all ${
+                            selectedColor === color ? 'ring-2 ring-white ring-offset-2 ring-offset-[#1a1a2e]' : ''
+                          }`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* VOICE TAB */}
+            {activeTab === 'voice' && (
+              <motion.div
+                key="voice"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-xs font-bold text-white/40 uppercase mb-2 tracking-wide">Microphone</label>
+                  <select
+                    value={audioInputId}
+                    onChange={(e) => setAudioInputId(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500/50 appearance-none"
+                  >
+                    <option value="">Default</option>
+                    {audioInputs.map(dev => (
+                      <option key={dev.deviceId} value={dev.deviceId}>
+                        {dev.label || `Microphone ${dev.deviceId.slice(0,5)}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-white/40 uppercase mb-2 tracking-wide">Speakers</label>
+                  <select
+                    value={audioOutputId}
+                    onChange={(e) => setAudioOutputId(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500/50 appearance-none"
+                  >
+                    <option value="">Default</option>
+                    {audioOutputs.map(dev => (
+                      <option key={dev.deviceId} value={dev.deviceId}>
+                        {dev.label || `Speaker ${dev.deviceId.slice(0,5)}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-white/40 uppercase mb-2 tracking-wide">Camera</label>
+                  <select
+                    value={videoInputId}
+                    onChange={(e) => setVideoInputId(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500/50 appearance-none"
+                  >
+                    <option value="">Default</option>
+                    {videoInputs.map(dev => (
+                      <option key={dev.deviceId} value={dev.deviceId}>
+                        {dev.label || `Camera ${dev.deviceId.slice(0,5)}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 mt-4">
+                  <div className="flex items-start gap-3">
+                    <i className="fas fa-info-circle text-green-400 mt-0.5"></i>
+                    <p className="text-green-400 text-sm">Changes require reconnecting to the call to take effect.</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* DEBUG TAB */}
+            {activeTab === 'debug' && (
+              <motion.div
+                key="debug"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-4"
+              >
+                <div className="bg-black/50 rounded-2xl p-4 font-mono text-xs overflow-y-auto max-h-[60vh] border border-white/10">
+                  {logs.length === 0 ? (
+                    <div className="text-white/30 text-center py-8">No logs yet...</div>
+                  ) : (
+                    logs.map((l, i) => (
+                      <div
+                        key={i}
+                        className={`mb-2 ${
+                          l.type === 'error' ? 'text-red-400' : l.type === 'webrtc' ? 'text-blue-400' : 'text-green-400'
+                        }`}
+                      >
+                        <span className="text-white/30">[{new Date(l.timestamp).toLocaleTimeString()}]</span> {l.message}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {/* ABOUT TAB */}
+            {activeTab === 'about' && (
+              <motion.div
+                key="about"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <div className="text-center py-6">
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <span className="text-4xl">💧</span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-1">Pisscord</h3>
+                  <p className="text-white/50 text-sm">Pee-to-Pee Chat</p>
+                  <p className="text-purple-400 text-sm mt-2">Version {appVersion}</p>
+                </div>
+
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/10 space-y-3">
+                  <h4 className="text-white font-semibold text-sm">Features</h4>
+                  <div className="space-y-2 text-sm">
+                    {[
+                      'P2P voice/video calling',
+                      'Real-time text messaging',
+                      'Screen sharing',
+                      'Pissbot AI assistant',
+                      'Auto-updates'
+                    ].map((feature, i) => (
+                      <div key={i} className="flex items-center gap-2 text-white/70">
+                        <i className="fas fa-check text-green-400 text-xs"></i>
+                        {feature}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <motion.button
+                  onClick={handleCheckUpdates}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full bg-purple-500/20 border border-purple-500/30 text-purple-400 font-medium py-3.5 rounded-xl flex items-center justify-center gap-2"
+                >
+                  <i className="fas fa-sync-alt"></i>
+                  Check for Updates
+                </motion.button>
+
+                <div className="text-center text-white/30 text-xs space-y-1">
+                  <p>Made with 💜 by JawnPiece Productions</p>
+                  <a
+                    href="https://github.com/jamditis/pisscord"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-purple-400"
+                  >
+                    GitHub Repository
+                  </a>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // Desktop layout
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="bg-discord-main w-full max-w-4xl h-[600px] rounded-lg shadow-2xl flex overflow-hidden">

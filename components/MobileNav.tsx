@@ -1,5 +1,7 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { ConnectionState } from '../types';
+import { HapticsService } from '../services/platform';
 
 export type MobileView = 'chat' | 'channels' | 'users' | 'voice';
 
@@ -114,9 +116,13 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           const isLive = 'isLive' in tab && tab.isLive;
 
           return (
-            <button
+            <motion.button
               key={tab.id}
-              onClick={() => onViewChange(tab.id)}
+              onClick={() => {
+                HapticsService.impact('light');
+                onViewChange(tab.id);
+              }}
+              whileTap={{ scale: 0.9 }}
               className="relative flex flex-col items-center justify-center flex-1 h-full group"
               style={{
                 WebkitTapHighlightColor: 'transparent',
@@ -200,19 +206,23 @@ export const MobileNav: React.FC<MobileNavProps> = ({
               >
                 {tab.label}
               </span>
-            </button>
+            </motion.button>
           );
         })}
 
         {/* Settings button */}
-        <button
-          onClick={onOpenSettings}
+        <motion.button
+          onClick={() => {
+            HapticsService.impact('light');
+            onOpenSettings();
+          }}
+          whileTap={{ scale: 0.9 }}
           className="relative flex flex-col items-center justify-center flex-1 h-full"
           style={{
             WebkitTapHighlightColor: 'transparent',
           }}
         >
-          <div className="transition-transform duration-200 active:scale-90">
+          <div className="transition-transform duration-200">
             <svg
               className="w-6 h-6 transition-colors duration-200"
               fill="none"
@@ -227,7 +237,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           <span className="mt-1 text-[10px] font-medium tracking-wide text-gray-500">
             Settings
           </span>
-        </button>
+        </motion.button>
       </div>
     </nav>
   );
