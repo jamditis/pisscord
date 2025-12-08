@@ -212,6 +212,39 @@ export const clearPissbotCache = () => {
   pissbotConfigCacheTime = 0;
 };
 
+// Release Notes Configuration
+export interface ReleaseNotesConfig {
+  version: string;
+  releaseNotes: string;
+  downloadUrl: string;
+  lastUpdated: number;
+}
+
+// Cache for release notes
+let releaseNotesCache: ReleaseNotesConfig | null = null;
+let releaseNotesCacheTime = 0;
+const RELEASE_NOTES_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+export const getReleaseNotes = async (): Promise<ReleaseNotesConfig | null> => {
+  // Return cached version if still valid
+  if (releaseNotesCache && Date.now() - releaseNotesCacheTime < RELEASE_NOTES_CACHE_TTL) {
+    return releaseNotesCache;
+  }
+
+  try {
+    const releaseRef = ref(db, 'system/releaseNotes');
+    const snapshot = await get(releaseRef);
+    if (snapshot.exists()) {
+      releaseNotesCache = snapshot.val() as ReleaseNotesConfig;
+      releaseNotesCacheTime = Date.now();
+      return releaseNotesCache;
+    }
+  } catch (error) {
+    console.error("Failed to fetch release notes:", error);
+  }
+  return null;
+};
+
 // --- MESSAGING ---
 
 /**

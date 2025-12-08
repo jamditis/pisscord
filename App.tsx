@@ -15,11 +15,13 @@ import { ContextMenu, useContextMenu } from './components/ContextMenu';
 import { MobileNav, MobileView } from './components/MobileNav';
 import { SplashScreen } from './components/SplashScreen';
 import { PassphraseModal } from './components/PassphraseModal';
+import { ReleaseNotesModal, shouldShowReleaseNotes, markVersionAsSeen } from './components/ReleaseNotesModal';
 import { useIsMobile } from './hooks/useIsMobile';
 import { hasStoredPassphrase, isEncryptionSetUp } from './services/encryption';
+import { markChannelAsRead, updateNewestFromMessages, getUnreadChannels } from './services/unread';
 import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs, AppSettings, AppTheme } from './types';
 import { ThemeProvider, themeColors } from './contexts/ThemeContext';
-import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages, cleanupOldMessages, getPissbotConfig, PissbotConfig, checkForMOTD } from './services/firebase';
+import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages, cleanupOldMessages, getPissbotConfig, PissbotConfig, checkForMOTD, getReleaseNotes, ReleaseNotesConfig } from './services/firebase';
 import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
 import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService } from './services/platform';
@@ -132,6 +134,13 @@ export default function App() {
   // Encryption state: 'none' = not set up, 'locked' = stored but needs unlock, 'ready' = unlocked
   const [encryptionState, setEncryptionState] = useState<'none' | 'locked' | 'ready'>('none');
 
+  // --- RELEASE NOTES ---
+  const [showReleaseNotesModal, setShowReleaseNotesModal] = useState(false);
+  const [releaseNotesData, setReleaseNotesData] = useState<ReleaseNotesConfig | null>(null);
+
+  // --- UNREAD MESSAGES ---
+  const [unreadChannels, setUnreadChannels] = useState<string[]>([]);
+
   // --- UI STATE ---
   const [isUserListCollapsed, setIsUserListCollapsed] = useState(false);
   const [mobileView, setMobileView] = useState<MobileView>('chat');
@@ -172,11 +181,19 @@ export default function App() {
               }));
           });
       } else if (activeChannel.type !== ChannelType.VOICE) {
+          // Mark channel as read when viewing it
+          markChannelAsRead(activeChannelId);
+          setUnreadChannels(getUnreadChannels());
+
           const unsubscribe = subscribeToMessages(activeChannelId, (newMessages) => {
               setMessages(prev => ({
                   ...prev,
                   [activeChannelId]: newMessages as Message[]
               }));
+              // Update newest message tracking for this channel
+              updateNewestFromMessages(activeChannelId, newMessages);
+              // Since we're viewing this channel, keep it marked as read
+              markChannelAsRead(activeChannelId);
           });
           return () => unsubscribe();
       }
@@ -209,9 +226,33 @@ export default function App() {
       setEncryptionState('none');
     }
 
+    // Check for release notes (show popup on new version)
+    getReleaseNotes().then(notes => {
+      if (notes && shouldShowReleaseNotes(notes.version)) {
+        setReleaseNotesData(notes);
+        // Delay showing modal until after splash screen
+        setTimeout(() => {
+          setShowReleaseNotesModal(true);
+        }, 2000);
+      }
+    }).catch(err => {
+      console.error('[App] Failed to fetch release notes:', err);
+    });
+
     // Cleanup old messages (14-day retention)
     const textChannels = INITIAL_CHANNELS.filter(c => c.type === ChannelType.TEXT || c.type === ChannelType.AI).map(c => c.id);
     cleanupOldMessages(textChannels);
+
+    // Subscribe to all text channels for unread tracking
+    const unsubscribes: (() => void)[] = [];
+    textChannels.forEach(channelId => {
+      const unsub = subscribeToMessages(channelId, (newMessages) => {
+        updateNewestFromMessages(channelId, newMessages);
+        // Update unread state (but don't mark as read - that happens when viewing)
+        setUnreadChannels(getUnreadChannels());
+      });
+      unsubscribes.push(unsub);
+    });
 
     // Check Updates (both Firebase and Electron auto-updater)
     checkForUpdates(APP_VERSION).then(update => {
@@ -391,6 +432,8 @@ export default function App() {
           peerInstance.current.destroy();
       }
       unsubscribeUsers();
+      // Cleanup message subscriptions for unread tracking
+      unsubscribes.forEach(unsub => unsub());
     };
   }, []);
 
@@ -1119,6 +1162,18 @@ export default function App() {
           />
       )}
 
+      {showReleaseNotesModal && releaseNotesData && (
+          <ReleaseNotesModal
+            version={releaseNotesData.version}
+            releaseNotes={releaseNotesData.releaseNotes}
+            downloadUrl={releaseNotesData.downloadUrl}
+            onDismiss={() => {
+              setShowReleaseNotesModal(false);
+              markVersionAsSeen(releaseNotesData.version);
+            }}
+          />
+      )}
+
       {/* ============ MOBILE LAYOUT ============ */}
       {isMobile ? (
         <>
@@ -1184,6 +1239,7 @@ export default function App() {
                   remoteVolume={remoteVolume}
                   onVolumeChange={setRemoteVolume}
                   onShowToast={(type, title, message) => toast[type](title, message)}
+                  unreadChannels={unreadChannels}
                 />
                 </div>
               </div>
@@ -1373,6 +1429,7 @@ export default function App() {
                 remoteVolume={remoteVolume}
                 onVolumeChange={setRemoteVolume}
                 onShowToast={(type, title, message) => toast[type](title, message)}
+                unreadChannels={unreadChannels}
               />
           </div>
 
