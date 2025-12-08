@@ -1,0 +1,24 @@
+name: Update Firebase Version
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract version from tag
+        id: version
+        run: |
+          # Remove 'v' prefix from tag name (v1.4.3 -> 1.4.3)
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Updating Firebase to version: $VERSION"
+
+      - name: Update Firebase latestVersion
+        run: |
+          curl -X PUT \
+            "https://pisscord-edbca-default-rtdb.firebaseio.com/system/latestVersion.json?auth=${{ secrets.FIREBASE_DATABASE_SECRET }}" \
+            -d "\"${{ steps.version.outputs.version }}\""
+          echo "Firebase latestVersion updated to ${{ steps.version.outputs.version }}"
