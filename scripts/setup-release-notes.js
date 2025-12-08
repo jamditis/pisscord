@@ -24,29 +24,37 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // UPDATE THESE FOR EACH RELEASE
-const CURRENT_VERSION = "1.3.2";
+const CURRENT_VERSION = "1.4.0";
 const DOWNLOAD_URL = `https://github.com/jamditis/pisscord/releases/download/v${CURRENT_VERSION}/Pisscord.Setup.${CURRENT_VERSION}.exe`;
 
 const RELEASE_NOTES = `## What's New in v${CURRENT_VERSION}
 
-### New Features
-- **End-to-End Encryption** - Text messages are now encrypted with AES-256-GCM before leaving your device
-- **Unread Message Indicators** - Channels with unread messages now show a visual indicator
-- **Release Notes Popup** - You're looking at it! See what's new in each update
+### Web Browser Version
+- **Pisscord Web** - Use Pisscord directly in your browser, no download required!
+- Works on desktop and mobile browsers
+- Same features as the desktop app
+- Refresh the page to get updates
 
-### Security
-- All text messages are encrypted client-side before storage
+### End-to-End Encryption
+- **AES-256-GCM encryption** for all text messages
+- Messages encrypted on your device before leaving
 - Only your group (with the shared passphrase) can read messages
 - Voice and video remain P2P encrypted via WebRTC
 
-### Bug Fixes
-- Fixed various UI issues on mobile web browsers
-- Improved platform detection for web version
+### Unread Message Indicators
+- Channels with unread messages show a red dot
+- Unread channels appear bold in the channel list
+- Per-user tracking - your read state is yours alone
 
-### Web Browser Support
-- Pisscord is now available as a web app
-- Works on desktop and mobile browsers
-- No installation required
+### Release Notes Popup
+- See what's new when you update
+- One-time popup per version
+- Direct links to download or refresh
+
+### Other Improvements
+- Better mobile web browser detection
+- Platform-specific update buttons (Refresh for web, Download for desktop)
+- Updated website and user guide with accurate security info
 `;
 
 async function setupReleaseNotes() {
