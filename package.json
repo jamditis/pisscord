@@ -11,7 +11,6 @@
     "build:web": "tsc && vite build --config vite.config.web.ts && mv dist-web/index.web.html dist-web/index.html",
     "preview": "vite preview",
     "preview:web": "vite preview --config vite.config.web.ts",
-    "deploy:web": "npm run build:web && firebase deploy --only hosting",
     "electron:dev": "concurrently \"cross-env BROWSER=none npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
     "dist": "npm run build && electron-builder --win --x64",
     "cap:sync": "npm run build && npx cap sync",
