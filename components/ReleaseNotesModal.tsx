@@ -66,6 +66,7 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({
 
   // Parse release notes (simple markdown-like formatting)
   const formatReleaseNotes = (notes: string) => {
+    if (!notes) return [<p key="empty" className="text-discord-muted">No release notes available.</p>];
     const lines = notes.split('\n');
     return lines.map((line, index) => {
       // Headers
