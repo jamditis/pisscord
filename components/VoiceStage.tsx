@@ -759,23 +759,23 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
         
         {/* Connection Overlay if disconnected */}
         {connectionState === ConnectionState.DISCONNECTED && (
-             <div className="absolute inset-0 z-50 bg-discord-main/90 flex items-center justify-center p-4">
-                 <div className="bg-discord-dark p-6 rounded-lg shadow-2xl max-w-md w-full border border-discord-sidebar">
-                      <div className="text-center mb-6">
-                         <div className="w-16 h-16 bg-discord-accent rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+             <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+                 <div className="bg-discord-header p-8 rounded-2xl shadow-2xl max-w-md w-full border border-white/10">
+                      <div className="text-center mb-8">
+                         <div className="w-20 h-20 bg-gradient-to-br from-discord-accent to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-discord-accent/20">
                              <i className="fas fa-satellite-dish text-3xl text-white"></i>
                          </div>
-                         <h2 className="text-2xl font-bold text-white">Secure Link</h2>
-                         <p className="text-discord-muted text-sm mt-1">Direct P2P Encrypted Connection</p>
+                         <h2 className="text-2xl font-bold text-white font-display tracking-wide">SECURE LINK</h2>
+                         <p className="text-discord-muted text-sm mt-2">Direct P2P Encrypted Connection</p>
                       </div>
 
                       {/* Step 1: My ID */}
-                      <div className="mb-6 bg-black/20 p-3 rounded border border-white/5">
-                         <label className="block text-[10px] font-bold text-discord-muted uppercase mb-2 tracking-wide">
+                      <div className="mb-6 bg-white/5 p-4 rounded-xl border border-white/5">
+                         <label className="block text-xs font-bold text-discord-muted uppercase mb-2 tracking-wide">
                              Step 1: Your Peer ID
                          </label>
                          <div className="flex gap-2">
-                             <div className="flex-1 bg-discord-main border border-black/20 rounded px-3 py-2 text-white font-mono text-sm truncate select-all">
+                             <div className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-sm truncate select-all">
                                  {myPeerId || 'Generating secure ID...'}
                              </div>
                              <button
@@ -788,7 +788,7 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
                                          onIdCopied?.();
                                      }
                                  }}
-                                 className="bg-discord-main hover:bg-discord-sidebar text-white px-3 rounded border border-black/20 transition-colors"
+                                 className="bg-discord-accent/20 hover:bg-discord-accent/30 text-discord-accent px-4 rounded-xl border border-discord-accent/30 transition-colors"
                                  title="Copy to Clipboard"
                              >
                                  <i className="fas fa-copy"></i>
@@ -800,29 +800,29 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
                       </div>
 
                      <div className="relative flex py-2 items-center mb-6">
-                         <div className="flex-grow border-t border-discord-sidebar"></div>
-                         <span className="flex-shrink-0 mx-4 text-discord-muted text-[10px] uppercase font-bold">OR Call Them</span>
-                         <div className="flex-grow border-t border-discord-sidebar"></div>
+                         <div className="flex-grow border-t border-white/10"></div>
+                         <span className="flex-shrink-0 mx-4 text-discord-muted text-[10px] uppercase font-bold tracking-widest">OR Call Them</span>
+                         <div className="flex-grow border-t border-white/10"></div>
                      </div>
 
                       {/* Step 2: Input Friend ID */}
                       <form onSubmit={handleConnectSubmit}>
-                          <div className="mb-4">
-                              <label className="block text-[10px] font-bold text-discord-muted uppercase mb-2 tracking-wide">
+                          <div className="mb-6">
+                              <label className="block text-xs font-bold text-discord-muted uppercase mb-2 tracking-wide">
                                  Step 2: Friend's Peer ID
                               </label>
                               <input 
                                  type="text" 
                                  value={remoteIdInput}
                                  onChange={(e) => setRemoteIdInput(e.target.value)}
-                                 className="w-full bg-discord-main border border-black/20 rounded px-3 py-2 text-white outline-none focus:border-discord-accent placeholder-discord-muted/50 font-mono text-sm transition-all focus:ring-1 ring-discord-accent"
+                                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-discord-accent placeholder-white/20 font-mono text-sm transition-all focus:ring-1 ring-discord-accent"
                                  placeholder="Paste friend's ID here..."
                               />
                           </div>
                           <button 
                              type="submit"
                              disabled={!remoteIdInput.trim()}
-                             className={`w-full font-bold py-2.5 rounded transition-all shadow-lg flex items-center justify-center ${remoteIdInput.trim() ? 'bg-discord-green hover:bg-green-600 text-white cursor-pointer' : 'bg-discord-sidebar text-discord-muted cursor-not-allowed'}`}
+                             className={`w-full font-bold py-3.5 rounded-xl transition-all shadow-lg flex items-center justify-center uppercase tracking-wide text-sm ${remoteIdInput.trim() ? 'bg-gradient-to-r from-discord-green to-emerald-600 text-white cursor-pointer hover:shadow-emerald-500/20' : 'bg-white/5 text-white/30 border border-white/5 cursor-not-allowed'}`}
                           >
                              <i className="fas fa-phone-alt mr-2"></i> Connect
                           </button>
@@ -833,9 +833,9 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
 
         {/* Connecting State */}
         {connectionState === ConnectionState.CONNECTING && (
-            <div className="absolute inset-0 z-50 bg-black/80 flex items-center justify-center flex-col">
-                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-discord-accent mb-4"></div>
-                <span className="text-white font-bold">Establishing Secure P2P Connection...</span>
+            <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center flex-col">
+                <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-discord-accent mb-6"></div>
+                <span className="text-white font-bold font-display tracking-wide text-xl">Establishing Secure Link...</span>
             </div>
         )}
 
@@ -885,24 +885,26 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
       </div>
 
       {/* Control Bar */}
-      <div className="h-20 bg-discord-dark flex items-center justify-center space-x-4 border-t border-discord-sidebar shrink-0 relative z-50">
+      <div className="h-24 bg-discord-header/90 backdrop-blur-md flex items-center justify-center space-x-6 border-t border-white/5 shrink-0 relative z-50 pb-4">
           <button 
              onClick={onToggleAudio}
-             className={`w-14 h-14 rounded-full flex items-center justify-center text-xl transition-all ${isAudioEnabled ? 'bg-discord-main text-white hover:bg-discord-hover' : 'bg-white text-black'}`}
+             className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl transition-all shadow-lg ${isAudioEnabled ? 'bg-white/10 text-white hover:bg-white/20 border border-white/10' : 'bg-red-500/20 text-red-500 border border-red-500/30'}`}
+             title={isAudioEnabled ? 'Mute' : 'Unmute'}
           >
              <i className={`fas ${isAudioEnabled ? 'fa-microphone' : 'fa-microphone-slash'}`}></i>
           </button>
           
           <button 
              onClick={onToggleVideo}
-             className={`w-14 h-14 rounded-full flex items-center justify-center text-xl transition-all ${isVideoEnabled ? 'bg-discord-main text-white hover:bg-discord-hover' : 'bg-white text-black'}`}
+             className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl transition-all shadow-lg ${isVideoEnabled ? 'bg-white/10 text-white hover:bg-white/20 border border-white/10' : 'bg-red-500/20 text-red-500 border border-red-500/30'}`}
+             title={isVideoEnabled ? 'Stop Video' : 'Start Video'}
           >
              <i className={`fas ${isVideoEnabled ? 'fa-video' : 'fa-video-slash'}`}></i>
           </button>
 
           <button 
              onClick={onShareScreen}
-             className={`w-14 h-14 rounded-full flex items-center justify-center text-xl transition-all ${isScreenSharing ? 'bg-green-500 text-white' : 'bg-discord-main text-white hover:bg-discord-hover'}`}
+             className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl transition-all shadow-lg ${isScreenSharing ? 'bg-green-500/20 text-green-500 border border-green-500/30' : 'bg-white/10 text-white hover:bg-white/20 border border-white/10'}`}
              title="Share Screen"
           >
              <i className="fas fa-desktop"></i>
@@ -910,7 +912,8 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
 
           <button 
              onClick={onDisconnect}
-             className="w-14 h-14 rounded-full flex items-center justify-center text-xl bg-red-500 text-white hover:bg-red-600 transition-all"
+             className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl bg-red-500 text-white hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+             title="Disconnect"
           >
              <i className="fas fa-phone-slash"></i>
           </button>

@@ -219,10 +219,10 @@ export const UserList: React.FC<UserListProps> = ({
       {/* ME */}
       {me && (
         <div className="mb-4">
-            <div className="text-xs font-bold text-discord-muted uppercase mb-2">
+            <div className="text-xs font-bold text-discord-muted uppercase mb-2 font-display tracking-wide">
                 Identified As
             </div>
-            <div className="flex items-center p-2 rounded bg-discord-hover/50 cursor-default opacity-100">
+            <div className="flex items-center p-2 rounded bg-white/5 border border-white/5 cursor-default opacity-100">
                 <div className="relative">
                     <div 
                         className="w-8 h-8 rounded-full flex items-center justify-center text-white overflow-hidden"
@@ -246,7 +246,7 @@ export const UserList: React.FC<UserListProps> = ({
         </div>
       )}
 
-      <div className="text-xs font-bold text-discord-muted uppercase mb-2">
+      <div className="text-xs font-bold text-discord-muted uppercase mb-2 font-display tracking-wide">
         Online — {others.length}
       </div>
       
@@ -260,7 +260,7 @@ export const UserList: React.FC<UserListProps> = ({
           <div 
             key={user.peerId} 
             onClick={() => onConnectToUser(user.peerId)}
-            className="group flex items-center p-2 rounded hover:bg-discord-hover cursor-pointer transition-colors"
+            className="group flex items-center p-2 rounded hover:bg-white/5 cursor-pointer transition-colors"
             title="Click to Connect"
           >
              <div className="relative">

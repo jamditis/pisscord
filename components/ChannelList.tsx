@@ -261,8 +261,8 @@ export const ChannelList: React.FC<ChannelListProps> = ({
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Header */}
-      <div className="h-12 shadow-sm flex items-center px-4 font-bold text-white border-b border-discord-dark hover:bg-discord-hover transition-colors cursor-pointer shrink-0">
-        <span>Pisscord Server</span>
+      <div className="h-12 shadow-sm flex items-center px-4 font-display tracking-wider text-white border-b border-discord-dark hover:bg-discord-hover transition-colors cursor-pointer shrink-0">
+        <span>PISSCORD</span>
         <i className="fas fa-chevron-down ml-auto text-xs"></i>
       </div>
 

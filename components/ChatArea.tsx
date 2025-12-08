@@ -503,9 +503,9 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
   return (
     <div className="flex-1 flex flex-col bg-discord-main h-full min-w-0">
       {/* Channel Header */}
-      <div className="h-12 border-b border-discord-dark flex items-center px-4 shrink-0 shadow-sm z-10">
+      <div className="h-12 border-b border-discord-dark flex items-center px-4 shrink-0 shadow-sm z-10 backdrop-blur-sm bg-discord-header/90">
         <i className={`mr-2 text-discord-muted text-xl ${channel.type === ChannelType.AI ? 'fas fa-robot' : 'fas fa-hashtag'}`}></i>
-        <h3 className="font-bold text-white">{channel.name}</h3>
+        <h3 className="font-display tracking-wide text-lg text-white">{channel.name}</h3>
         {channel.type === ChannelType.AI && <span className="ml-2 text-xs bg-discord-accent text-white px-1 rounded">BOT</span>}
         
         {channel.id === '5' && (

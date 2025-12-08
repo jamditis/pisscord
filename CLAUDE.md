@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Pisscord is a private, multi-platform Discord clone built with React, TypeScript, and PeerJS. It enables direct P2P voice/video calling, encrypted text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
+Pisscord is a private, multi-platform Discord clone built with React, TypeScript, and PeerJS. It enables direct P2P voice/video calling, text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
 
 **Platforms:** Desktop (Electron), Web Browser, Android (Capacitor), Mobile Web
-**Current Version:** 1.4.5
-**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.4.5
+**Current Version:** 1.4.6
+**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.4.6
 
 ## Key Architecture
 
@@ -20,14 +20,6 @@ Pisscord is a private, multi-platform Discord clone built with React, TypeScript
   - `npm run build:web` - Web browser build
   - `npx cap sync android` - Android (Capacitor) build
 - **Platform Detection**: `Platform.isElectron`, `Platform.isCapacitor`, `Platform.isWeb`, `Platform.isMobileWeb`
-
-### End-to-End Encryption
-- **AES-256-GCM** encryption for all text messages (`services/encryption.ts`)
-- **PBKDF2 Key Derivation**: 100,000 iterations for secure key generation
-- **Shared Salt**: Stored in Firebase (`system/encryptionSalt`) - users only need passphrase
-- **Passphrase Modal**: First-time users enter group passphrase to unlock encryption
-- **Decryption on Read**: Messages decrypted client-side when displayed
-- Old unencrypted messages remain readable (graceful fallback)
 
 ### P2P Communication Layer
 - **PeerJS** handles WebRTC signaling and peer-to-peer connections
@@ -52,8 +44,6 @@ Pisscord is a private, multi-platform Discord clone built with React, TypeScript
 - `onDisconnect()` handlers automatically remove users when they close the app
 - Real-time subscription updates online user list across all clients
 - Update system: Centralized version check against `system/latestVersion` in Firebase
-- **Encrypted Messages**: Messages encrypted before sending, decrypted on receive
-- **Encryption Salt**: Shared salt stored in `system/encryptionSalt`
 - **Release Notes**: Version-specific notes stored in `system/releaseNotes`
 
 ### Unread Message System
@@ -86,15 +76,13 @@ Pisscord is a private, multi-platform Discord clone built with React, TypeScript
 - `ChannelList.tsx`: Navigation + **persistent voice control panel** + **unread indicators**
 - `UserList.tsx`: Online users sidebar with direct call buttons
 - `UserSettingsModal.tsx`: Tabbed settings (Profile, Voice & Video, Appearance, Debug Log, About)
-- `PassphraseModal.tsx`: First-time encryption passphrase entry
 - `ReleaseNotesModal.tsx`: Version update popup with platform-aware actions
 - Modal components handle settings and updates
 
 ### Services Layer
 - `services/platform.ts`: Platform abstraction (Electron/Capacitor/Web detection, update service, link service)
-- `services/encryption.ts`: AES-256-GCM encryption/decryption with PBKDF2 key derivation
 - `services/unread.ts`: Per-user unread message tracking via localStorage
-- `services/firebase.ts`: Firebase integration with encryption support
+- `services/firebase.ts`: Firebase integration (presence, messaging, file uploads)
 - `services/geminiService.ts`: Pissbot AI integration with Firebase-loaded context
 - `services/sounds.ts`: Sound effects with preloading
 
@@ -193,7 +181,7 @@ Five-tab system in `UserSettingsModal.tsx`:
    - Warning about reconnection requirement
 3. **Appearance Tab**:
    - Theme selection (coming soon)
-   - **Privacy & Security section**: Encryption status, passphrase entry/change button
+   - **Privacy & Security section**: Shows private family server status
 4. **Debug Log Tab**:
    - Real-time display of app logs from `logs` state array
    - Color-coded by type (info=green, error=red, webrtc=blue)
@@ -288,7 +276,13 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - `noUnusedLocals` and `noUnusedParameters` disabled (intentional)
 - React JSX transform (no need to import React in TSX files)
 
-## Recent Changes (v1.1.0 - v1.4.5)
+## Recent Changes (v1.1.0 - v1.4.6)
+
+### v1.4.6 (2025-12-08)
+- **Removed Encryption**: Simplified messaging by removing client-side encryption (private family server doesn't need it)
+- **Mobile Audio Unlock**: Added "Tap to enable audio" banner when mobile browsers block autoplay
+- **App Lifecycle Handling**: Mutes mic/camera when app is backgrounded to save battery
+- **Desktop UI Update**: Refreshed Desktop UI to match Pisscord branding (Void palette, glassmorphism)
 
 ### v1.4.5 (2025-12-08)
 - **Auto-Answer Calls**: Removed confirmation popup for incoming voice calls - all calls auto-answer in trusted private server
@@ -299,17 +293,14 @@ Hardcoded in `services/firebase.ts` - production config already included.
 ### v1.4.4 (2025-12-08)
 - **Audio Processing Controls**: Noise suppression, echo cancellation, auto gain control toggles in Settings > Voice & Video
 - **Per-User Volume Control**: Click volume icon on any user's video tile to adjust their volume (0-200%)
-- **Encryption Passphrase in Settings**: Enter/change passphrase from Settings > Appearance > Privacy & Security
 - **Bugfix: Voice Channel Approval**: Fixed popup appearing incorrectly when joining public voice channels (stale closure fix using `connectionStateRef`)
 - **Bugfix: Mobile Nav Links**: Fixed navigation to mobile user guide in docs
 - **GitHub Action**: Auto-updates Firebase `system/latestVersion` when releases are published
 
 ### v1.4.0 (2025-12-08)
 - **Web Browser Version:** Pisscord now runs directly in web browsers (no download needed)
-- **End-to-End Encryption:** AES-256-GCM encryption for all text messages
 - **Unread Message Indicators:** Red dot and bold text for channels with unread messages
 - **Release Notes Popup:** One-time modal showing what's new per version
-- **Passphrase Modal:** Simple passphrase entry for group encryption
 - **Per-user Read State:** Each user's unread state is independent
 - **Mobile Web Support:** Optimized touch UI for mobile browsers
 
@@ -395,10 +386,9 @@ Hardcoded in `services/firebase.ts` - production config already included.
 
 ### Current Firebase Paths
 - `users/` - Presence system (online users, peer IDs, profiles)
-- `messages/{channelId}/` - Encrypted chat messages
+- `messages/{channelId}/` - Chat messages
 - `system/latestVersion` - Version checking for auto-updates
 - `system/releaseNotes` - Version-specific release notes
-- `system/encryptionSalt` - Shared salt for message encryption
 - `system/motd` - Message of the day
 - `pissbot/` - Dynamic AI context configuration
 - `joinRequests/{channelId}/` - Voice channel join requests
@@ -448,10 +438,6 @@ Pissbot's AI context is now fetched from Firebase instead of being hardcoded. Th
 - Pissbot receives the last 20 messages as conversation context
 - This allows follow-up questions like "what did you just say?" or "tell me more"
 - Conversation history is per-session (resets when page refreshes)
-
-**Encryption:**
-- Pissbot channel (id '3') is EXCLUDED from encryption
-- This allows the AI to read/respond to messages without passphrase issues
 
 **Code Flow:**
 1. `geminiService.ts` calls `getPissbotConfig()` from firebase.ts

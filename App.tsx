@@ -14,19 +14,17 @@ import { ConfirmModal } from './components/ConfirmModal';
 import { ContextMenu, useContextMenu } from './components/ContextMenu';
 import { MobileNav, MobileView } from './components/MobileNav';
 import { SplashScreen } from './components/SplashScreen';
-import { PassphraseModal } from './components/PassphraseModal';
 import { ReleaseNotesModal, shouldShowReleaseNotes, markVersionAsSeen } from './components/ReleaseNotesModal';
 import { useIsMobile } from './hooks/useIsMobile';
-import { isEncryptionSetUp } from './services/encryption';
 import { markChannelAsRead, updateNewestFromMessages, getUnreadChannels } from './services/unread';
 import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs, AppSettings, AppTheme } from './types';
 import { ThemeProvider, themeColors } from './contexts/ThemeContext';
 import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages, cleanupOldMessages, getPissbotConfig, PissbotConfig, checkForMOTD, getReleaseNotes, ReleaseNotesConfig } from './services/firebase';
 import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
-import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService } from './services/platform';
+import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService, AppLifecycleService } from './services/platform';
 
-const APP_VERSION = "1.4.5";
+const APP_VERSION = "1.4.6";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
@@ -139,11 +137,8 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showScreenPicker, setShowScreenPicker] = useState(false);
-  const [showPassphraseModal, setShowPassphraseModal] = useState(false);
   const [screenSources, setScreenSources] = useState<Array<{id: string, name: string, thumbnail: string}>>([]);
   const [updateInfo, setUpdateInfo] = useState<{url: string, latest: string, downloading?: boolean, progress?: number, ready?: boolean} | null>(null);
-  // Encryption state: 'none' = not set up, 'locked' = stored but needs unlock, 'ready' = unlocked
-  const [encryptionState, setEncryptionState] = useState<'none' | 'locked' | 'ready'>('none');
 
   // --- RELEASE NOTES ---
   const [showReleaseNotesModal, setShowReleaseNotesModal] = useState(false);
@@ -156,6 +151,7 @@ export default function App() {
   const [isUserListCollapsed, setIsUserListCollapsed] = useState(false);
   const [mobileView, setMobileView] = useState<MobileView>('chat');
   const [showSplash, setShowSplash] = useState(true);
+  const [audioUnlockNeeded, setAudioUnlockNeeded] = useState(false);
   const isMobile = useIsMobile();
 
   // --- REFS ---
@@ -164,6 +160,21 @@ export default function App() {
   const dataConnectionsRef = useRef<Map<string, any>>(new Map()); // Map of peerId -> DataConnection
   const myVideoTrack = useRef<MediaStreamTrack | null>(null); // Keep original camera track for when screenshare ends
   const isMountedRef = useRef(true);
+  const isAudioEnabledRef = useRef(isAudioEnabled);
+  const isVideoEnabledRef = useRef(isVideoEnabled);
+  const myStreamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    isAudioEnabledRef.current = isAudioEnabled;
+  }, [isAudioEnabled]);
+
+  useEffect(() => {
+    isVideoEnabledRef.current = isVideoEnabled;
+  }, [isVideoEnabled]);
+
+  useEffect(() => {
+    myStreamRef.current = myStream;
+  }, [myStream]);
 
   const activeChannel = INITIAL_CHANNELS.find(c => c.id === activeChannelId) || INITIAL_CHANNELS[0];
 
@@ -226,14 +237,24 @@ export default function App() {
     // Preload sound effects
     preloadSounds();
 
-    // Check encryption state - always require passphrase if not unlocked
-    if (isEncryptionSetUp()) {
-      setEncryptionState('ready');
-    } else {
-      // Encryption not ready - show passphrase modal for all users
-      setEncryptionState('locked');
-      setShowPassphraseModal(true);
-    }
+    // App Lifecycle (Background/Foreground)
+    AppLifecycleService.onAppStateChange(({ isActive }) => {
+        log(`App state changed: ${isActive ? 'active' : 'background'}`, 'info');
+        const stream = myStreamRef.current;
+        if (!stream) return;
+
+        if (!isActive) {
+            // Background: Disable tracks to release hardware
+            stream.getAudioTracks().forEach(t => t.enabled = false);
+            stream.getVideoTracks().forEach(t => t.enabled = false);
+        } else {
+            // Foreground: Restore tracks based on user preference
+            stream.getAudioTracks().forEach(t => t.enabled = isAudioEnabledRef.current);
+            stream.getVideoTracks().forEach(t => t.enabled = isVideoEnabledRef.current);
+            // Also try to unlock audio context
+            unlockAudio();
+        }
+    });
 
     // Check for release notes (show popup on new version)
     getReleaseNotes().then(notes => {
@@ -982,19 +1003,6 @@ export default function App() {
       });
   };
 
-  const handleEncryptionComplete = () => {
-      setEncryptionState('ready');
-      setShowPassphraseModal(false);
-      toast.success("Encryption Unlocked", "Messages are now encrypted end-to-end.");
-      // Force re-fetch of current channel messages to decrypt them
-      setMessages({});
-  };
-
-  const handleEncryptionSkip = () => {
-      setShowPassphraseModal(false);
-      toast.info("Encryption Skipped", "Encrypted messages won't be readable until you unlock.");
-  };
-
   const handleReportIssue = (title: string, description: string, type: 'BUG' | 'FEATURE', screenshotUrl?: string) => {
       const content = `**[${type}] ${title}**\n${description}`;
       // Use the addMessage function to post to '5' (issues channel)
@@ -1065,12 +1073,31 @@ export default function App() {
     ]);
   };
 
+  const unlockAudio = useCallback(() => {
+      const audioElements = document.querySelectorAll('audio');
+      audioElements.forEach(el => {
+          el.play().catch(e => console.error("Still failed to play:", e));
+      });
+      setAudioUnlockNeeded(false);
+  }, []);
+
   return (
     <ThemeProvider initialTheme={appSettings.theme}>
     <div
       className="flex w-full h-screen bg-discord-main text-discord-text overflow-hidden font-sans relative"
       onContextMenu={handleContextMenu}
     >
+      {/* Audio Unlock Banner */}
+      {audioUnlockNeeded && (
+        <div 
+          className="absolute top-0 left-0 right-0 z-[60] bg-discord-red text-white p-3 text-center cursor-pointer font-bold shadow-lg animate-pulse"
+          onClick={unlockAudio}
+        >
+          <i className="fas fa-volume-mute mr-2"></i>
+          Tap here to enable audio!
+        </div>
+      )}
+
       {/* Splash Screen */}
       {showSplash && (
         <SplashScreen theme={appSettings.theme} onComplete={() => setShowSplash(false)} />
@@ -1095,7 +1122,8 @@ export default function App() {
                     const playPromise = el.play();
                     if (playPromise !== undefined) {
                         playPromise.catch((e: any) => {
-                            log(`Audio play failed for ${peerId}: ${e.message}. Will retry on user interaction.`, 'error');
+                            log(`Audio play failed for ${peerId}: ${e.message}. Requesting unlock.`, 'error');
+                            setAudioUnlockNeeded(true);
                         });
                     }
                 }
@@ -1125,12 +1153,10 @@ export default function App() {
             currentAppSettings={appSettings}
             logs={logs}
             appVersion={APP_VERSION}
-            isEncryptionUnlocked={encryptionState === 'ready'}
             onSaveProfile={handleSaveProfile}
             onSaveDevices={handleSaveDevices}
             onSaveAppSettings={handleSaveAppSettings}
             onCheckForUpdates={handleCheckForUpdates}
-            onOpenPassphrase={() => setShowPassphraseModal(true)}
             onClose={() => setShowSettingsModal(false)}
             onShowToast={(type, title, message) => toast[type](title, message)}
           />
@@ -1149,13 +1175,6 @@ export default function App() {
             sources={screenSources}
             onSelect={handleScreenSourceSelect}
             onClose={() => setShowScreenPicker(false)}
-          />
-      )}
-
-      {showPassphraseModal && (
-          <PassphraseModal
-            onComplete={handleEncryptionComplete}
-            onSkip={encryptionState === 'locked' ? handleEncryptionSkip : undefined}
           />
       )}
 

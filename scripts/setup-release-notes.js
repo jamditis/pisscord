@@ -7,8 +7,14 @@
  * Usage: node scripts/setup-release-notes.js
  */
 
-import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, set } from 'firebase/database';
+require('dotenv').config();
+const { initializeApp } = require('firebase/app');
+const { getDatabase, ref, set } = require('firebase/database');
+
+if (!process.env.VITE_FIREBASE_API_KEY) {
+  console.error('Error: VITE_FIREBASE_API_KEY environment variable is not set.');
+  process.exit(1);
+}
 
 const firebaseConfig = {
   apiKey: process.env.VITE_FIREBASE_API_KEY,
@@ -17,32 +23,30 @@ const firebaseConfig = {
   projectId: "pisscord-edbca",
   storageBucket: "pisscord-edbca.firebasestorage.app",
   messagingSenderId: "582017997210",
-  appId: "1:582017997210:web:8e2a1bb4f38c2c8e8c3f3a"
+  appId: "1:582017997210:web:eb7973e480dd6a06c8c223"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // UPDATE THESE FOR EACH RELEASE
-const CURRENT_VERSION = "1.4.5";
+const CURRENT_VERSION = "1.4.6";
 const DOWNLOAD_URL = `https://github.com/jamditis/pisscord/releases/download/v${CURRENT_VERSION}/Pisscord.Setup.${CURRENT_VERSION}.exe`;
 
 const RELEASE_NOTES = `## What's New in v${CURRENT_VERSION}
 
-### Auto-Answer Calls
-- **No more approval popups** - Incoming voice calls are automatically answered
-- Pisscord is a trusted private server, so no confirmation needed
-- Seamlessly join voice channels with your friends
+### Simplified Experience
+- **Removed encryption** - No more passphrase prompts! Messages are stored securely in your private Firebase database.
+- **Cleaner setup** - Just set your name and start chatting
 
-### Android Fixes
-- **Fixed app icons** - Android app now shows the Pisscord purple logo
-- **Smaller APK** - Reduced from 446MB to 5.5MB (build bloat fixed)
-- Downgraded Gradle/AGP for better Capacitor compatibility
+### Mobile Improvements
+- **Audio unlock banner** - Tap the yellow banner to enable audio when your browser blocks autoplay
+- **Battery saver** - App now mutes mic/camera when minimized to save battery
 
-### Previous Updates (v1.4.4)
-- Audio processing controls (noise suppression, echo cancellation, auto gain)
-- Per-user volume control (0-200%) via volume icon on video tiles
-- Encryption passphrase accessible from Settings > Appearance
+### Visual Refresh
+- **Void/Cyberpunk theme** - New dark aesthetic with glassmorphism effects
+- **Updated fonts** - Outfit for body, Dela Gothic One for headers
+- **Smoother UI** - More rounded corners and subtle animations
 `;
 
 async function setupReleaseNotes() {

@@ -24,9 +24,18 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nv1.4.5: Auto-answer calls, Android icons, build fixes\n\n- Auto-answer all incoming voice calls (no more approval popups)\n- Fixed Android app icons to show Pisscord purple logo\n- Fixed Android APK build (reduced from 446MB to 5.5MB)\n- Downgraded Gradle/AGP to 8.2.2/8.5 for Capacitor compatibility\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git config:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nv1.4.5: Auto-answer calls, Android icons, build fixes\n\n- Auto-answer all incoming voice calls (no more approval popups)\n- Fixed Android app icons to show Pisscord purple logo\n- Fixed Android APK build (reduced from 446MB to 5.5MB)\n- Downgraded Gradle/AGP to 8.2.2/8.5 for Capacitor compatibility\n- Updated README, website, and CLAUDE.md to v1.4.5\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit -m \"$(cat <<''EOF''\nv1.4.5: Auto-answer calls, Android icons, build fixes\n\n- Auto-answer all incoming voice calls (no more approval popups)\n- Fixed Android app icons to show Pisscord purple logo\n- Fixed Android APK build (reduced from 446MB to 5.5MB)\n- Downgraded Gradle/AGP to 8.2.2/8.5 for Capacitor compatibility\n- Updated README, website, and CLAUDE.md to v1.4.5\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)",
+      "Bash(git tag:*)",
+      "Bash(node scripts/setup-pissbot-config.js:*)",
+      "Bash(git commit:*)",
+      "Bash(node scripts/setup-release-notes.js:*)",
+      "Bash(npm run build:web:*)",
+      "Bash(npx firebase deploy:*)",
+      "Bash(npx electron-builder:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "outputStyle": "Explanatory"
 }

@@ -15,12 +15,6 @@ import {
 } from "firebase/database";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { UserProfile, PresenceUser, JoinRequest } from "../types";
-import {
-  encryptMessage,
-  decryptMessage,
-  isEncryptionSetUp,
-  isEncryptedMessage
-} from "./encryption";
 
 const firebaseConfig = {
   apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY,
@@ -247,90 +241,28 @@ export const getReleaseNotes = async (): Promise<ReleaseNotesConfig | null> => {
 
 // --- MESSAGING ---
 
-// Channels that should NOT be encrypted (AI bot channels)
-const UNENCRYPTED_CHANNELS = ['3']; // Pissbot channel
-
 /**
  * Send a message to a channel
- * If encryption is set up, the message content will be encrypted before sending.
- * Sender name is NOT encrypted (visible in Firebase for debugging).
- * Pissbot channel (id '3') is excluded from encryption.
  */
 export const sendMessage = async (channelId: string, message: any) => {
   const messagesRef = ref(db, `messages/${channelId}`);
   const newMessageRef = push(messagesRef);
-
-  // Encrypt message content if encryption is set up (skip for pissbot channel)
-  let messageToSend = { ...message };
-  const shouldEncrypt = isEncryptionSetUp() &&
-                        message.content &&
-                        !UNENCRYPTED_CHANNELS.includes(channelId);
-
-  if (shouldEncrypt) {
-    try {
-      messageToSend.content = await encryptMessage(message.content);
-      messageToSend.encrypted = true; // Flag to indicate encrypted content
-    } catch (error) {
-      console.error('[Firebase] Failed to encrypt message:', error);
-      // Send unencrypted as fallback (user will see warning)
-    }
-  }
-
-  set(newMessageRef, messageToSend);
+  set(newMessageRef, message);
 };
 
 /**
- * Decrypt a single message if it's encrypted
+ * Subscribe to messages in a channel
  */
-const decryptMessageContent = async (message: any): Promise<any> => {
-  // Skip if no content or not encrypted
-  if (!message.content) return message;
-
-  // Check if message is marked as encrypted OR looks like encrypted content
-  const isMarkedEncrypted = message.encrypted === true;
-  const looksEncrypted = isEncryptedMessage(message.content);
-
-  if (!isMarkedEncrypted && !looksEncrypted) {
-    // Old unencrypted message - return as-is
-    return message;
-  }
-
-  // If encryption is not set up, show placeholder
-  if (!isEncryptionSetUp()) {
-    return {
-      ...message,
-      content: '[Encrypted message - enter passphrase to decrypt]',
-      decryptionFailed: true
-    };
-  }
-
-  try {
-    const decryptedContent = await decryptMessage(message.content);
-    return { ...message, content: decryptedContent };
-  } catch (error) {
-    console.error('[Firebase] Failed to decrypt message:', error);
-    return {
-      ...message,
-      content: '[Unable to decrypt - wrong passphrase?]',
-      decryptionFailed: true
-    };
-  }
-};
-
 export const subscribeToMessages = (channelId: string, onMessageUpdate: (messages: any[]) => void) => {
   const messagesRef = ref(db, `messages/${channelId}`);
   // Limit to last 100 messages to prevent lag
   const recentMessagesQuery = query(messagesRef, limitToLast(100));
 
-  return onValue(recentMessagesQuery, async (snapshot) => {
+  return onValue(recentMessagesQuery, (snapshot) => {
     const data = snapshot.val();
     if (data) {
       const messageList = Object.values(data) as any[];
-      // Decrypt all messages in parallel
-      const decryptedMessages = await Promise.all(
-        messageList.map(msg => decryptMessageContent(msg))
-      );
-      onMessageUpdate(decryptedMessages);
+      onMessageUpdate(messageList);
     } else {
       onMessageUpdate([]);
     }

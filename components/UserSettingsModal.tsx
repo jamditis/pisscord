@@ -10,12 +10,10 @@ interface UserSettingsModalProps {
   currentAppSettings: AppSettings;
   logs: AppLogs[];
   appVersion: string;
-  isEncryptionUnlocked?: boolean;
   onSaveProfile: (newProfile: UserProfile) => void;
   onSaveDevices: (newDevices: DeviceSettings) => void;
   onSaveAppSettings: (newSettings: AppSettings) => void;
   onCheckForUpdates: () => void;
-  onOpenPassphrase?: () => void;
   onClose: () => void;
   onShowToast?: (type: 'success' | 'error' | 'info' | 'warning', title: string, message?: string) => void;
 }
@@ -23,7 +21,7 @@ interface UserSettingsModalProps {
 const COLORS = ['#5865F2', '#3ba55c', '#ed4245', '#faa61a', '#eb459e', '#00b0f4', '#a8a8a8'];
 
 export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
-    currentProfile, currentDevices, currentAppSettings, logs, appVersion, isEncryptionUnlocked, onSaveProfile, onSaveDevices, onSaveAppSettings, onCheckForUpdates, onOpenPassphrase, onClose, onShowToast
+    currentProfile, currentDevices, currentAppSettings, logs, appVersion, onSaveProfile, onSaveDevices, onSaveAppSettings, onCheckForUpdates, onClose, onShowToast
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'voice' | 'appearance' | 'debug' | 'about'>('profile');
   
@@ -865,35 +863,14 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                         {/* Privacy & Security Section */}
                         <div className="border-t border-discord-muted/20 pt-6">
                             <h3 className="text-white font-semibold mb-2">Privacy & Security</h3>
-                            <p className="text-discord-muted text-sm mb-4">End-to-end encryption keeps your messages private.</p>
-
-                            <div className="flex items-center justify-between bg-discord-dark rounded-lg p-4 max-w-md">
+                            <div className="flex items-center bg-discord-dark rounded-lg p-4 max-w-md">
+                                <i className="fas fa-shield-alt text-discord-green mr-3 text-xl"></i>
                                 <div>
-                                    <div className="text-white font-medium flex items-center">
-                                        <i className={`fas ${isEncryptionUnlocked ? 'fa-lock-open text-discord-green' : 'fa-lock text-discord-muted'} mr-2`}></i>
-                                        Encryption Status
-                                    </div>
+                                    <div className="text-white font-medium">Private family server</div>
                                     <div className="text-discord-muted text-sm mt-1">
-                                        {isEncryptionUnlocked
-                                            ? 'Encryption is unlocked. Messages are protected.'
-                                            : 'Enter passphrase to decrypt messages.'}
+                                        Messages are stored securely in your private Firebase database.
                                     </div>
                                 </div>
-                                {onOpenPassphrase && (
-                                    <button
-                                        onClick={() => {
-                                            onClose();
-                                            onOpenPassphrase();
-                                        }}
-                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                            isEncryptionUnlocked
-                                                ? 'bg-discord-sidebar text-discord-text hover:bg-discord-hover'
-                                                : 'bg-discord-accent text-white hover:bg-discord-accent/80'
-                                        }`}
-                                    >
-                                        {isEncryptionUnlocked ? 'Change' : 'Unlock'}
-                                    </button>
-                                )}
                             </div>
                         </div>
                     </div>
