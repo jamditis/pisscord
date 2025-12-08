@@ -282,15 +282,19 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - **Removed Voice Channel Approval:** Simplified voice channel joining
 - **Renamed Voice Lounge to Chillin':** Channel name update
 - **Website Updates:** Improved landing page and user guides
-- **Web Browser Version Started:** Initial platform abstraction work
 
-### v1.1.1 (2025-12-06)
+### v1.3.0 (2025-12-06)
 - **Android App:** Native Android app via Capacitor
 - **Platform Abstraction Layer:** Unified API for Electron, Capacitor, and Web
 - **Platform Detection:** Accurate detection of Electron, Capacitor, Web, Mobile Web
 - **Theme Customization:** Gold and Purple theme options
 - **Mobile User Guide:** Added comprehensive mobile user documentation
+- **Mobile UI/UX:** Themed splash screen, status bar padding, animations
 - **Security Fix:** Rotated Firebase API key, moved to environment variables
+
+### v1.1.1 (2025-12-06)
+- **Bug Fixes:** Various UX improvements
+- **Pissbot Config:** Updated AI context
 
 ### v1.1.0 (2025-12-06)
 - **Voice Channel Approval Mode:** Channels can require approval to join when occupied
