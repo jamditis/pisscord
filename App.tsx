@@ -26,7 +26,7 @@ import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
 import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService } from './services/platform';
 
-const APP_VERSION = "1.4.4";
+const APP_VERSION = "1.4.5";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
@@ -388,38 +388,10 @@ export default function App() {
     });
 
     peer.on('call', async (call) => {
-        // MESH NETWORKING:
-        // If we are already connected to a voice channel, we assume incoming calls are from peers joining the channel.
-        // We auto-answer them to establish the mesh.
-        // Use connectionStateRef to get current state (avoid stale closure bug)
-        if (connectionStateRef.current === ConnectionState.CONNECTED) {
-            log(`Auto-answering incoming mesh call from ${call.peer}`, 'webrtc');
-            handleAcceptCall(call);
-            return;
-        }
-
-        // Show the window before displaying the confirmation dialog (Electron only)
-        WindowService.showWindow();
-
-        // Store pending call and show confirmation modal
-        pendingCallRef.current = call;
-        // Play incoming call sound (looped)
-        playSound('call_incoming', true);
-        setConfirmModal({
-            isOpen: true,
-            title: "Incoming Call",
-            message: `Someone is calling you. Accept the call?`,
-            confirmText: "Accept",
-            cancelText: "Decline",
-            confirmStyle: 'primary',
-            onConfirm: () => {
-                log('Answering incoming call...', 'webrtc');
-                stopLoopingSound(); // Stop the ringing
-                handleAcceptCall(pendingCallRef.current);
-                pendingCallRef.current = null;
-                setConfirmModal(prev => ({ ...prev, isOpen: false }));
-            }
-        });
+        // MESH NETWORKING: Auto-answer all incoming calls
+        // In a private server like Pisscord, all calls are from trusted users
+        log(`Auto-answering incoming call from ${call.peer}`, 'webrtc');
+        handleAcceptCall(call);
     });
 
     // Handle incoming data connections for text messages

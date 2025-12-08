@@ -7,8 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Pisscord is a private, multi-platform Discord clone built with React, TypeScript, and PeerJS. It enables direct P2P voice/video calling, encrypted text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
 
 **Platforms:** Desktop (Electron), Web Browser, Android (Capacitor), Mobile Web
-**Current Version:** 1.4.4
-**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.4.4
+**Current Version:** 1.4.5
+**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.4.5
 
 ## Key Architecture
 
@@ -288,7 +288,13 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - `noUnusedLocals` and `noUnusedParameters` disabled (intentional)
 - React JSX transform (no need to import React in TSX files)
 
-## Recent Changes (v1.1.0 - v1.4.4)
+## Recent Changes (v1.1.0 - v1.4.5)
+
+### v1.4.5 (2025-12-08)
+- **Auto-Answer Calls**: Removed confirmation popup for incoming voice calls - all calls auto-answer in trusted private server
+- **Android App Icons**: Fixed app icon to display Pisscord purple logo instead of default Capacitor icon
+- **Build Fixes**: Fixed Android APK build (reduced bloat from 446MB to 5.5MB)
+- **Gradle Compatibility**: Downgraded AGP to 8.2.2 and Gradle to 8.5 for Capacitor plugin compatibility
 
 ### v1.4.4 (2025-12-08)
 - **Audio Processing Controls**: Noise suppression, echo cancellation, auto gain control toggles in Settings > Voice & Video
