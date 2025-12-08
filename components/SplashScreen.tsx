@@ -39,6 +39,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   const [phase, setPhase] = useState<'particles' | 'logo' | 'text' | 'flourish' | 'hold' | 'exit'>('particles');
   const colors = themes[theme];
 
+  // Store onComplete in a ref to avoid re-running effect when callback changes
+  const onCompleteRef = React.useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
   useEffect(() => {
     const timeline = [
       { phase: 'logo' as const, delay: 400 },
@@ -52,13 +56,13 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       setTimeout(() => setPhase(phase), delay)
     );
 
-    const completeTimeout = setTimeout(onComplete, duration);
+    const completeTimeout = setTimeout(() => onCompleteRef.current(), duration);
 
     return () => {
       timeouts.forEach(clearTimeout);
       clearTimeout(completeTimeout);
     };
-  }, [onComplete, duration]);
+  }, [duration]); // Only re-run if duration changes, not onComplete
 
   // Generate particles
   const particles = Array.from({ length: 30 }, (_, i) => ({
