@@ -35,26 +35,33 @@ Your personality:
 - Speaks like a tech-savvy friend, not a corporate bot`,
 
   context: `About Pisscord:
-- Current Version: v1.1.1 (Released December 6, 2025)
+- Current Version: v1.4.2 (Released December 8, 2025)
 - Built with: Electron 30, React 18, TypeScript, Vite, Firebase
 - P2P Architecture: Uses PeerJS for WebRTC mesh networking
 - Real-time presence: Firebase Realtime Database
 - File storage: Firebase Storage
 
+Platforms:
+- Windows Desktop (Electron) - Full featured with auto-updates
+- Web Browser (web.pisscord.app) - Works on any device, no download required
+- Android (Capacitor APK) - Native mobile app
+
 Core Features:
 - Mesh networking for group voice/video calls (many-to-many)
+- End-to-end encryption (AES-256-GCM) for all text messages
 - Real-time text messaging with Firebase persistence
-- Screen sharing via Electron's desktopCapturer
+- Screen sharing via Electron's desktopCapturer (desktop) or getDisplayMedia (web)
 - Video spotlight/pinning - click any video tile to maximize
 - Speaking indicators - green ring shows who's talking
 - Discord-style markdown in chat (bold, italic, code, headers, lists)
 - AI assistant (you!) powered by Google Gemini 2.5 Flash
 - User profiles with custom names, status, colors, and profile pictures
 - File sharing - drag & drop images/files in chat
-- Voice channel approval mode - some channels require approval to join
+- Theme customization - Gold and Purple color themes
+- Unread message indicators - red dot and bold text for new messages
 - Collapsible user list sidebar
-- System tray integration for background operation
-- Auto-updates via GitHub Releases + electron-updater
+- System tray integration for background operation (desktop)
+- Auto-updates via GitHub Releases + electron-updater (desktop)
 
 Channels:
 - #general - Main chat
@@ -62,75 +69,79 @@ Channels:
 - #dev-updates - Live GitHub commit feed (read-only)
 - #issues - Bug reports and feature requests
 - #pissbot - Chat with me!
-- Voice Lounge - Open voice channel
-- Gaming - Voice channel requiring approval to join (lock icon)
+- Chillin' - Open voice channel
+- Gaming - Open voice channel
 
 Technical Architecture:
 - Main process: electron.js (handles window, tray, IPC)
 - Renderer: React app with TypeScript
+- Platform layer: services/platform.ts (abstracts Electron/Capacitor/Web differences)
+- Encryption: services/encryption.ts (AES-256-GCM with PBKDF2 key derivation)
 - Services: firebase.ts (presence, messages, files), geminiService.ts (AI), sounds.ts (audio), github.ts (dev feed)
-- Components: Sidebar, ChannelList, ChatArea, VoiceStage, UserList, JoinRequestPanel`,
+- Components: Sidebar, ChannelList, ChatArea, VoiceStage, UserList, PassphraseModal`,
 
-  patchNotes: `v1.1.1 (December 6, 2025):
-- Fixed video pinning - other participants now stay visible when you pin someone
-- External links now open in default browser instead of inside the app
-- Manual download button now directly downloads the .exe file
+  patchNotes: `v1.4.2 (December 8, 2025):
+- Passphrase modal now shows for ALL users on launch (required for encryption)
+- Previously new computers could skip encryption setup unintentionally
+
+v1.4.1 (December 8, 2025):
+- Purple app icons for taskbar, tray, and installer
+- Auto-close installer - automatically closes running Pisscord before updating
+- Sidebar logo fix - now properly fills circle area and respects theme
+
+v1.4.0 (December 8, 2025):
+- Web Browser Version - access Pisscord at web.pisscord.app (no download!)
+- End-to-End Encryption - AES-256-GCM encryption for all text messages
+- Passphrase system - enter group passphrase on first launch to unlock encryption
+- Unread message indicators - red dot and bold text for channels with new messages
+- Release notes popup - see what's new after each update
+- Mobile web support - optimized touch UI for mobile browsers
+
+v1.3.0 (December 6, 2025):
+- Android App - native Android app via Capacitor
+- Theme Customization - Gold and Purple color themes
+- Removed voice channel approval system
+- Renamed Voice Lounge to Chillin'
 
 v1.1.0 (December 6, 2025):
-- Voice channel approval mode - channels can require approval to join
 - Collapsible user list sidebar
-- User list now visible in voice channels
-- Fixed view switching bug (no more forced rejoin)
-- Fixed users disappearing from sidebar on profile update
-- Fixed speaking indicator layout shift
-- Cleaner video spotlight/pinning layout
-- Simplified server sidebar (removed Add Server button)
-- Pissbot channel moved to bottom of text channels
-
-v1.0.14 (December 6, 2025):
-- Video spotlight - click any tile to pin/maximize
+- Video spotlight/pinning
 - Speaking indicators with green ring
-- Full markdown rendering in chat
-- Users nested under voice channels in sidebar
-- Added Gaming voice channel
-- Fixed bug report submission and auto-updater
+- Full markdown rendering in chat`,
 
-v1.0.13 (December 6, 2025):
-- Mesh networking for group calls
-- File sharing in chat
-- Profile pictures
-- Community channels (#issues, #dev-updates)
-- MOTD system
-- 14-day message retention`,
+  documentation: `How to Access Pisscord:
+- Web Browser: Go to web.pisscord.app (or pisscord-edbca.web.app)
+- Windows Desktop: Download from GitHub releases
+- Android: Download APK from GitHub releases
 
-  documentation: `How to Connect:
-1. Open the app - you'll see your Peer ID in the bottom left
-2. Click on Voice Lounge or Gaming channel
-3. If channel is empty, you'll join and wait for others
-4. If others are in the channel, you'll auto-connect (or request approval for Gaming)
-5. Use the control bar to mute, toggle video, share screen, or disconnect
+First Time Setup:
+1. Enter the group passphrase when prompted (required for encryption)
+2. Set your display name and profile in Settings
+3. Click a voice channel to join, or text channel to chat
 
-Voice Channel Approval:
-- Gaming channel has a lock icon - requires approval when occupied
-- Click to join and your request is sent to users in the channel
-- They'll see approve/deny buttons to let you in
-
-Video Controls:
+Voice/Video Controls:
 - Click any video tile to pin/spotlight it
 - Green ring shows who's currently speaking
-- Collapse user list for more video space
+- Collapse user list by clicking the chevron for more video space
+- Use control bar to mute, toggle video, share screen, or disconnect
+
+Encryption:
+- All messages are encrypted with AES-256-GCM
+- You need the passphrase to read/send encrypted messages
+- If you entered wrong passphrase, go to Settings and reset
 
 Troubleshooting:
 - "Peer not found": Check if friend is online
 - No audio: Check Voice & Video settings, try reconnecting
-- App won't start: Delete %AppData%/pisscord and reinstall
+- Can't read messages: Make sure you entered the correct passphrase
+- Desktop app won't start: Delete %AppData%/pisscord and reinstall
 - Check Debug Log in Settings for detailed error messages
 
 Tips:
-- Collapse user list by clicking the chevron for more video space
 - Right-click anywhere for quick actions menu
 - Copy your Peer ID by clicking the ID in the bottom left
-- Check Settings > About to manually check for updates`,
+- Desktop: Check Settings > About to manually check for updates
+- Web/Mobile: Refresh the page to get latest version`,
 
   lastUpdated: Date.now()
 };

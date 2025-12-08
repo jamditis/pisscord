@@ -17,7 +17,7 @@ import { SplashScreen } from './components/SplashScreen';
 import { PassphraseModal } from './components/PassphraseModal';
 import { ReleaseNotesModal, shouldShowReleaseNotes, markVersionAsSeen } from './components/ReleaseNotesModal';
 import { useIsMobile } from './hooks/useIsMobile';
-import { hasStoredPassphrase, isEncryptionSetUp } from './services/encryption';
+import { isEncryptionSetUp } from './services/encryption';
 import { markChannelAsRead, updateNewestFromMessages, getUnreadChannels } from './services/unread';
 import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs, AppSettings, AppTheme } from './types';
 import { ThemeProvider, themeColors } from './contexts/ThemeContext';
@@ -26,7 +26,7 @@ import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
 import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService } from './services/platform';
 
-const APP_VERSION = "1.4.0";
+const APP_VERSION = "1.4.2";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
@@ -168,7 +168,7 @@ export default function App() {
               const roadmapMessage: Message = {
                   id: 'roadmap',
                   sender: 'System',
-                  content: "# 🗺️ Roadmap\n\n- [x] Group Calls\n- [x] File Sharing\n- [x] Profile Pictures\n- [x] Mobile App\n- [x] Theme Customization\n- [ ] Encrypted DMs\n- [ ] iOS App\n\n*Updates every commit.*",
+                  content: "# 🗺️ Roadmap\n\n- [x] Group Calls\n- [x] File Sharing\n- [x] Profile Pictures\n- [x] Mobile App\n- [x] Theme Customization\n- [x] End-to-End Encryption\n- [x] Web Browser Version\n- [ ] Direct Messages (DMs)\n- [ ] iOS App\n\n*Updates every commit.*",
                   timestamp: Date.now(), // Always at bottom? Or top? 
                   // If we want it at top, set timestamp 0. If bottom, Date.now().
                   // Actually, let's just put it in the list.
@@ -215,15 +215,13 @@ export default function App() {
     // Preload sound effects
     preloadSounds();
 
-    // Check encryption state
+    // Check encryption state - always require passphrase if not unlocked
     if (isEncryptionSetUp()) {
       setEncryptionState('ready');
-    } else if (hasStoredPassphrase()) {
-      // User has encryption set up but needs to unlock this session
+    } else {
+      // Encryption not ready - show passphrase modal for all users
       setEncryptionState('locked');
       setShowPassphraseModal(true);
-    } else {
-      setEncryptionState('none');
     }
 
     // Check for release notes (show popup on new version)
