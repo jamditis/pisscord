@@ -270,26 +270,27 @@ Hardcoded in `services/firebase.ts` - production config already included.
 ## Recent Changes (v1.1.0 - v1.4.0)
 
 ### v1.4.0 (2025-12-08)
-- **Web Browser Version:** Pisscord now runs directly in web browsers
+- **Web Browser Version:** Pisscord now runs directly in web browsers (no download needed)
 - **End-to-End Encryption:** AES-256-GCM encryption for all text messages
 - **Unread Message Indicators:** Red dot and bold text for channels with unread messages
 - **Release Notes Popup:** One-time modal showing what's new per version
 - **Passphrase Modal:** Simple passphrase entry for group encryption
 - **Per-user Read State:** Each user's unread state is independent
-
-### v1.3.0 (2025-12-07)
 - **Mobile Web Support:** Optimized touch UI for mobile browsers
-- **Lazy Capacitor Loading:** Dynamic module loading to avoid bundling issues
 
-### v1.2.0 (2025-12-07)
+### v1.3.1 (2025-12-06)
 - **Removed Voice Channel Approval:** Simplified voice channel joining
 - **Renamed Voice Lounge to Chillin':** Channel name update
 - **Website Updates:** Improved landing page and user guides
+- **Web Browser Version Started:** Initial platform abstraction work
 
 ### v1.1.1 (2025-12-06)
 - **Android App:** Native Android app via Capacitor
 - **Platform Abstraction Layer:** Unified API for Electron, Capacitor, and Web
 - **Platform Detection:** Accurate detection of Electron, Capacitor, Web, Mobile Web
+- **Theme Customization:** Gold and Purple theme options
+- **Mobile User Guide:** Added comprehensive mobile user documentation
+- **Security Fix:** Rotated Firebase API key, moved to environment variables
 
 ### v1.1.0 (2025-12-06)
 - **Voice Channel Approval Mode:** Channels can require approval to join when occupied
