@@ -35,7 +35,7 @@ Your personality:
 - Speaks like a tech-savvy friend, not a corporate bot`,
 
   context: `About Pisscord:
-- Current Version: v1.4.2 (Released December 8, 2025)
+- Current Version: v1.4.5 (Released December 8, 2025)
 - Built with: Electron 30, React 18, TypeScript, Vite, Firebase
 - P2P Architecture: Uses PeerJS for WebRTC mesh networking
 - Real-time presence: Firebase Realtime Database
@@ -80,9 +80,20 @@ Technical Architecture:
 - Services: firebase.ts (presence, messages, files), geminiService.ts (AI), sounds.ts (audio), github.ts (dev feed)
 - Components: Sidebar, ChannelList, ChatArea, VoiceStage, UserList, PassphraseModal`,
 
-  patchNotes: `v1.4.2 (December 8, 2025):
+  patchNotes: `v1.4.5 (December 8, 2025):
+- Auto-answer all incoming voice calls (no more approval popups)
+- Fixed Android app icons to show Pisscord purple logo
+- Fixed Android APK build (reduced from 446MB to 5.5MB)
+- Downgraded Gradle/AGP for Capacitor compatibility
+
+v1.4.4 (December 8, 2025):
+- Audio processing controls (noise suppression, echo cancellation, auto gain)
+- Per-user volume control (0-200%) - click volume icon on video tiles
+- Encryption passphrase accessible from Settings > Appearance
+- Fixed voice channel approval popup bug
+
+v1.4.2 (December 8, 2025):
 - Passphrase modal now shows for ALL users on launch (required for encryption)
-- Previously new computers could skip encryption setup unintentionally
 
 v1.4.1 (December 8, 2025):
 - Purple app icons for taskbar, tray, and installer

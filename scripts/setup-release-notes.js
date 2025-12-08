@@ -24,37 +24,25 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // UPDATE THESE FOR EACH RELEASE
-const CURRENT_VERSION = "1.4.0";
+const CURRENT_VERSION = "1.4.5";
 const DOWNLOAD_URL = `https://github.com/jamditis/pisscord/releases/download/v${CURRENT_VERSION}/Pisscord.Setup.${CURRENT_VERSION}.exe`;
 
 const RELEASE_NOTES = `## What's New in v${CURRENT_VERSION}
 
-### Web Browser Version
-- **Pisscord Web** - Use Pisscord directly in your browser, no download required!
-- Works on desktop and mobile browsers
-- Same features as the desktop app
-- Refresh the page to get updates
+### Auto-Answer Calls
+- **No more approval popups** - Incoming voice calls are automatically answered
+- Pisscord is a trusted private server, so no confirmation needed
+- Seamlessly join voice channels with your friends
 
-### End-to-End Encryption
-- **AES-256-GCM encryption** for all text messages
-- Messages encrypted on your device before leaving
-- Only your group (with the shared passphrase) can read messages
-- Voice and video remain P2P encrypted via WebRTC
+### Android Fixes
+- **Fixed app icons** - Android app now shows the Pisscord purple logo
+- **Smaller APK** - Reduced from 446MB to 5.5MB (build bloat fixed)
+- Downgraded Gradle/AGP for better Capacitor compatibility
 
-### Unread Message Indicators
-- Channels with unread messages show a red dot
-- Unread channels appear bold in the channel list
-- Per-user tracking - your read state is yours alone
-
-### Release Notes Popup
-- See what's new when you update
-- One-time popup per version
-- Direct links to download or refresh
-
-### Other Improvements
-- Better mobile web browser detection
-- Platform-specific update buttons (Refresh for web, Download for desktop)
-- Updated website and user guide with accurate security info
+### Previous Updates (v1.4.4)
+- Audio processing controls (noise suppression, echo cancellation, auto gain)
+- Per-user volume control (0-200%) via volume icon on video tiles
+- Encryption passphrase accessible from Settings > Appearance
 `;
 
 async function setupReleaseNotes() {
