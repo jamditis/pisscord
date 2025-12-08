@@ -119,6 +119,12 @@ export default function App() {
       deviceSettingsRef.current = deviceSettings;
   }, [deviceSettings]);
 
+  // Ref for connectionState to avoid stale closure in peer.on('call')
+  const connectionStateRef = useRef(connectionState);
+  useEffect(() => {
+      connectionStateRef.current = connectionState;
+  }, [connectionState]);
+
   // --- STATE: Media ---
   const [myStream, setMyStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
@@ -385,7 +391,8 @@ export default function App() {
         // MESH NETWORKING:
         // If we are already connected to a voice channel, we assume incoming calls are from peers joining the channel.
         // We auto-answer them to establish the mesh.
-        if (connectionState === ConnectionState.CONNECTED) {
+        // Use connectionStateRef to get current state (avoid stale closure bug)
+        if (connectionStateRef.current === ConnectionState.CONNECTED) {
             log(`Auto-answering incoming mesh call from ${call.peer}`, 'webrtc');
             handleAcceptCall(call);
             return;
@@ -1146,10 +1153,12 @@ export default function App() {
             currentAppSettings={appSettings}
             logs={logs}
             appVersion={APP_VERSION}
+            isEncryptionUnlocked={encryptionState === 'ready'}
             onSaveProfile={handleSaveProfile}
             onSaveDevices={handleSaveDevices}
             onSaveAppSettings={handleSaveAppSettings}
             onCheckForUpdates={handleCheckForUpdates}
+            onOpenPassphrase={() => setShowPassphraseModal(true)}
             onClose={() => setShowSettingsModal(false)}
             onShowToast={(type, title, message) => toast[type](title, message)}
           />
