@@ -55,6 +55,17 @@ if (isNativePlatform) {
 // Platform Detection
 // ============================================================================
 
+// Detect mobile web browser via user agent (for responsive behavior)
+const isMobileUserAgent = typeof navigator !== 'undefined' &&
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+// Also check for touch support as a fallback
+const hasTouchScreen = typeof window !== 'undefined' &&
+  ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+
+// Consider it a mobile device if either native platform OR mobile browser
+const isMobileDevice = isNativePlatform || (isMobileUserAgent && hasTouchScreen);
+
 export const Platform = {
   /** Running in Electron desktop app */
   isElectron: typeof window !== 'undefined' && !!(window as any).electronAPI,
@@ -67,23 +78,30 @@ export const Platform = {
          !(window as any).electronAPI &&
          !isNativePlatform,
 
-  /** Running on iOS (Capacitor) */
+  /** Running on iOS (Capacitor native app) */
   isIOS: capacitorPlatform === 'ios',
 
-  /** Running on Android (Capacitor) */
+  /** Running on Android (Capacitor native app) */
   isAndroid: capacitorPlatform === 'android',
 
-  /** Running on any mobile platform */
-  isMobile: isNativePlatform,
+  /** Running on any mobile platform (native or mobile web browser) */
+  isMobile: isMobileDevice,
+
+  /** Running on native mobile only (Capacitor) */
+  isMobileNative: isNativePlatform,
+
+  /** Running on mobile web browser (not native app) */
+  isMobileWeb: !isNativePlatform && isMobileUserAgent && hasTouchScreen,
 
   /** Running on desktop (Electron or web on desktop browser) */
-  isDesktop: !isNativePlatform,
+  isDesktop: !isMobileDevice,
 
   /** Get the current platform name */
-  getName(): 'electron' | 'ios' | 'android' | 'web' {
+  getName(): 'electron' | 'ios' | 'android' | 'web' | 'mobile-web' {
     if ((window as any).electronAPI) return 'electron';
     if (capacitorPlatform === 'ios') return 'ios';
     if (capacitorPlatform === 'android') return 'android';
+    if (isMobileUserAgent && hasTouchScreen) return 'mobile-web';
     return 'web';
   }
 };
