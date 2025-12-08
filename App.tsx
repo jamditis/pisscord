@@ -14,7 +14,9 @@ import { ConfirmModal } from './components/ConfirmModal';
 import { ContextMenu, useContextMenu } from './components/ContextMenu';
 import { MobileNav, MobileView } from './components/MobileNav';
 import { SplashScreen } from './components/SplashScreen';
+import { PassphraseModal } from './components/PassphraseModal';
 import { useIsMobile } from './hooks/useIsMobile';
+import { hasStoredPassphrase, isEncryptionSetUp } from './services/encryption';
 import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs, AppSettings, AppTheme } from './types';
 import { ThemeProvider, themeColors } from './contexts/ThemeContext';
 import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages, cleanupOldMessages, getPissbotConfig, PissbotConfig, checkForMOTD } from './services/firebase';
@@ -124,8 +126,11 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showScreenPicker, setShowScreenPicker] = useState(false);
+  const [showPassphraseModal, setShowPassphraseModal] = useState(false);
   const [screenSources, setScreenSources] = useState<Array<{id: string, name: string, thumbnail: string}>>([]);
   const [updateInfo, setUpdateInfo] = useState<{url: string, latest: string, downloading?: boolean, progress?: number, ready?: boolean} | null>(null);
+  // Encryption state: 'none' = not set up, 'locked' = stored but needs unlock, 'ready' = unlocked
+  const [encryptionState, setEncryptionState] = useState<'none' | 'locked' | 'ready'>('none');
 
   // --- UI STATE ---
   const [isUserListCollapsed, setIsUserListCollapsed] = useState(false);
@@ -192,6 +197,17 @@ export default function App() {
 
     // Preload sound effects
     preloadSounds();
+
+    // Check encryption state
+    if (isEncryptionSetUp()) {
+      setEncryptionState('ready');
+    } else if (hasStoredPassphrase()) {
+      // User has encryption set up but needs to unlock this session
+      setEncryptionState('locked');
+      setShowPassphraseModal(true);
+    } else {
+      setEncryptionState('none');
+    }
 
     // Cleanup old messages (14-day retention)
     const textChannels = INITIAL_CHANNELS.filter(c => c.type === ChannelType.TEXT || c.type === ChannelType.AI).map(c => c.id);
@@ -930,6 +946,19 @@ export default function App() {
       });
   };
 
+  const handleEncryptionComplete = () => {
+      setEncryptionState('ready');
+      setShowPassphraseModal(false);
+      toast.success("Encryption Unlocked", "Messages are now encrypted end-to-end.");
+      // Force re-fetch of current channel messages to decrypt them
+      setMessages({});
+  };
+
+  const handleEncryptionSkip = () => {
+      setShowPassphraseModal(false);
+      toast.info("Encryption Skipped", "Encrypted messages won't be readable until you unlock.");
+  };
+
   const handleReportIssue = (title: string, description: string, type: 'BUG' | 'FEATURE', screenshotUrl?: string) => {
       const content = `**[${type}] ${title}**\n${description}`;
       // Use the addMessage function to post to '5' (issues channel)
@@ -1080,6 +1109,13 @@ export default function App() {
             sources={screenSources}
             onSelect={handleScreenSourceSelect}
             onClose={() => setShowScreenPicker(false)}
+          />
+      )}
+
+      {showPassphraseModal && (
+          <PassphraseModal
+            onComplete={handleEncryptionComplete}
+            onSkip={encryptionState === 'locked' ? handleEncryptionSkip : undefined}
           />
       )}
 
