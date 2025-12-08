@@ -2,7 +2,7 @@
 
 # Pisscord
 
-**Current Version:** v1.4.0 | [Download Latest](https://github.com/jamditis/pisscord/releases/latest) | [Use in Browser](https://pisscord.com)
+**Current Version:** v1.4.4 | [Download Latest](https://github.com/jamditis/pisscord/releases/latest) | [Use in Browser](https://pisscord-edbca.web.app)
 
 A private, peer-to-peer Discord clone for trusted groups with encrypted messaging, voice/video calling, AI assistance, and real-time presence. Available as a desktop app, Android app, or directly in your web browser.
 
@@ -36,7 +36,8 @@ A private, peer-to-peer Discord clone for trusted groups with encrypted messagin
 - **📢 Dev Updates**: Live GitHub commit feed in #dev-updates
 - **🐛 Bug Reporting**: In-app issue submission to #issues
 - **🎨 Custom Profiles**: Personalize with names, statuses, and colors
-- **🎛️ Advanced Controls**: Device selection, volume adjustment (0-200%)
+- **🎛️ Advanced Controls**: Device selection, per-user volume (0-200%), audio processing toggles
+- **🔇 Noise Suppression**: Built-in noise suppression, echo cancellation, and auto gain control
 - **📱 System Tray**: Minimize to tray - stay connected while multitasking (desktop only)
 
 ## 🏗️ Architecture Highlights
@@ -61,7 +62,8 @@ A private, peer-to-peer Discord clone for trusted groups with encrypted messagin
 
 ### Advanced Media Pipeline
 - **Device hot-swapping**: Change mic, speakers, or camera without reconnecting
-- **Volume control**: 0-200% adjustable remote audio volume
+- **Volume control**: 0-200% adjustable per-user volume with individual sliders
+- **Audio processing**: Noise suppression, echo cancellation, auto gain control toggles
 - **Track replacement**: Screen sharing uses `RTCRtpSender.replaceTrack()` for seamless transitions
 
 ### Desktop Integration
@@ -74,7 +76,7 @@ A private, peer-to-peer Discord clone for trusted groups with encrypted messagin
 ## 🛑 READ THIS FIRST
 
 There are four ways to use Pisscord:
-1.  **Web Browser**: Just visit [pisscord.com](https://pisscord.com) - no installation needed
+1.  **Web Browser**: Just visit [pisscord-edbca.web.app](https://pisscord-edbca.web.app) - no installation needed
 2.  **Desktop App**: Download and install the Windows application
 3.  **Android App**: Install the APK on your Android device
 4.  **Build from Source**: Compile the code yourself
@@ -83,7 +85,7 @@ There are four ways to use Pisscord:
 
 ## 🌐 Web Browser Quick Start
 
-1.  **Visit**: Go to [pisscord.com](https://pisscord.com)
+1.  **Visit**: Go to [pisscord-edbca.web.app](https://pisscord-edbca.web.app)
 2.  **Enter Passphrase**: Get the encryption passphrase from a group member
 3.  **Start Chatting**: You're ready to use all features
 
@@ -124,7 +126,7 @@ That's it! The web version works on desktop and mobile browsers.
 
 5.  **Find the Installer**:
     - Navigate to the `dist` folder
-    - Look for `Pisscord Setup 1.4.0.exe`
+    - Look for `Pisscord Setup 1.4.4.exe`
 
 ### Build Web Version
 
@@ -156,7 +158,7 @@ npm run dev          # Web browser (localhost:5173)
 
 ### Desktop Installation
 
-1.  **Download**: Get the `Pisscord Setup 1.4.0.exe` from [releases](https://github.com/jamditis/pisscord/releases/latest)
+1.  **Download**: Get the `Pisscord Setup 1.4.4.exe` from [releases](https://github.com/jamditis/pisscord/releases/latest)
 2.  **Install**: Double-click the installer
     - Windows may show "Unknown Publisher" warning
     - Click "More Info" → "Run Anyway"
@@ -188,7 +190,7 @@ npm run dev          # Web browser (localhost:5173)
 When connected, you'll see a green **Voice Connected** panel at the bottom of the sidebar with:
 - **Mute/Unmute**: Toggle your microphone
 - **Video On/Off**: Toggle your camera
-- **Volume**: Click speaker icon to adjust friend's volume (0-200%)
+- **Volume**: Click volume icon on any user's video tile to adjust their volume (0-200%)
 - **Disconnect**: Red phone icon to end call
 
 #### Multitasking While Connected
@@ -209,7 +211,8 @@ Click the **gear icon** (⚙️) in bottom left to access:
 - Select microphone (Input Device)
 - Select speakers (Output Device)
 - Select camera (Video Device)
-- *Note: Changes require reconnecting to take effect*
+- **Audio Processing**: Toggle noise suppression, echo cancellation, auto gain control
+- *Note: Device changes require reconnecting to take effect*
 
 #### Debug Log Tab
 - View real-time connection logs
@@ -238,7 +241,8 @@ While in a call:
 
 - **System Tray**: Closing the window minimizes to tray - right-click tray icon to quit
 - **Copy Peer ID Fast**: Click your shortened ID (e.g., `#a3f5...`) in bottom left
-- **Volume Boost**: Set remote volume above 100% for quieter friends
+- **Volume Boost**: Click volume icon on a user's tile and set above 100% for quieter friends
+- **Reduce Background Noise**: Enable noise suppression in Settings > Voice & Video
 - **Reconnect for Devices**: After changing audio/video devices, disconnect and reconnect
 - **Debug Connection Issues**: Check Debug Log in settings for error details
 

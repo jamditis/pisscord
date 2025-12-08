@@ -7,8 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Pisscord is a private, multi-platform Discord clone built with React, TypeScript, and PeerJS. It enables direct P2P voice/video calling, encrypted text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
 
 **Platforms:** Desktop (Electron), Web Browser, Android (Capacitor), Mobile Web
-**Current Version:** 1.4.2
-**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.4.2
+**Current Version:** 1.4.4
+**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.4.4
 
 ## Key Architecture
 
@@ -44,7 +44,8 @@ Pisscord is a private, multi-platform Discord clone built with React, TypeScript
   - `activeChannelId`: which channel user is viewing (can be text while in voice call)
   - `activeVoiceChannelId`: which voice channel user is connected to (independent of view)
 - Media streams stored separately: `myStream` (local) and `remoteStream` (remote)
-- Volume control: `remoteVolume` state (0-200%) applied to global audio element
+- Volume control: `remoteVolume` state (master) + `userVolumes` Map for per-user control (0-200%)
+- **Stale Closure Pattern**: `connectionStateRef` used to avoid stale state in async callbacks (peer.on('call'))
 
 ### Firebase Integration
 - **Presence system** (`services/firebase.ts`): Users register their peer ID + profile on connect
@@ -84,7 +85,7 @@ Pisscord is a private, multi-platform Discord clone built with React, TypeScript
 - `ChatArea.tsx`: Text/AI chat interface
 - `ChannelList.tsx`: Navigation + **persistent voice control panel** + **unread indicators**
 - `UserList.tsx`: Online users sidebar with direct call buttons
-- `UserSettingsModal.tsx`: Tabbed settings (Profile, Voice & Video, Debug Log, About)
+- `UserSettingsModal.tsx`: Tabbed settings (Profile, Voice & Video, Appearance, Debug Log, About)
 - `PassphraseModal.tsx`: First-time encryption passphrase entry
 - `ReleaseNotesModal.tsx`: Version update popup with platform-aware actions
 - Modal components handle settings and updates
@@ -110,9 +111,17 @@ Pisscord is a private, multi-platform Discord clone built with React, TypeScript
 - Live connection status indicator (green pulsing dot)
 - Mute/unmute toggle with visual feedback
 - Video on/off toggle
-- Volume slider (0-200%, supports boosting quiet audio)
+- Per-user volume control (click volume icon on video tiles, 0-200%)
 - Disconnect button
 - Always visible in sidebar when connected, regardless of active channel
+
+### Audio Processing
+- **Noise Suppression**: Browser-native noise suppression via `MediaTrackConstraints`
+- **Echo Cancellation**: Reduces echo/feedback in calls
+- **Auto Gain Control**: Normalizes microphone volume automatically
+- All three toggleable in Settings > Voice & Video
+- Settings persisted in `localStorage` as part of `pisscord_devices`
+- Applied via `getUserMedia()` audio constraints when starting/joining calls
 
 ## Common Development Commands
 
@@ -148,10 +157,18 @@ npx tsc --noEmit         # Type check without emitting files
 ### Audio Output Routing
 - Remote audio uses persistent `<audio>` element (`remoteAudioRef`) in App.tsx
 - Element exists globally to maintain audio across view changes
-- Volume controlled via `element.volume = remoteVolume / 100` (supports 0-200%)
+- **Per-user volume**: `userVolumes` Map tracks individual user volumes (0-200%)
 - `setSinkId()` applies user-selected output device when changed
 - Remote stream assigned directly to `srcObject`, not recreated
 - Volume changes are instant (no reconnection needed)
+
+### Audio Input Processing
+- `getLocalStream()` applies audio constraints from device settings:
+  - `noiseSuppression`: Reduces background noise (breathing, typing, fans)
+  - `echoCancellation`: Prevents echo/feedback loops
+  - `autoGainControl`: Normalizes microphone volume
+- All enabled by default, toggleable in settings
+- Changes require reconnecting to apply (constraints set at stream creation)
 
 ### Call Lifecycle
 1. Peer A calls `peer.call(remotePeerId, localStream)`
@@ -166,18 +183,22 @@ npx tsc --noEmit         # Type check without emitting files
 - Volume preference persists in component state (resets to 100% on app restart)
 
 ### Settings Modal Architecture
-Four-tab system in `UserSettingsModal.tsx`:
+Five-tab system in `UserSettingsModal.tsx`:
 
 1. **Profile Tab**: Display name, status message, avatar color selection
 2. **Voice & Video Tab**:
    - Device enumeration via `navigator.mediaDevices.enumerateDevices()`
    - Dropdowns for mic, speakers, camera selection
+   - **Audio Processing toggles**: Noise suppression, echo cancellation, auto gain control
    - Warning about reconnection requirement
-3. **Debug Log Tab**:
+3. **Appearance Tab**:
+   - Theme selection (coming soon)
+   - **Privacy & Security section**: Encryption status, passphrase entry/change button
+4. **Debug Log Tab**:
    - Real-time display of app logs from `logs` state array
    - Color-coded by type (info=green, error=red, webrtc=blue)
    - Timestamps and scrollable history (last 50 entries)
-4. **About Tab**:
+5. **About Tab**:
    - App version display
    - Feature list
    - "Check for Updates" button for manual update checks
@@ -267,7 +288,15 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - `noUnusedLocals` and `noUnusedParameters` disabled (intentional)
 - React JSX transform (no need to import React in TSX files)
 
-## Recent Changes (v1.1.0 - v1.4.0)
+## Recent Changes (v1.1.0 - v1.4.4)
+
+### v1.4.4 (2025-12-08)
+- **Audio Processing Controls**: Noise suppression, echo cancellation, auto gain control toggles in Settings > Voice & Video
+- **Per-User Volume Control**: Click volume icon on any user's video tile to adjust their volume (0-200%)
+- **Encryption Passphrase in Settings**: Enter/change passphrase from Settings > Appearance > Privacy & Security
+- **Bugfix: Voice Channel Approval**: Fixed popup appearing incorrectly when joining public voice channels (stale closure fix using `connectionStateRef`)
+- **Bugfix: Mobile Nav Links**: Fixed navigation to mobile user guide in docs
+- **GitHub Action**: Auto-updates Firebase `system/latestVersion` when releases are published
 
 ### v1.4.0 (2025-12-08)
 - **Web Browser Version:** Pisscord now runs directly in web browsers (no download needed)
