@@ -45,6 +45,9 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({
   const supportsAutoUpdate = UpdateService.isSupported;
 
   const handleUpdate = () => {
+    // Always mark version as seen before any action
+    markVersionAsSeen(version);
+
     if (supportsAutoUpdate) {
       // Electron auto-update
       UpdateService.downloadUpdate();
