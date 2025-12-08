@@ -1,17 +1,28 @@
 {
   "rules": {
-    // System config - read-only for all users
+    // System config - read for all, write only for encryptionSalt
     "system": {
       ".read": true,
-      ".write": false
+      "encryptionSalt": {
+        ".write": "!data.exists()"
+      },
+      "latestVersion": {
+        ".write": false
+      },
+      "releaseNotes": {
+        ".write": false
+      },
+      "motd": {
+        ".write": false
+      }
     },
-    
-    // Pissbot AI config - read-only for all users
+
+    // Pissbot AI config - temporarily writable for setup
     "pissbot": {
       ".read": true,
-      ".write": false
+      ".write": true
     },
-    
+
     // User presence - users can only write their own presence
     "users": {
       ".read": true,
@@ -20,18 +31,19 @@
         ".validate": "newData.hasChildren(['peerId', 'displayName', 'lastSeen']) && newData.child('peerId').val() == $peerId && newData.child('displayName').val().length <= 32"
       }
     },
-    
-    // Messages - anyone can read/write, but with validation
+
+    // Messages - anyone can read/write, with index for cleanup queries
     "messages": {
       ".read": true,
       "$channelId": {
+        ".indexOn": ["timestamp"],
         "$messageId": {
           ".write": true,
           ".validate": "newData.hasChildren(['sender', 'content', 'timestamp']) && newData.child('content').val().length <= 4000 && newData.child('sender').val().length <= 32"
         }
       }
     },
-    
+
     // Join requests - anyone can read/write their own requests
     "joinRequests": {
       ".read": true,

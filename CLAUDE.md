@@ -400,15 +400,27 @@ Pissbot's AI context is now fetched from Firebase instead of being hardcoded. Th
 }
 ```
 
-**To Update Pissbot:**
-1. Go to Firebase Console: https://console.firebase.google.com/project/pisscord-edbca/database/pisscord-edbca-default-rtdb/data/pissbot
-2. Edit any field directly in the console
+**To Update Pissbot (recommended):**
+1. Edit `scripts/setup-pissbot-config.js` with new version info, features, etc.
+2. Run: `node scripts/setup-pissbot-config.js`
 3. Changes take effect within 5 minutes (cache TTL)
 
-**Setup Script:** `node scripts/setup-pissbot-config.js` - Initializes or resets Pissbot config
+**Alternative: Manual Firebase Console:**
+1. Go to: https://console.firebase.google.com/project/pisscord-edbca/database/pisscord-edbca-default-rtdb/data/pissbot
+2. Edit any field directly in the console
+
+**Conversation Memory:**
+- Pissbot receives the last 20 messages as conversation context
+- This allows follow-up questions like "what did you just say?" or "tell me more"
+- Conversation history is per-session (resets when page refreshes)
+
+**Encryption:**
+- Pissbot channel (id '3') is EXCLUDED from encryption
+- This allows the AI to read/respond to messages without passphrase issues
 
 **Code Flow:**
 1. `geminiService.ts` calls `getPissbotConfig()` from firebase.ts
 2. Config is cached for 5 minutes to reduce Firebase reads
-3. If Firebase unavailable, falls back to minimal hardcoded prompt
-4. System instruction built from: systemPrompt + context + patchNotes + documentation
+3. `ChatArea.tsx` passes last 20 messages as conversation history
+4. If Firebase unavailable, falls back to minimal hardcoded prompt
+5. System instruction built from: systemPrompt + context + patchNotes + documentation

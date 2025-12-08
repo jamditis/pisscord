@@ -39,7 +39,15 @@ const buildSystemInstruction = (config: PissbotConfig | null): string => {
   return parts.join('');
 };
 
-export const generateAIResponse = async (prompt: string): Promise<string> => {
+export interface ChatMessage {
+  role: 'user' | 'model';
+  content: string;
+}
+
+export const generateAIResponse = async (
+  prompt: string,
+  conversationHistory: ChatMessage[] = []
+): Promise<string> => {
   if (!prompt || !prompt.trim()) {
     return "Please provide a prompt.";
   }
@@ -54,6 +62,20 @@ export const generateAIResponse = async (prompt: string): Promise<string> => {
     const config = await getPissbotConfig();
     const systemInstruction = buildSystemInstruction(config);
 
+    // Build contents array with conversation history
+    const contents = [
+      // Include last 10 messages of history for context
+      ...conversationHistory.slice(-10).map(msg => ({
+        role: msg.role,
+        parts: [{ text: msg.content }]
+      })),
+      // Current user message
+      {
+        role: 'user' as const,
+        parts: [{ text: prompt }]
+      }
+    ];
+
     // Timeout Promise
     const timeout = new Promise<string>((_, reject) =>
       setTimeout(() => reject(new Error("Request timed out after 15s")), 15000)
@@ -62,7 +84,7 @@ export const generateAIResponse = async (prompt: string): Promise<string> => {
     const fetchPromise = async () => {
       const response = await client.models.generateContent({
         model: "gemini-2.0-flash",
-        contents: prompt,
+        contents,
         config: {
           systemInstruction,
           maxOutputTokens: 1024,

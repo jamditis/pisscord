@@ -247,18 +247,26 @@ export const getReleaseNotes = async (): Promise<ReleaseNotesConfig | null> => {
 
 // --- MESSAGING ---
 
+// Channels that should NOT be encrypted (AI bot channels)
+const UNENCRYPTED_CHANNELS = ['3']; // Pissbot channel
+
 /**
  * Send a message to a channel
  * If encryption is set up, the message content will be encrypted before sending.
  * Sender name is NOT encrypted (visible in Firebase for debugging).
+ * Pissbot channel (id '3') is excluded from encryption.
  */
 export const sendMessage = async (channelId: string, message: any) => {
   const messagesRef = ref(db, `messages/${channelId}`);
   const newMessageRef = push(messagesRef);
 
-  // Encrypt message content if encryption is set up
+  // Encrypt message content if encryption is set up (skip for pissbot channel)
   let messageToSend = { ...message };
-  if (isEncryptionSetUp() && message.content) {
+  const shouldEncrypt = isEncryptionSetUp() &&
+                        message.content &&
+                        !UNENCRYPTED_CHANNELS.includes(channelId);
+
+  if (shouldEncrypt) {
     try {
       messageToSend.content = await encryptMessage(message.content);
       messageToSend.encrypted = true; // Flag to indicate encrypted content

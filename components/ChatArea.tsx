@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Message, Channel, ChannelType } from '../types';
-import { generateAIResponse } from '../services/geminiService';
+import { generateAIResponse, ChatMessage } from '../services/geminiService';
 import { uploadFile } from '../services/firebase';
 import { useIsMobile } from '../hooks/useIsMobile';
 
@@ -177,12 +177,20 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
       setInputValue('');
 
       if (channel.type === ChannelType.AI) {
-        // AI Logic
+        // AI Logic - build conversation history from recent messages
         setIsTypingAI(true);
-        onSendMessage(text); 
-        
+        onSendMessage(text);
+
+        // Convert messages to conversation history format (last 10 exchanges)
+        const conversationHistory: ChatMessage[] = messages
+          .slice(-20) // Get last 20 messages
+          .map(msg => ({
+            role: msg.isAi ? 'model' as const : 'user' as const,
+            content: msg.content
+          }));
+
         try {
-            const response = await generateAIResponse(text);
+            const response = await generateAIResponse(text, conversationHistory);
             onSendAIMessage(text, response);
         } catch (err: any) {
             const errorMsg = `AI Error: ${err.message || "Unknown error"}`;
@@ -242,8 +250,16 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
       setIsTypingAI(true);
       onSendMessage(text);
 
+      // Convert messages to conversation history format (last 10 exchanges)
+      const conversationHistory: ChatMessage[] = messages
+        .slice(-20)
+        .map(msg => ({
+          role: msg.isAi ? 'model' as const : 'user' as const,
+          content: msg.content
+        }));
+
       try {
-          const response = await generateAIResponse(text);
+          const response = await generateAIResponse(text, conversationHistory);
           onSendAIMessage(text, response);
       } catch (err: any) {
           const errorMsg = `AI Error: ${err.message || "Unknown error"}`;
