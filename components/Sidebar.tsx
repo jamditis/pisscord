@@ -14,9 +14,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onServerClick }) => {
       {/* Home - Pisscord Logo */}
       <div
         onClick={onServerClick}
-        className="w-12 h-12 bg-discord-main rounded-[24px] hover:rounded-[16px] hover:bg-discord-accent transition-all duration-200 cursor-pointer flex items-center justify-center group relative overflow-hidden"
+        className="w-12 h-12 rounded-[24px] hover:rounded-[16px] transition-all duration-200 cursor-pointer flex items-center justify-center group relative overflow-hidden"
       >
-        <img src={logoSrc} alt="Pisscord" className="w-10 h-10 object-contain" />
+        <img src={logoSrc} alt="Pisscord" className="w-full h-full object-cover rounded-[inherit]" />
         <div className="absolute -left-4 h-10 w-1 bg-white rounded-r"></div>
       </div>
     </div>

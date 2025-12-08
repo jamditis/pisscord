@@ -1,6 +1,6 @@
 {
   "name": "pisscord",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Private P2P Discord Clone",
   "main": "electron.js",
   "author": "P2P User",
@@ -26,22 +26,24 @@
       "dist/**/*",
       "electron.js",
       "preload.js",
-      "pisscord.ico"
+      "pisscord-purple.ico"
     ],
     "directories": {
       "buildResources": "assets"
     },
     "win": {
       "target": "nsis",
-      "icon": "pisscord.ico"
+      "icon": "pisscord-purple.ico"
     },
     "nsis": {
       "oneClick": false,
       "perMachine": true,
       "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "deleteAppDataOnUninstall": false
+      "deleteAppDataOnUninstall": false,
+      "include": "installer.nsh"
     },
     "publish": [
       {
@@ -81,6 +83,7 @@
     "electron": "^30.0.1",
     "electron-builder": "^24.13.3",
     "ico-to-png": "^0.2.2",
+    "png-to-ico": "^3.0.1",
     "sharp": "^0.34.5",
     "typescript": "^5.2.2",
     "vite": "^5.2.0",
