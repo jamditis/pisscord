@@ -20,11 +20,15 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 }) => {
   // Only show auto-update UI on Electron, hide entirely on mobile
   const supportsAutoUpdate = UpdateService.isSupported;
+  const isWebBrowser = Platform.isWeb;
 
   const handleDownload = () => {
     if (supportsAutoUpdate) {
       console.log('[UPDATE] User clicked download, calling UpdateService.downloadUpdate()');
       UpdateService.downloadUpdate();
+    } else if (isWebBrowser) {
+      // Web users just need to refresh the page
+      window.location.reload();
     } else if (downloadUrl) {
       LinkService.openExternal(downloadUrl);
     }
@@ -74,6 +78,8 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                   ? 'Update has been downloaded. Restart Pisscord to install.'
                   : downloading
                   ? `Downloading update... ${progress}%`
+                  : isWebBrowser
+                  ? 'A new version of Pisscord is available. Refresh the page to get the latest features and bug fixes.'
                   : 'A new version of Pisscord is available. Download it now for the latest features and bug fixes.'}
             </p>
 
@@ -108,8 +114,8 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
                       onClick={handleDownload}
                       className="bg-discord-green hover:bg-green-600 text-white font-bold py-3 rounded transition-all flex items-center justify-center"
                     >
-                      <i className="fas fa-download mr-2"></i>
-                      {supportsAutoUpdate ? 'Download in Background' : 'Download Update'}
+                      <i className={`fas ${isWebBrowser ? 'fa-sync-alt' : 'fa-download'} mr-2`}></i>
+                      {supportsAutoUpdate ? 'Download in Background' : isWebBrowser ? 'Refresh Page' : 'Download Update'}
                     </button>
                     {supportsAutoUpdate && (
                       <button

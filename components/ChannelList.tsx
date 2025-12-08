@@ -23,6 +23,7 @@ interface ChannelListProps {
   remoteVolume?: number;
   onVolumeChange?: (volume: number) => void;
   onShowToast?: (type: 'success' | 'error' | 'info' | 'warning', title: string, message?: string) => void;
+  unreadChannels?: string[]; // Channel IDs with unread messages
 }
 
 export const ChannelList: React.FC<ChannelListProps> = ({
@@ -43,8 +44,11 @@ export const ChannelList: React.FC<ChannelListProps> = ({
   onToggleVideo,
   remoteVolume = 100,
   onVolumeChange,
-  onShowToast
+  onShowToast,
+  unreadChannels = []
 }) => {
+  // Check if a channel has unread messages
+  const hasUnread = (channelId: string) => unreadChannels.includes(channelId);
   // Get users in each voice channel
   const getUsersInVoiceChannel = (channelId: string) => {
     return onlineUsers.filter(u => u.voiceChannelId === channelId);
@@ -59,7 +63,8 @@ export const ChannelList: React.FC<ChannelListProps> = ({
     isActive: boolean;
     onClick: () => void;
     usersInChannel?: PresenceUser[];
-  }> = ({ channel, isActive, onClick, usersInChannel = [] }) => {
+    isUnread?: boolean;
+  }> = ({ channel, isActive, onClick, usersInChannel = [], isUnread = false }) => {
     const isVoice = channel.type === ChannelType.VOICE;
     const isAI = channel.type === ChannelType.AI;
 
@@ -123,6 +128,9 @@ export const ChannelList: React.FC<ChannelListProps> = ({
               {usersInChannel.length}
             </div>
           )}
+          {isUnread && !isActive && (
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+          )}
           {isActive && (
             <div className="w-2 h-2 rounded-full" style={{ background: colors.primary }} />
           )}
@@ -147,6 +155,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
               channel={channel}
               isActive={activeChannelId === channel.id}
               onClick={() => onSelectChannel(channel.id)}
+              isUnread={hasUnread(channel.id)}
             />
           ))}
         </div>
@@ -267,18 +276,30 @@ export const ChannelList: React.FC<ChannelListProps> = ({
             Text Channels
           </div>
           <div className="mt-1 px-2 space-y-[2px]">
-            {channels.filter(c => c.type === ChannelType.TEXT || c.type === ChannelType.AI).map(channel => (
-              <div
-                key={channel.id}
-                onClick={() => onSelectChannel(channel.id)}
-                className={`group px-2 py-1 rounded mx-1 flex items-center cursor-pointer ${
-                  activeChannelId === channel.id ? 'bg-discord-hover text-white' : 'text-discord-muted hover:bg-discord-hover hover:text-discord-text'
-                }`}
-              >
-                <i className={`mr-2 text-lg ${channel.type === ChannelType.AI ? 'fas fa-robot' : 'fas fa-hashtag text-sm'}`}></i>
-                <span className="font-medium truncate">{channel.name}</span>
-              </div>
-            ))}
+            {channels.filter(c => c.type === ChannelType.TEXT || c.type === ChannelType.AI).map(channel => {
+              const isUnread = hasUnread(channel.id);
+              const isActive = activeChannelId === channel.id;
+              return (
+                <div
+                  key={channel.id}
+                  onClick={() => onSelectChannel(channel.id)}
+                  className={`group px-2 py-1 rounded mx-1 flex items-center cursor-pointer ${
+                    isActive ? 'bg-discord-hover text-white' : isUnread ? 'text-white' : 'text-discord-muted hover:bg-discord-hover hover:text-discord-text'
+                  }`}
+                >
+                  {/* Unread indicator bar */}
+                  {isUnread && !isActive && (
+                    <div className="absolute left-0 w-1 h-4 bg-white rounded-r-full" />
+                  )}
+                  <i className={`mr-2 text-lg ${channel.type === ChannelType.AI ? 'fas fa-robot' : 'fas fa-hashtag text-sm'}`}></i>
+                  <span className={`font-medium truncate ${isUnread && !isActive ? 'font-bold' : ''}`}>{channel.name}</span>
+                  {/* Unread dot */}
+                  {isUnread && !isActive && (
+                    <span className="ml-auto w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
