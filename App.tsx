@@ -26,7 +26,7 @@ import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
 import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService } from './services/platform';
 
-const APP_VERSION = "1.4.2";
+const APP_VERSION = "1.4.3";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
