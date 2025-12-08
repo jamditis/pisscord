@@ -4,12 +4,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Pisscord is a private, peer-to-peer Discord clone built with React, TypeScript, Electron, and PeerJS. It enables direct P2P voice/video calling, text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
+Pisscord is a private, multi-platform Discord clone built with React, TypeScript, and PeerJS. It enables direct P2P voice/video calling, encrypted text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
 
-**Current Version:** 1.1.1
-**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.1.1
+**Platforms:** Desktop (Electron), Web Browser, Android (Capacitor), Mobile Web
+**Current Version:** 1.4.0
+**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.4.0
 
 ## Key Architecture
+
+### Multi-Platform Architecture
+- **Platform Abstraction Layer** (`services/platform.ts`): Unified API for Electron, Capacitor, and Web
+- **Lazy Loading**: Capacitor modules loaded dynamically to avoid bundling issues
+- **Build Configurations**:
+  - `npm run dist` - Desktop (Electron) installer
+  - `npm run build:web` - Web browser build
+  - `npx cap sync android` - Android (Capacitor) build
+- **Platform Detection**: `Platform.isElectron`, `Platform.isCapacitor`, `Platform.isWeb`, `Platform.isMobileWeb`
+
+### End-to-End Encryption
+- **AES-256-GCM** encryption for all text messages (`services/encryption.ts`)
+- **PBKDF2 Key Derivation**: 100,000 iterations for secure key generation
+- **Shared Salt**: Stored in Firebase (`system/encryptionSalt`) - users only need passphrase
+- **Passphrase Modal**: First-time users enter group passphrase to unlock encryption
+- **Decryption on Read**: Messages decrypted client-side when displayed
+- Old unencrypted messages remain readable (graceful fallback)
 
 ### P2P Communication Layer
 - **PeerJS** handles WebRTC signaling and peer-to-peer connections
@@ -17,7 +35,7 @@ Pisscord is a private, peer-to-peer Discord clone built with React, TypeScript, 
 - Voice/video calls are established directly between peers (no relay server)
 - **P2P data channels** enable real-time text messaging between connected peers
 - Track replacement API (`RTCRtpSender.replaceTrack()`) enables screen sharing without reconnection
-- **Electron desktopCapturer** used for screen sharing in production builds (fallback to `getDisplayMedia` in browser)
+- **Platform-specific screen sharing**: Electron desktopCapturer, Web getDisplayMedia
 
 ### State Management
 - All state lives in `App.tsx` (no Redux/Context)
@@ -33,6 +51,24 @@ Pisscord is a private, peer-to-peer Discord clone built with React, TypeScript, 
 - `onDisconnect()` handlers automatically remove users when they close the app
 - Real-time subscription updates online user list across all clients
 - Update system: Centralized version check against `system/latestVersion` in Firebase
+- **Encrypted Messages**: Messages encrypted before sending, decrypted on receive
+- **Encryption Salt**: Shared salt stored in `system/encryptionSalt`
+- **Release Notes**: Version-specific notes stored in `system/releaseNotes`
+
+### Unread Message System
+- **Per-user tracking** via localStorage (`services/unread.ts`)
+- Each user's read state is independent - not shared
+- `markChannelAsRead()` called when user views a channel
+- `hasUnreadMessages()` checks if channel has new messages since last read
+- Red dot and bold text indicators in `ChannelList.tsx`
+- Background subscriptions to all channels detect new messages in real-time
+
+### Release Notes Popup
+- **One-time display** per version (`components/ReleaseNotesModal.tsx`)
+- Version seen tracked in localStorage
+- Fetches notes from Firebase `system/releaseNotes`
+- Platform-aware buttons: "Refresh" for web, "Download" for desktop
+- Script: `scripts/setup-release-notes.js` updates Firebase notes
 
 ### Electron Shell
 - `electron.js`: Main process with tray support and auto-updater
@@ -46,10 +82,20 @@ Pisscord is a private, peer-to-peer Discord clone built with React, TypeScript, 
 - `App.tsx`: Main state container and WebRTC orchestration
 - `VoiceStage.tsx`: Video call UI (renders when viewing voice channel)
 - `ChatArea.tsx`: Text/AI chat interface
-- `ChannelList.tsx`: Navigation + **persistent voice control panel** (shows when connected)
+- `ChannelList.tsx`: Navigation + **persistent voice control panel** + **unread indicators**
 - `UserList.tsx`: Online users sidebar with direct call buttons
-- `UserSettingsModal.tsx`: Tabbed settings (Profile, Voice & Video, Debug Log, About with Check for Updates)
+- `UserSettingsModal.tsx`: Tabbed settings (Profile, Voice & Video, Debug Log, About)
+- `PassphraseModal.tsx`: First-time encryption passphrase entry
+- `ReleaseNotesModal.tsx`: Version update popup with platform-aware actions
 - Modal components handle settings and updates
+
+### Services Layer
+- `services/platform.ts`: Platform abstraction (Electron/Capacitor/Web detection, update service, link service)
+- `services/encryption.ts`: AES-256-GCM encryption/decryption with PBKDF2 key derivation
+- `services/unread.ts`: Per-user unread message tracking via localStorage
+- `services/firebase.ts`: Firebase integration with encryption support
+- `services/geminiService.ts`: Pissbot AI integration with Firebase-loaded context
+- `services/sounds.ts`: Sound effects with preloading
 
 ### Persistent Voice Architecture
 **Key Feature**: Users can browse text channels while remaining in a voice call
@@ -80,7 +126,10 @@ npm run electron:dev     # Launch Electron with hot-reload
 ### Building
 ```bash
 npm run build            # Compile TypeScript + build Vite bundle to dist/
+npm run build:web        # Build for web browser deployment
 npm run dist             # Build + package Windows installer (.exe in dist/)
+npx cap sync android     # Sync web build to Android project
+npx cap open android     # Open Android project in Android Studio
 ```
 
 ### TypeScript
@@ -218,7 +267,34 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - `noUnusedLocals` and `noUnusedParameters` disabled (intentional)
 - React JSX transform (no need to import React in TSX files)
 
-## Recent Changes (v1.0.9 - v1.1.0)
+## Recent Changes (v1.1.0 - v1.4.0)
+
+### v1.4.0 (2025-12-08)
+- **Web Browser Version:** Pisscord now runs directly in web browsers (no download needed)
+- **End-to-End Encryption:** AES-256-GCM encryption for all text messages
+- **Unread Message Indicators:** Red dot and bold text for channels with unread messages
+- **Release Notes Popup:** One-time modal showing what's new per version
+- **Passphrase Modal:** Simple passphrase entry for group encryption
+- **Per-user Read State:** Each user's unread state is independent
+- **Mobile Web Support:** Optimized touch UI for mobile browsers
+
+### v1.3.1 (2025-12-06)
+- **Removed Voice Channel Approval:** Simplified voice channel joining
+- **Renamed Voice Lounge to Chillin':** Channel name update
+- **Website Updates:** Improved landing page and user guides
+
+### v1.3.0 (2025-12-06)
+- **Android App:** Native Android app via Capacitor
+- **Platform Abstraction Layer:** Unified API for Electron, Capacitor, and Web
+- **Platform Detection:** Accurate detection of Electron, Capacitor, Web, Mobile Web
+- **Theme Customization:** Gold and Purple theme options
+- **Mobile User Guide:** Added comprehensive mobile user documentation
+- **Mobile UI/UX:** Themed splash screen, status bar padding, animations
+- **Security Fix:** Rotated Firebase API key, moved to environment variables
+
+### v1.1.1 (2025-12-06)
+- **Bug Fixes:** Various UX improvements
+- **Pissbot Config:** Updated AI context
 
 ### v1.1.0 (2025-12-06)
 - **Voice Channel Approval Mode:** Channels can require approval to join when occupied
@@ -280,13 +356,18 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - `mic_muted_sound.mp3` / `mic_unmuted_sound.mp3`
 - `incoming_call_sound.mp3` / `outgoing_call_sound.mp3`
 
-## Planned v1.1 Features (Firebase-Powered)
+## Firebase Usage
 
-### Priority Features
-1. **Offline Messages** - Store messages in Firebase when recipient offline, deliver when online
-2. **Friends/Contacts List** - Save favorite peer IDs with names
-3. **Call History** - Log calls in Firebase (who, when, duration)
-4. **User Profiles** - Avatars via Firebase Storage, custom colors, status
+### Current Firebase Paths
+- `users/` - Presence system (online users, peer IDs, profiles)
+- `messages/{channelId}/` - Encrypted chat messages
+- `system/latestVersion` - Version checking for auto-updates
+- `system/releaseNotes` - Version-specific release notes
+- `system/encryptionSalt` - Shared salt for message encryption
+- `system/motd` - Message of the day
+- `pissbot/` - Dynamic AI context configuration
+- `joinRequests/{channelId}/` - Voice channel join requests
+- Location: `services/firebase.ts`
 
 ### Firebase Free Tier Limits (Spark Plan)
 | Service | Free Limit |
@@ -297,11 +378,10 @@ Hardcoded in `services/firebase.ts` - production config already included.
 | Cloud Storage | 5 GB stored, 1 GB/day download |
 | Cloud Functions | 2M invocations/month |
 
-### Current Firebase Usage
-- Presence system (online users, status, in-call state)
-- System info (version checking for auto-updates)
-- **Pissbot config** (dynamic AI context - new in v1.0.11)
-- Location: `services/firebase.ts`
+### Future Features
+1. **Friends/Contacts List** - Save favorite peer IDs with names
+2. **Call History** - Log calls in Firebase (who, when, duration)
+3. **Push Notifications** - Firebase Cloud Messaging for mobile
 
 ### Pissbot Firebase Config
 
