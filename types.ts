@@ -16,6 +16,10 @@ export interface DeviceSettings {
   audioInputId: string;
   audioOutputId: string;
   videoInputId: string;
+  // Audio processing options
+  noiseSuppression: boolean;
+  echoCancellation: boolean;
+  autoGainControl: boolean;
 }
 
 export interface PresenceUser extends UserProfile {

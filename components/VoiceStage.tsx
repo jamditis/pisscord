@@ -129,6 +129,8 @@ interface VoiceStageProps {
   myPeerId: string | null;
   userProfile: UserProfile;
   onlineUsers: PresenceUser[];
+  userVolumes?: Map<string, number>;
+  onUserVolumeChange?: (peerId: string, volume: number) => void;
   onIdCopied?: () => void;
 }
 
@@ -209,6 +211,8 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
   myPeerId,
   userProfile,
   onlineUsers,
+  userVolumes,
+  onUserVolumeChange,
   onIdCopied
 }) => {
   const myVideoRef = useRef<HTMLVideoElement>(null);
@@ -216,6 +220,9 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
 
   // Spotlight state - null means grid view, peerId means that user is spotlighted, 'self' for local user
   const [spotlightedUser, setSpotlightedUser] = useState<string | null>(null);
+
+  // Volume control popup - which user's volume slider is visible
+  const [volumePopupUser, setVolumePopupUser] = useState<string | null>(null);
 
   // Audio activity for local stream
   const isLocalSpeaking = useAudioActivity(myStream, isAudioEnabled);
@@ -410,6 +417,45 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
         {isLocal && !isAudioEnabled && <i className="fas fa-microphone-slash ml-2 text-red-500 text-xs"></i>}
         {isSpeaking && <i className="fas fa-volume-up ml-2 text-green-500 text-xs animate-pulse"></i>}
       </div>
+      {/* Volume Control for Remote Users */}
+      {!isLocal && onUserVolumeChange && (
+        <div className="absolute bottom-2 right-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setVolumePopupUser(volumePopupUser === userId ? null : userId);
+            }}
+            className="w-8 h-8 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
+            title="Adjust volume"
+          >
+            <i className={`fas ${(userVolumes?.get(userId) ?? 100) === 0 ? 'fa-volume-mute' : 'fa-volume-up'} text-xs`}></i>
+          </button>
+          {volumePopupUser === userId && (
+            <div
+              className="absolute bottom-10 right-0 bg-discord-dark border border-discord-sidebar rounded-lg p-3 shadow-xl min-w-[180px]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-white text-xs font-bold">Volume</span>
+                <span className="text-discord-muted text-xs">{userVolumes?.get(userId) ?? 100}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="200"
+                value={userVolumes?.get(userId) ?? 100}
+                onChange={(e) => onUserVolumeChange(userId, parseInt(e.target.value))}
+                className="w-full h-2 bg-discord-sidebar rounded-lg appearance-none cursor-pointer accent-discord-accent"
+              />
+              <div className="flex justify-between text-[10px] text-discord-muted mt-1">
+                <span>0%</span>
+                <span>100%</span>
+                <span>200%</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 

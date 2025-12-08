@@ -39,6 +39,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [audioInputId, setAudioInputId] = useState(currentDevices.audioInputId);
   const [audioOutputId, setAudioOutputId] = useState(currentDevices.audioOutputId);
   const [videoInputId, setVideoInputId] = useState(currentDevices.videoInputId);
+  // Audio Processing State
+  const [noiseSuppression, setNoiseSuppression] = useState(currentDevices.noiseSuppression ?? true);
+  const [echoCancellation, setEchoCancellation] = useState(currentDevices.echoCancellation ?? true);
+  const [autoGainControl, setAutoGainControl] = useState(currentDevices.autoGainControl ?? true);
 
   // App Settings State
   const [selectedTheme, setSelectedTheme] = useState<AppTheme>(currentAppSettings.theme);
@@ -58,7 +62,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
     onSaveDevices({
         audioInputId,
         audioOutputId,
-        videoInputId
+        videoInputId,
+        noiseSuppression,
+        echoCancellation,
+        autoGainControl
     });
     onSaveAppSettings({
         theme: selectedTheme
@@ -718,7 +725,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
                         <div>
                             <label className="block text-xs font-bold text-discord-muted uppercase mb-2">Video Device (Camera)</label>
-                            <select 
+                            <select
                                 value={videoInputId}
                                 onChange={(e) => setVideoInputId(e.target.value)}
                                 className="w-full bg-discord-dark text-white p-2 rounded outline-none border border-transparent focus:border-discord-accent"
@@ -727,7 +734,56 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                 {videoInputs.map(dev => <option key={dev.deviceId} value={dev.deviceId}>{dev.label || `Camera ${dev.deviceId.slice(0,5)}`}</option>)}
                             </select>
                         </div>
-                        
+
+                        {/* Audio Processing Section */}
+                        <div className="border-t border-discord-muted/20 pt-6">
+                            <h3 className="text-white font-semibold mb-4">Audio Processing</h3>
+
+                            <div className="space-y-4">
+                                {/* Noise Suppression Toggle */}
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="text-white font-medium">Noise Suppression</div>
+                                        <div className="text-discord-muted text-sm">Reduce background noise like breathing, eating, typing</div>
+                                    </div>
+                                    <button
+                                        onClick={() => setNoiseSuppression(!noiseSuppression)}
+                                        className={`w-12 h-6 rounded-full transition-colors relative ${noiseSuppression ? 'bg-discord-green' : 'bg-discord-muted/40'}`}
+                                    >
+                                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${noiseSuppression ? 'left-7' : 'left-1'}`} />
+                                    </button>
+                                </div>
+
+                                {/* Echo Cancellation Toggle */}
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="text-white font-medium">Echo Cancellation</div>
+                                        <div className="text-discord-muted text-sm">Prevent audio feedback loops</div>
+                                    </div>
+                                    <button
+                                        onClick={() => setEchoCancellation(!echoCancellation)}
+                                        className={`w-12 h-6 rounded-full transition-colors relative ${echoCancellation ? 'bg-discord-green' : 'bg-discord-muted/40'}`}
+                                    >
+                                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${echoCancellation ? 'left-7' : 'left-1'}`} />
+                                    </button>
+                                </div>
+
+                                {/* Auto Gain Control Toggle */}
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="text-white font-medium">Auto Gain Control</div>
+                                        <div className="text-discord-muted text-sm">Automatically adjust microphone volume</div>
+                                    </div>
+                                    <button
+                                        onClick={() => setAutoGainControl(!autoGainControl)}
+                                        className={`w-12 h-6 rounded-full transition-colors relative ${autoGainControl ? 'bg-discord-green' : 'bg-discord-muted/40'}`}
+                                    >
+                                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${autoGainControl ? 'left-7' : 'left-1'}`} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="bg-discord-green/10 text-discord-green p-4 rounded text-sm border border-discord-green/20">
                             <i className="fas fa-info-circle mr-2"></i>
                             Changes require reconnecting to the call to take full effect.

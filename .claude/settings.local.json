@@ -1,32 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git init:*)",
-      "Bash(git remote add:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "Bash(npm install:*)",
-      "Bash(ls:*)",
-      "Bash(curl:*)",
-      "Bash(git mv:*)",
+      "Bash(git rm:*)",
       "Bash(git pull:*)",
       "Bash(git stash:*)",
-      "Bash(npm run dist:*)",
-      "Bash(npm run electron:dev:*)",
-      "Bash(npm run build:*)",
-      "Bash(git checkout:*)",
-      "Bash(gh pr create:*)",
-      "Bash(git branch:*)",
-      "Bash(git tag:*)",
-      "Bash(gh release create:*)",
-      "Bash(gh release upload:*)",
-      "Bash(npx tsc:*)",
-      "Bash(dir:*)",
-      "Bash(gh release view:*)",
-      "Bash(findstr:*)",
-      "Bash(node scripts/setup-pissbot-config.js:*)",
-      "Bash(gh release edit v1.1.0 --notes \"$(cat <<''EOF''\n# 📥 DOWNLOAD THE APP\n\n### 👉 [Click here to download Pisscord Setup 1.1.0.exe](https://github.com/jamditis/pisscord/releases/download/v1.1.0/Pisscord.Setup.1.1.0.exe) 👈\n\n> **Windows users:** Download the `.exe` file above, then run it to install. If Windows shows \"Unknown Publisher\", click \"More Info\" → \"Run Anyway\"\n\n---\n\n## What''s New in v1.1.0\n\n### New Features\n- **Voice Channel Approval Mode** - Channels can now require approval to join when other users are present\n  - Gaming channel requires approval by default\n  - Lock icon indicates approval-required channels\n  - Users in the channel see approve/deny buttons for join requests\n- **Collapsible User List** - Click to collapse/expand the user sidebar in both text and voice channels\n- **User List in Voice Calls** - Now visible alongside voice stage for easy user management\n\n### Bug Fixes\n- Fixed voice channel view switching - returning to a voice channel no longer forces a rejoin\n- Fixed users disappearing from voice channel sidebar when updating profile\n- Fixed audio speaking indicator causing video tile size/layout shifts\n- Completely rewrote video spotlight/pinning with cleaner layout\n\n### UI Improvements\n- Simplified server sidebar - removed \"Add Server\" button, Pisscord logo replaces home icon\n- Reordered channels - Pissbot moved to bottom of text channels\n- Cleaner video tile layout when pinning/spotlighting users\n\n---\n\n**For existing users:** The app will auto-update, or click \"Check for Updates\" in Settings > About.\nEOF\n)\")"
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

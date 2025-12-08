@@ -26,7 +26,7 @@ import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
 import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService } from './services/platform';
 
-const APP_VERSION = "1.4.3";
+const APP_VERSION = "1.4.4";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
@@ -54,7 +54,11 @@ const getDefaultProfile = (): UserProfile => ({
 const DEFAULT_DEVICES: DeviceSettings = {
     audioInputId: "",
     audioOutputId: "",
-    videoInputId: ""
+    videoInputId: "",
+    // Audio processing - all enabled by default
+    noiseSuppression: true,
+    echoCancellation: true,
+    autoGainControl: true
 };
 
 const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -121,7 +125,8 @@ export default function App() {
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [remoteVolume, setRemoteVolume] = useState<number>(100);
+  const [remoteVolume, setRemoteVolume] = useState<number>(100); // Master volume (0-200)
+  const [userVolumes, setUserVolumes] = useState<Map<string, number>>(new Map()); // Per-user volume overrides (0-200)
   
   // --- MODALS ---
   const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -447,8 +452,19 @@ export default function App() {
 
     log("=== Getting Local Media Stream ===", 'webrtc');
     const currentSettings = deviceSettingsRef.current;
+
+    // Build audio constraints with noise suppression and other processing
+    const audioConstraints: MediaTrackConstraints = {
+        noiseSuppression: currentSettings.noiseSuppression ?? true,
+        echoCancellation: currentSettings.echoCancellation ?? true,
+        autoGainControl: currentSettings.autoGainControl ?? true,
+    };
+    if (currentSettings.audioInputId) {
+        audioConstraints.deviceId = { exact: currentSettings.audioInputId };
+    }
+
     const constraints = {
-        audio: currentSettings.audioInputId ? { deviceId: { exact: currentSettings.audioInputId } } : true,
+        audio: audioConstraints,
         video: currentSettings.videoInputId ? { deviceId: { exact: currentSettings.videoInputId } } : true,
     };
     log(`Media constraints: ${JSON.stringify(constraints)}`, 'webrtc');
@@ -1088,7 +1104,9 @@ export default function App() {
             ref={el => {
                 if (el) {
                     el.srcObject = stream;
-                    el.volume = Math.min(remoteVolume / 100, 1.0);
+                    // Use per-user volume if set, otherwise use master volume
+                    const userVol = userVolumes.get(peerId) ?? remoteVolume;
+                    el.volume = Math.min(userVol / 100, 1.0);
                     // If we have a specific output device, set it
                     if ((el as any).setSinkId && deviceSettings.audioOutputId) {
                         (el as any).setSinkId(deviceSettings.audioOutputId)
@@ -1361,6 +1379,8 @@ export default function App() {
                   myPeerId={myPeerId}
                   userProfile={userProfile}
                   onlineUsers={onlineUsers}
+                  userVolumes={userVolumes}
+                  onUserVolumeChange={(peerId, volume) => setUserVolumes(prev => new Map(prev).set(peerId, volume))}
                   onIdCopied={() => toast.success("Copied!", "Send this ID to your friend so they can call you.")}
                 />
                 </div>
@@ -1450,6 +1470,8 @@ export default function App() {
                     myPeerId={myPeerId}
                     userProfile={userProfile}
                     onlineUsers={onlineUsers}
+                    userVolumes={userVolumes}
+                    onUserVolumeChange={(peerId, volume) => setUserVolumes(prev => new Map(prev).set(peerId, volume))}
                     onIdCopied={() => toast.success("Copied!", "Send this ID to your friend so they can call you.")}
                  />
                </div>
