@@ -2,19 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 🚨 Handoff Note / Status (v1.4.7)
-**Current State:** v1.4.7 Released.
-- **Visuals:** Desktop UI now matches Mobile/Web "Void" aesthetic (Glassmorphism, Scanlines).
-- **Sounds:** Complete replacement with 'UIAlert' set.
-- **Encryption:** Removed. Plaintext messaging only.
-- **Deployment:** All platforms deployed (Web, Desktop EXE, Android APK).
-- **Action Item:** If you are Claude, please do not revert the UI changes or the `services/platform.ts` abstraction.
+## 🚨 Handoff Note / Status (v1.4.8-dev)
+**Current State:** v1.4.8 in development on `fix/mobile-web-bugs` branch.
+- **Mobile Safe Areas:** Fixed mobile layout cutoff issues with dynamic safe area padding (`env(safe-area-inset-*)`)
+- **Dynamic Viewport:** Updated CSS to use `100dvh` for proper mobile browser support
+- **Process.env Fix:** Added Vite polyfill to fix blank page in browsers (`define: { 'process.env': {} }`)
+- **Splash Screen:** Rewritten with CSS animations (no Framer Motion) to fix flickering
+- **Approval System Removed:** Completely removed voice channel join request/approval system
+- **Direct Calls Removed:** Removed all direct peer-to-peer calling UI (VoiceStage peer ID form, UserList call buttons). Voice channels are now the only way to make voice/video calls. Internal mesh networking still uses `handleStartCall` but without user-facing "calling" notifications.
+- **Action Item:** If you are Claude, please do not revert the mobile layout fixes or the `services/platform.ts` abstraction.
 
 ## 🐛 Known Issues (v1.4.8 Backlog)
-**Sound Effects Not Playing:**
-- Startup/launch sound doesn't play during splash animation
-- Video on/off toggle sounds not triggering
-- Join/leave voice channel sounds not playing
+**Sound Effects (Browser Limitation):**
+- Startup/launch sound doesn't play during splash (browser blocks autoplay without user interaction)
+- This is expected behavior - user must tap/click first to unlock audio
 - **Location:** `services/sounds.ts` and call sites in `App.tsx`, `VoiceStage.tsx`
 
 ## Project Overview
@@ -89,7 +90,7 @@ Pisscord is a private, multi-platform Discord clone built with React, TypeScript
 - `VoiceStage.tsx`: Video call UI (renders when viewing voice channel)
 - `ChatArea.tsx`: Text/AI chat interface
 - `ChannelList.tsx`: Navigation + **persistent voice control panel** + **unread indicators**
-- `UserList.tsx`: Online users sidebar with direct call buttons
+- `UserList.tsx`: Online users sidebar (shows voice channel indicator when users are in voice)
 - `UserSettingsModal.tsx`: Tabbed settings (Profile, Voice & Video, Appearance, Debug Log, About)
 - `ReleaseNotesModal.tsx`: Version update popup with platform-aware actions
 - Modal components handle settings and updates

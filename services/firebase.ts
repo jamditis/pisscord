@@ -14,10 +14,23 @@ import {
   endAt
 } from "firebase/database";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
-import { UserProfile, PresenceUser, JoinRequest } from "../types";
+import { UserProfile, PresenceUser } from "../types";
+
+// Safe environment variable access for both Vite (browser) and Node.js environments
+const getEnvVar = (viteKey: string, nodeKey?: string): string | undefined => {
+  // Try Vite's import.meta.env first (browser)
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.[viteKey]) {
+    return (import.meta as any).env[viteKey];
+  }
+  // Fallback to process.env (Node.js/Electron)
+  if (typeof process !== 'undefined' && process.env?.[nodeKey || viteKey]) {
+    return process.env[nodeKey || viteKey];
+  }
+  return undefined;
+};
 
 const firebaseConfig = {
-  apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY,
+  apiKey: getEnvVar('VITE_FIREBASE_API_KEY'),
   authDomain: "pisscord-edbca.firebaseapp.com",
   databaseURL: "https://pisscord-edbca-default-rtdb.firebaseio.com",
   projectId: "pisscord-edbca",
@@ -298,43 +311,3 @@ export const cleanupOldMessages = async (channelIds: string[]) => {
     }
   }
 };
-
-// --- JOIN REQUESTS (for approval-required voice channels) ---
-
-// Send a join request to a voice channel
-export const sendJoinRequest = (channelId: string, request: JoinRequest) => {
-  const requestRef = ref(db, `joinRequests/${channelId}/${request.peerId}`);
-  set(requestRef, request);
-
-  // Auto-expire requests after 30 seconds
-  setTimeout(() => {
-    remove(requestRef).catch(() => {});
-  }, 30000);
-};
-
-// Subscribe to join requests for a channel (for users already in the channel)
-export const subscribeToJoinRequests = (
-  channelId: string,
-  onRequestsUpdate: (requests: JoinRequest[]) => void
-) => {
-  const requestsRef = ref(db, `joinRequests/${channelId}`);
-
-  return onValue(requestsRef, (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-      const requestList = Object.values(data) as JoinRequest[];
-      onRequestsUpdate(requestList);
-    } else {
-      onRequestsUpdate([]);
-    }
-  });
-};
-
-// Remove a join request (after approval or denial)
-export const removeJoinRequest = (channelId: string, peerId: string) => {
-  const requestRef = ref(db, `joinRequests/${channelId}/${peerId}`);
-  remove(requestRef);
-};
-
-// Send approval response (via P2P data channel, not Firebase)
-// This is just a helper to clean up the request after approval/denial

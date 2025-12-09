@@ -53,15 +53,6 @@ export interface Channel {
   type: ChannelType;
 }
 
-export interface JoinRequest {
-  peerId: string;
-  displayName: string;
-  photoURL?: string;
-  color: string;
-  channelId: string;
-  timestamp: number;
-}
-
 export enum ConnectionState {
   DISCONNECTED = 'DISCONNECTED',
   CONNECTING = 'CONNECTING',

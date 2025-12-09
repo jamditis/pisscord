@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import Peer from 'peerjs';
 import { Sidebar } from './components/Sidebar';
 import { ChannelList } from './components/ChannelList';
@@ -660,14 +660,15 @@ export default function App() {
               setupDataConnection(conn);
               
               if (connectionState !== ConnectionState.CONNECTED) {
-                  playSound('call_outgoing', true);
-                  toast.info("Calling...", "Waiting for peer to answer.");
+                  // Don't play outgoing call sound for voice channel joins
+                  // toast is handled by joinVoiceChannel
               } else {
-                  toast.success("Calling...", `Adding ${remoteId} to the call.`);
+                  // Connecting to additional peer in channel
+                  log(`Connecting to peer ${remoteId.substring(0, 8)}...`, 'webrtc');
               }
           } catch (err) {
-              log("Failed to start call", 'error');
-              toast.error("Call Failed", "Could not start call.");
+              log("Failed to connect to peer", 'error');
+              toast.error("Connection Failed", "Could not connect to user in channel.");
               if (callsRef.current.size === 0) setConnectionState(ConnectionState.ERROR);
           }
       };
@@ -1206,11 +1207,11 @@ export default function App() {
             {/* Mobile Channel List View */}
             {mobileView === 'channels' && (
               <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Glassmorphism Header - with top padding for status bar */}
+                {/* Glassmorphism Header - with dynamic safe area padding */}
                 <div
                   className="relative px-5 py-4"
                   style={{
-                    paddingTop: '3.5rem',
+                    paddingTop: 'max(env(safe-area-inset-top, 20px), 1.25rem)',
                     background: 'linear-gradient(to bottom, rgba(18, 18, 26, 0.98), rgba(18, 18, 26, 0.92))',
                     borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
                   }}
@@ -1275,10 +1276,11 @@ export default function App() {
                 : activeChannel;
               return (
               <div className="flex-1 flex flex-col min-h-0">
-                {/* Glassmorphism Chat Header */}
+                {/* Glassmorphism Chat Header - with dynamic safe area padding */}
                 <div
                   className="relative flex items-center px-4 py-3"
                   style={{
+                    paddingTop: 'max(env(safe-area-inset-top, 12px), 0.75rem)',
                     background: 'linear-gradient(to bottom, rgba(18, 18, 26, 0.98), rgba(18, 18, 26, 0.92))',
                     borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
                   }}
@@ -1321,11 +1323,11 @@ export default function App() {
             {/* Mobile Voice View */}
             {mobileView === 'voice' && (
               <div className="flex-1 flex flex-col min-h-0">
-                {/* Glassmorphism Voice Header - with top padding for status bar */}
+                {/* Glassmorphism Voice Header - with dynamic safe area padding */}
                 <div
                   className="relative flex items-center justify-between px-4 py-3"
                   style={{
-                    paddingTop: '3.5rem',
+                    paddingTop: 'max(env(safe-area-inset-top, 20px), 1.25rem)',
                     background: 'linear-gradient(to bottom, rgba(18, 18, 26, 0.98), rgba(18, 18, 26, 0.92))',
                     borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
                   }}
@@ -1371,24 +1373,22 @@ export default function App() {
                 </div>
                 <div className="flex-1 relative pb-20">
                   <VoiceStage
-                  myStream={myStream}
-                  remoteStreams={remoteStreams}
-                  connectionState={connectionState}
-                  onToggleVideo={toggleVideo}
-                  onToggleAudio={toggleAudio}
-                  onShareScreen={handleShareScreen}
-                  onConnect={handleStartCall}
-                  onDisconnect={cleanupCall}
-                  isVideoEnabled={isVideoEnabled}
-                  isAudioEnabled={isAudioEnabled}
-                  isScreenSharing={isScreenSharing}
-                  myPeerId={myPeerId}
-                  userProfile={userProfile}
-                  onlineUsers={onlineUsers}
-                  userVolumes={userVolumes}
-                  onUserVolumeChange={(peerId, volume) => setUserVolumes(prev => new Map(prev).set(peerId, volume))}
-                  onIdCopied={() => toast.success("Copied!", "Send this ID to your friend so they can call you.")}
-                />
+                    myStream={myStream}
+                    remoteStreams={remoteStreams}
+                    connectionState={connectionState}
+                    onToggleVideo={toggleVideo}
+                    onToggleAudio={toggleAudio}
+                    onShareScreen={handleShareScreen}
+                    onDisconnect={cleanupCall}
+                    isVideoEnabled={isVideoEnabled}
+                    isAudioEnabled={isAudioEnabled}
+                    isScreenSharing={isScreenSharing}
+                    myPeerId={myPeerId}
+                    userProfile={userProfile}
+                    onlineUsers={onlineUsers}
+                    userVolumes={userVolumes}
+                    onUserVolumeChange={(peerId, volume) => setUserVolumes(prev => new Map(prev).set(peerId, volume))}
+                  />
                 </div>
               </div>
             )}
@@ -1400,8 +1400,7 @@ export default function App() {
                   connectionState={connectionState}
                   onlineUsers={onlineUsers}
                   myPeerId={myPeerId}
-                  onConnectToUser={handleStartCall}
-                  isCollapsed={false}
+                                    isCollapsed={false}
                   onToggleCollapse={() => {}}
                 />
               </div>
@@ -1468,7 +1467,6 @@ export default function App() {
                     onToggleVideo={toggleVideo}
                     onToggleAudio={toggleAudio}
                     onShareScreen={handleShareScreen}
-                    onConnect={handleStartCall}
                     onDisconnect={cleanupCall}
                     isVideoEnabled={isVideoEnabled}
                     isAudioEnabled={isAudioEnabled}
@@ -1478,15 +1476,13 @@ export default function App() {
                     onlineUsers={onlineUsers}
                     userVolumes={userVolumes}
                     onUserVolumeChange={(peerId, volume) => setUserVolumes(prev => new Map(prev).set(peerId, volume))}
-                    onIdCopied={() => toast.success("Copied!", "Send this ID to your friend so they can call you.")}
                  />
                </div>
                <UserList
                   connectionState={connectionState}
                   onlineUsers={onlineUsers}
                   myPeerId={myPeerId}
-                  onConnectToUser={handleStartCall}
-                  isCollapsed={isUserListCollapsed}
+                                    isCollapsed={isUserListCollapsed}
                   onToggleCollapse={() => setIsUserListCollapsed(!isUserListCollapsed)}
                />
              </div>
@@ -1504,8 +1500,7 @@ export default function App() {
                     connectionState={connectionState}
                     onlineUsers={onlineUsers}
                     myPeerId={myPeerId}
-                    onConnectToUser={handleStartCall}
-                    isCollapsed={isUserListCollapsed}
+                                        isCollapsed={isUserListCollapsed}
                     onToggleCollapse={() => setIsUserListCollapsed(!isUserListCollapsed)}
                  />
              </div>

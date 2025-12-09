@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConnectionState, UserProfile, PresenceUser } from '../types';
-import { ClipboardService, HapticsService, Platform } from '../services/platform';
 import { useIsMobile } from '../hooks/useIsMobile';
 
 // Memoized Mobile Video Tile - defined OUTSIDE VoiceStage to prevent recreation
@@ -121,7 +120,6 @@ interface VoiceStageProps {
   onToggleVideo: () => void;
   onToggleAudio: () => void;
   onShareScreen: () => void;
-  onConnect: (remoteId: string) => void;
   onDisconnect: () => void;
   isVideoEnabled: boolean;
   isAudioEnabled: boolean;
@@ -131,7 +129,6 @@ interface VoiceStageProps {
   onlineUsers: PresenceUser[];
   userVolumes?: Map<string, number>;
   onUserVolumeChange?: (peerId: string, volume: number) => void;
-  onIdCopied?: () => void;
 }
 
 // Audio activity detection hook
@@ -203,7 +200,6 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
   onToggleVideo,
   onToggleAudio,
   onShareScreen,
-  onConnect,
   onDisconnect,
   isVideoEnabled,
   isAudioEnabled,
@@ -212,11 +208,9 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
   userProfile,
   onlineUsers,
   userVolumes,
-  onUserVolumeChange,
-  onIdCopied
+  onUserVolumeChange
 }) => {
   const myVideoRef = useRef<HTMLVideoElement>(null);
-  const [remoteIdInput, setRemoteIdInput] = useState('');
 
   // Spotlight state - null means grid view, peerId means that user is spotlighted, 'self' for local user
   const [spotlightedUser, setSpotlightedUser] = useState<string | null>(null);
@@ -307,12 +301,6 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
     setSpotlightedUser(prev => prev === userId ? null : userId);
   };
 
-  const handleConnectSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (remoteIdInput.trim()) {
-        onConnect(remoteIdInput.trim());
-    }
-  };
 
   // Helper to get remote user profile
   const getRemoteUser = (peerId: string) => onlineUsers.find(u => u.peerId === peerId);
@@ -516,7 +504,7 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
   if (isMobile) {
     return (
       <div className="flex-1 bg-gradient-to-b from-[#1a1a2e] to-[#0f0f1a] flex flex-col relative overflow-hidden h-full">
-        {/* Connection Overlay if disconnected */}
+        {/* Disconnected Overlay - prompt to join a voice channel */}
         {connectionState === ConnectionState.DISCONNECTED && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -526,76 +514,19 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-gradient-to-b from-[#2a2a4a] to-[#1a1a2e] p-6 rounded-3xl shadow-2xl max-w-sm w-full border border-white/10"
+              className="text-center"
             >
-              <div className="text-center mb-6">
-                <motion.div
-                  animate={{ rotate: [0, 360] }}
-                  transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-                  className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg"
-                >
-                  <i className="fas fa-satellite-dish text-3xl text-white"></i>
-                </motion.div>
-                <h2 className="text-2xl font-bold text-white">Connect</h2>
-                <p className="text-white/50 text-sm mt-1">Secure P2P Connection</p>
-              </div>
-
-              {/* Your ID */}
-              <div className="mb-4 bg-white/5 p-4 rounded-2xl border border-white/10">
-                <label className="block text-xs font-bold text-white/40 uppercase mb-2 tracking-wide">
-                  Your Peer ID
-                </label>
-                <div className="flex gap-2">
-                  <div className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white font-mono text-sm truncate">
-                    {myPeerId || 'Generating...'}
-                  </div>
-                  <motion.button
-                    onClick={async () => {
-                      if (myPeerId) {
-                        await ClipboardService.write(myPeerId);
-                        HapticsService.impact('light');
-                        onIdCopied?.();
-                      }
-                    }}
-                    whileTap={{ scale: 0.95 }}
-                    className="w-11 h-11 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center"
-                  >
-                    <i className="fas fa-copy text-purple-400"></i>
-                  </motion.button>
-                </div>
-                <p className="text-[10px] text-white/30 mt-2">Share with friends</p>
-              </div>
-
-              <div className="flex items-center gap-4 my-4">
-                <div className="flex-1 h-px bg-white/10"></div>
-                <span className="text-white/30 text-xs uppercase">or call</span>
-                <div className="flex-1 h-px bg-white/10"></div>
-              </div>
-
-              {/* Connect to friend */}
-              <form onSubmit={handleConnectSubmit}>
-                <div className="mb-4">
-                  <input
-                    type="text"
-                    value={remoteIdInput}
-                    onChange={(e) => setRemoteIdInput(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500/50 placeholder-white/30 font-mono text-sm"
-                    placeholder="Paste friend's ID..."
-                  />
-                </div>
-                <motion.button
-                  type="submit"
-                  disabled={!remoteIdInput.trim()}
-                  whileTap={{ scale: 0.98 }}
-                  className={`w-full font-bold py-3.5 rounded-xl flex items-center justify-center transition-all ${
-                    remoteIdInput.trim()
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg'
-                      : 'bg-white/5 text-white/30 border border-white/10'
-                  }`}
-                >
-                  <i className="fas fa-phone-alt mr-2"></i> Connect
-                </motion.button>
-              </form>
+              <motion.div
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg"
+              >
+                <i className="fas fa-microphone text-4xl text-white"></i>
+              </motion.div>
+              <h2 className="text-2xl font-bold text-white mb-2">Voice Channels</h2>
+              <p className="text-white/50 text-sm max-w-xs mx-auto">
+                Select a voice channel from the Channels tab to join and start chatting with others.
+              </p>
             </motion.div>
           </motion.div>
         )}
@@ -757,76 +688,17 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
       {/* Main Stage - Flexbox layout */}
       <div className="flex-1 p-4 flex flex-col gap-4 overflow-hidden">
         
-        {/* Connection Overlay if disconnected */}
+        {/* Connection Overlay if disconnected - prompt to join a voice channel */}
         {connectionState === ConnectionState.DISCONNECTED && (
              <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
-                 <div className="bg-discord-header p-8 rounded-2xl shadow-2xl max-w-md w-full border border-white/10">
-                      <div className="text-center mb-8">
-                         <div className="w-20 h-20 bg-gradient-to-br from-discord-accent to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-discord-accent/20">
-                             <i className="fas fa-satellite-dish text-3xl text-white"></i>
-                         </div>
-                         <h2 className="text-2xl font-bold text-white font-display tracking-wide">SECURE LINK</h2>
-                         <p className="text-discord-muted text-sm mt-2">Direct P2P Encrypted Connection</p>
-                      </div>
-
-                      {/* Step 1: My ID */}
-                      <div className="mb-6 bg-white/5 p-4 rounded-xl border border-white/5">
-                         <label className="block text-xs font-bold text-discord-muted uppercase mb-2 tracking-wide">
-                             Step 1: Your Peer ID
-                         </label>
-                         <div className="flex gap-2">
-                             <div className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-sm truncate select-all">
-                                 {myPeerId || 'Generating secure ID...'}
-                             </div>
-                             <button
-                                 onClick={async () => {
-                                     if(myPeerId) {
-                                         await ClipboardService.write(myPeerId);
-                                         if (Platform.isMobile) {
-                                             HapticsService.impact('light');
-                                         }
-                                         onIdCopied?.();
-                                     }
-                                 }}
-                                 className="bg-discord-accent/20 hover:bg-discord-accent/30 text-discord-accent px-4 rounded-xl border border-discord-accent/30 transition-colors"
-                                 title="Copy to Clipboard"
-                             >
-                                 <i className="fas fa-copy"></i>
-                             </button>
-                         </div>
-                         <p className="text-[10px] text-discord-muted mt-2">
-                             Share this code with your friend so they can call you.
-                         </p>
-                      </div>
-
-                     <div className="relative flex py-2 items-center mb-6">
-                         <div className="flex-grow border-t border-white/10"></div>
-                         <span className="flex-shrink-0 mx-4 text-discord-muted text-[10px] uppercase font-bold tracking-widest">OR Call Them</span>
-                         <div className="flex-grow border-t border-white/10"></div>
+                 <div className="text-center max-w-md">
+                     <div className="w-24 h-24 bg-gradient-to-br from-discord-accent to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-discord-accent/20 animate-pulse">
+                         <i className="fas fa-microphone text-4xl text-white"></i>
                      </div>
-
-                      {/* Step 2: Input Friend ID */}
-                      <form onSubmit={handleConnectSubmit}>
-                          <div className="mb-6">
-                              <label className="block text-xs font-bold text-discord-muted uppercase mb-2 tracking-wide">
-                                 Step 2: Friend's Peer ID
-                              </label>
-                              <input 
-                                 type="text" 
-                                 value={remoteIdInput}
-                                 onChange={(e) => setRemoteIdInput(e.target.value)}
-                                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-discord-accent placeholder-white/20 font-mono text-sm transition-all focus:ring-1 ring-discord-accent"
-                                 placeholder="Paste friend's ID here..."
-                              />
-                          </div>
-                          <button 
-                             type="submit"
-                             disabled={!remoteIdInput.trim()}
-                             className={`w-full font-bold py-3.5 rounded-xl transition-all shadow-lg flex items-center justify-center uppercase tracking-wide text-sm ${remoteIdInput.trim() ? 'bg-gradient-to-r from-discord-green to-emerald-600 text-white cursor-pointer hover:shadow-emerald-500/20' : 'bg-white/5 text-white/30 border border-white/5 cursor-not-allowed'}`}
-                          >
-                             <i className="fas fa-phone-alt mr-2"></i> Connect
-                          </button>
-                      </form>
+                     <h2 className="text-2xl font-bold text-white font-display tracking-wide mb-2">Voice Channels</h2>
+                     <p className="text-discord-muted text-sm">
+                         Select a voice channel from the sidebar to join and start chatting with others.
+                     </p>
                  </div>
              </div>
         )}

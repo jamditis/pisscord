@@ -2,8 +2,17 @@ import { GoogleGenAI } from "@google/genai";
 import { getPissbotConfig, PissbotConfig } from "./firebase";
 
 const getClient = () => {
-  // Checks for standard process.env (Node) or import.meta.env (Vite)
-  const apiKey = process.env.GEMINI_API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
+  // Safe environment variable access - try Vite first, then Node.js
+  let apiKey: string | undefined;
+
+  // Try Vite's import.meta.env first (browser)
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GEMINI_API_KEY) {
+    apiKey = (import.meta as any).env.VITE_GEMINI_API_KEY;
+  }
+  // Fallback to process.env (Node.js/Electron)
+  else if (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) {
+    apiKey = process.env.GEMINI_API_KEY;
+  }
 
   if (!apiKey) {
     console.error("GEMINI_API_KEY is missing. Create a .env.local file with VITE_GEMINI_API_KEY=...");

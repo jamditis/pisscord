@@ -11,5 +11,10 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+  },
+  define: {
+    // Polyfill process.env for browser compatibility
+    // Some libraries/code may reference process.env which doesn't exist in browsers
+    'process.env': {}
   }
 });

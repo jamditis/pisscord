@@ -154,12 +154,29 @@ html, body {
   position: fixed;
   width: 100%;
   height: 100%;
+  /* Use dynamic viewport height for mobile browsers */
+  height: 100dvh;
 }
 
 #root {
   width: 100%;
   height: 100%;
+  height: 100dvh;
   overflow: hidden;
+}
+
+/* Mobile-specific height handling */
+@supports (height: 100dvh) {
+  html, body, #root {
+    height: 100dvh;
+  }
+}
+
+/* Fallback for browsers without dvh support */
+@supports not (height: 100dvh) {
+  html, body, #root {
+    height: -webkit-fill-available;
+  }
 }
 
 /* Mobile landscape mode adjustments */
@@ -269,6 +286,28 @@ html, body {
 @media (max-width: 768px) {
   .mobile-header {
     padding-top: max(env(safe-area-inset-top), 12px);
+  }
+
+  /* Safe area top padding that respects notch/Dynamic Island */
+  .safe-area-top {
+    padding-top: max(env(safe-area-inset-top, 0px), 20px);
+  }
+
+  /* Bottom padding for content above mobile nav (nav height: 64px + safe area) */
+  .mobile-nav-spacing {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 8px);
+  }
+
+  /* Main content container that fills available space minus nav */
+  .mobile-content {
+    height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px));
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* For screens with large safe areas (iPhone 14 Pro+, 15, 16 series) */
+  .mobile-content-large-inset {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
   }
 }
 

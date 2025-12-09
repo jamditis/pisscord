@@ -8,25 +8,21 @@ interface UserListProps {
   connectionState: ConnectionState;
   onlineUsers: PresenceUser[];
   myPeerId: string | null;
-  onConnectToUser: (peerId: string) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
-// Mobile user card component
+// Mobile user card component - display only, no call functionality
 const MobileUserCard: React.FC<{
   user: PresenceUser;
   isMe?: boolean;
-  onConnect?: () => void;
   themeColors: { primary: string; glow: string; glowLight: string; glowFaint: string };
-}> = ({ user, isMe, onConnect, themeColors }) => {
+}> = ({ user, isMe, themeColors }) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      whileTap={!isMe ? { scale: 0.98 } : undefined}
-      onClick={!isMe ? onConnect : undefined}
       className="flex items-center p-3 rounded-xl mb-2 transition-all"
       style={isMe ? {
         background: `linear-gradient(to right, ${themeColors.glowFaint}, transparent)`,
@@ -70,14 +66,14 @@ const MobileUserCard: React.FC<{
           )}
         </div>
         <div className="text-xs text-white/50 truncate">
-          {user.statusMessage || (isMe ? 'Online' : 'Tap to call')}
+          {user.statusMessage || 'Online'}
         </div>
       </div>
 
-      {/* Call button for others */}
-      {!isMe && (
+      {/* Voice channel indicator if in a channel */}
+      {user.voiceChannelId && (
         <div className="ml-2 w-9 h-9 rounded-full bg-green-500/20 flex items-center justify-center">
-          <i className="fas fa-phone-alt text-green-400 text-sm"></i>
+          <i className="fas fa-microphone text-green-400 text-sm"></i>
         </div>
       )}
     </motion.div>
@@ -88,7 +84,6 @@ export const UserList: React.FC<UserListProps> = ({
   connectionState,
   onlineUsers,
   myPeerId,
-  onConnectToUser,
   isCollapsed = false,
   onToggleCollapse
 }) => {
@@ -157,7 +152,6 @@ export const UserList: React.FC<UserListProps> = ({
                   >
                     <MobileUserCard
                       user={user}
-                      onConnect={() => onConnectToUser(user.peerId)}
                       themeColors={colors}
                     />
                   </motion.div>
@@ -258,37 +252,35 @@ export const UserList: React.FC<UserListProps> = ({
       )}
 
       {others.map((user) => (
-          <div 
-            key={user.peerId} 
-            onClick={() => onConnectToUser(user.peerId)}
-            className="group flex items-center p-2 rounded hover:bg-white/5 cursor-pointer transition-colors"
-            title="Click to Connect"
+          <div
+            key={user.peerId}
+            className="flex items-center p-2 rounded hover:bg-white/5 transition-colors"
           >
              <div className="relative">
-                 <div 
-                    className="w-8 h-8 group-hover:bg-discord-green transition-colors rounded-full flex items-center justify-center text-white overflow-hidden"
+                 <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-white overflow-hidden"
                     style={{ backgroundColor: user.photoURL ? 'transparent' : (user.color || '#72767d') }}
                  >
                      {user.photoURL ? (
-                         <>
-                            <img src={user.photoURL} alt="" className="w-full h-full object-cover group-hover:opacity-20" />
-                            <i className="fas fa-phone-alt text-xs opacity-0 group-hover:opacity-100 absolute z-10 text-white"></i>
-                         </>
+                         <img src={user.photoURL} alt="" className="w-full h-full object-cover" />
                      ) : (
-                         <>
-                            <i className="fas fa-phone-alt text-xs opacity-0 group-hover:opacity-100 absolute"></i>
-                            <i className="fas fa-user text-sm group-hover:opacity-0 transition-opacity"></i>
-                         </>
+                         <i className="fas fa-user text-sm"></i>
                      )}
                  </div>
                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-discord-sidebar rounded-full"></div>
              </div>
-             <div className="ml-3 overflow-hidden">
-                 <div className="text-discord-text group-hover:text-white font-medium text-sm truncate">{user.displayName}</div>
-                 <div className="text-[10px] text-discord-muted group-hover:text-discord-text/80 truncate">
-                     {user.statusMessage || "Click to call"}
+             <div className="ml-3 overflow-hidden flex-1">
+                 <div className="text-discord-text font-medium text-sm truncate">{user.displayName}</div>
+                 <div className="text-[10px] text-discord-muted truncate">
+                     {user.statusMessage || "Online"}
                  </div>
              </div>
+             {/* Voice channel indicator if in a channel */}
+             {user.voiceChannelId && (
+               <div className="ml-2 w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center">
+                 <i className="fas fa-microphone text-green-400 text-xs"></i>
+               </div>
+             )}
           </div>
       ))}
       
