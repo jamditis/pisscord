@@ -4,25 +4,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 🚨 Handoff Note / Status (v1.4.8-dev)
 **Current State:** v1.4.8 in development on `fix/mobile-web-bugs` branch.
-**Last Updated:** 2025-12-08
+**Last Updated:** 2025-12-09
 
 ### Recent Work (This Session)
-- **Chat Input Features:** Added voice messages, emoji picker, markdown toolbar, server dropdown
-- **Voice Message Recording:** Fixed 0-byte bug (component remount issue), added caption support
-- **Codex PR Reverted:** PR #11 reverted and branch deleted - clean slate for proper auth implementation
-- **Backlog Updated:** Added voice channel defaults + auth plan items
+- **Audio Transcription:** Voice messages & audio files now have transcription via Gemini 2.0 Flash
+- **Transcript Caching:** Transcripts stored in Firebase `/transcripts` to avoid duplicate API calls
+- **File Upload Metadata:** All files now show size badge and extension label
+- **Audio Player Widened:** Waveform player increased from 320px to 480px with 30 bars
+
+### UI Enhancement Plan (COMPLETED)
+All features from the plan file are now implemented:
+1. ✅ **Chat Input Features:** VoiceMessageButton, AudioMessage, MarkdownToolbar, QuickEmojiPicker
+2. ✅ **Resizable & Collapsible Sidebars:** useResizablePanel hook, ResizeHandle component, collapsed mode
+3. ✅ **Server Dropdown Menu:** PISSCORD header dropdown with Product Page, User Guide, Latest Release, Contact
 
 ### Previous Work
-- **Mobile Safe Areas:** Fixed mobile layout cutoff issues with dynamic safe area padding (`env(safe-area-inset-*)`)
+- **Mobile Safe Areas:** Fixed mobile layout cutoff with `env(safe-area-inset-*)`
 - **Dynamic Viewport:** Updated CSS to use `100dvh` for proper mobile browser support
-- **Process.env Fix:** Added Vite polyfill to fix blank page in browsers (`define: { 'process.env': {} }`)
+- **Process.env Fix:** Added Vite polyfill to fix blank page in browsers
 - **Splash Screen:** Rewritten with CSS animations (no Framer Motion) to fix flickering
 - **Approval System Removed:** Completely removed voice channel join request/approval system
-- **Direct Calls Removed:** Removed all direct peer-to-peer calling UI. Voice channels are now the only way to make voice/video calls.
+- **Direct Calls Removed:** Voice channels are now the only way to make voice/video calls
 
 ### Action Items for Next Session
 - Do not revert the mobile layout fixes or the `services/platform.ts` abstraction
-- Consider implementing voice channel join defaults (muted + camera off)
 - Auth implementation plan ready at `CLAUDE_IMPLEMENTATION_PLAN_AUTH_AND_STABLE.md`
 
 ## 🐛 Known Issues (v1.4.8 Backlog)
@@ -43,6 +48,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Persistent voice/video with HD screensharing
   - Unified Firebase Auth credentials across web/Android/desktop
 - ✅ Codex PR #11 reverted (PR #12 merged), branch deleted - ready for clean implementation
+
+**Bug: Battery Saving Feature Interrupts Active Voice Calls:**
+- App goes to sleep/pauses when minimized even during active voice channel sessions
+- This breaks the voice call experience on mobile
+- **Fix needed:** Disable battery saving / app sleep when `activeVoiceChannelId` is set
+- **Location:** `App.tsx` lifecycle handlers around `document.visibilitychange`
+- **Priority:** High - directly impacts core voice call functionality
 
 **Feature Idea: #dev Channel with AI Error Translation:**
 - Password-protected developer channel that captures console logs/errors
@@ -128,18 +140,27 @@ Pisscord is a private, multi-platform Discord clone built with React, TypeScript
 ### Component Structure
 - `App.tsx`: Main state container and WebRTC orchestration
 - `VoiceStage.tsx`: Video call UI (renders when viewing voice channel)
-- `ChatArea.tsx`: Text/AI chat interface
-- `ChannelList.tsx`: Navigation + **persistent voice control panel** + **unread indicators**
-- `UserList.tsx`: Online users sidebar (shows voice channel indicator when users are in voice)
+- `ChatArea.tsx`: Text/AI chat interface with file uploads
+- `ChannelList.tsx`: Navigation + **persistent voice control panel** + **unread indicators** + **collapsible**
+- `UserList.tsx`: Online users sidebar (shows voice channel indicator when users are in voice) + **collapsible**
 - `UserSettingsModal.tsx`: Tabbed settings (Profile, Voice & Video, Appearance, Debug Log, About)
 - `ReleaseNotesModal.tsx`: Version update popup with platform-aware actions
-- Modal components handle settings and updates
+- `ServerDropdown.tsx`: PISSCORD header dropdown menu with external links
+- `ResizeHandle.tsx`: Drag handle for resizable sidebars
+- `VoiceMessageButton.tsx`: Record and send voice messages with MediaRecorder API
+- `AudioMessage.tsx`: Audio player with waveform, playback controls, and Gemini transcription
+- `MarkdownToolbar.tsx`: Formatting help popup for chat messages
+- `QuickEmojiPicker.tsx`: Compact emoji picker with categories and recent emojis
+
+### Hooks
+- `hooks/useIsMobile.ts`: Mobile device detection
+- `hooks/useResizablePanel.ts`: Drag-to-resize with localStorage persistence
 
 ### Services Layer
 - `services/platform.ts`: Platform abstraction (Electron/Capacitor/Web detection, update service, link service)
 - `services/unread.ts`: Per-user unread message tracking via localStorage
-- `services/firebase.ts`: Firebase integration (presence, messaging, file uploads)
-- `services/geminiService.ts`: Pissbot AI integration with Firebase-loaded context
+- `services/firebase.ts`: Firebase integration (presence, messaging, file uploads, transcript caching)
+- `services/geminiService.ts`: Pissbot AI + audio transcription via Gemini 2.0 Flash (multimodal)
 - `services/sounds.ts`: Sound effects with preloading
 
 ### Persistent Voice Architecture
@@ -450,6 +471,7 @@ Hardcoded in `services/firebase.ts` - production config already included.
 ### Current Firebase Paths
 - `users/` - Presence system (online users, peer IDs, profiles)
 - `messages/{channelId}/` - Chat messages
+- `transcripts/{base64Key}` - Cached audio transcriptions from Gemini
 - `system/latestVersion` - Version checking for auto-updates
 - `system/releaseNotes` - Version-specific release notes
 - `system/motd` - Message of the day

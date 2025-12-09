@@ -53,6 +53,15 @@
           ".validate": "newData.hasChildren(['peerId', 'displayName', 'timestamp']) && newData.child('peerId').val() == $peerId"
         }
       }
+    },
+
+    // Audio transcripts cache - stores Gemini transcriptions to avoid re-processing
+    "transcripts": {
+      ".read": true,
+      "$transcriptId": {
+        ".write": true,
+        ".validate": "newData.hasChildren(['transcript', 'audioUrl', 'createdAt']) && newData.child('transcript').val().length <= 10000"
+      }
     }
   }
 }
