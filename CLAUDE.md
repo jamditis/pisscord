@@ -7,8 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Pisscord is a private, multi-platform Discord clone built with React, TypeScript, and PeerJS. It enables direct P2P voice/video calling, text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
 
 **Platforms:** Desktop (Electron), Web Browser, Android (Capacitor), Mobile Web
-**Current Version:** 1.4.6
-**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.4.6
+**Current Version:** 1.4.7
+**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.4.7
 
 ## Key Architecture
 
@@ -77,7 +77,15 @@ Pisscord is a private, multi-platform Discord clone built with React, TypeScript
 - `UserList.tsx`: Online users sidebar with direct call buttons
 - `UserSettingsModal.tsx`: Tabbed settings (Profile, Voice & Video, Appearance, Debug Log, About)
 - `ReleaseNotesModal.tsx`: Version update popup with platform-aware actions
+- `components/Visuals.tsx`: **New** visual effects components (VoidBackground, GlitchText, SpotlightCard, Typewriter)
 - Modal components handle settings and updates
+
+### Styling & Theming
+- **Theme**: "Void" Cyberpunk aesthetic (Piss Yellow #f0e130 accents, #0a0a0f backgrounds)
+- **Fonts**: 'Outfit' (Body), 'Dela Gothic One' (Headers), 'JetBrains Mono' (Code)
+- **Scanlines**: Utility class `.scanlines` in `index.css` applies CRT effect to specific containers (Sidebar, Chat) but *excludes* video feeds.
+- **Glassmorphism**: Used extensively in headers and overlays.
+- **Glitch Effects**: CSS keyframes `glitch-1` and `glitch-2` for text animations.
 
 ### Services Layer
 - `services/platform.ts`: Platform abstraction (Electron/Capacitor/Web detection, update service, link service)
@@ -276,7 +284,12 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - `noUnusedLocals` and `noUnusedParameters` disabled (intentional)
 - React JSX transform (no need to import React in TSX files)
 
-## Recent Changes (v1.1.0 - v1.4.6)
+## Recent Changes (v1.1.0 - v1.4.7)
+
+### v1.4.7 (2025-12-08)
+- **Fixed Splash Screen**: Animation no longer repeats during app initialization (React ref pattern fix)
+- **Fixed Release Notes Modal**: Now properly dismisses when clicking "Refresh to Update" on web
+- **Removed Scanlines**: Video and screen share content displays cleanly without CRT overlay effect
 
 ### v1.4.6 (2025-12-08)
 - **Removed Encryption**: Simplified messaging by removing client-side encryption (private family server doesn't need it)

@@ -202,8 +202,9 @@ export const UserList: React.FC<UserListProps> = ({
     );
   }
 
+  // Desktop layout
   return (
-    <div className="w-60 bg-discord-sidebar hidden lg:flex flex-col p-3 border-l border-discord-dark relative">
+    <div className="w-60 bg-discord-sidebar hidden lg:flex flex-col p-3 border-l border-discord-dark relative scanlines">
 
       {/* Collapse button */}
       {onToggleCollapse && (

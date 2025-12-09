@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { playSound } from '../services/sounds';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -191,6 +192,11 @@ export const useToast = () => {
   const addToast = (type: ToastType, title: string, message?: string, duration?: number) => {
     const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
     setToasts((prev) => [...prev, { id, type, title, message, duration }]);
+    
+    if (type === 'error') {
+      playSound('error');
+    }
+    
     return id;
   };
 

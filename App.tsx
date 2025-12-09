@@ -23,8 +23,9 @@ import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, up
 import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
 import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService, AppLifecycleService } from './services/platform';
+import { VoidBackground } from './components/Visuals';
 
-const APP_VERSION = "1.4.6";
+const APP_VERSION = "1.4.7";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
@@ -236,6 +237,7 @@ export default function App() {
 
     // Preload sound effects
     preloadSounds();
+    playSound('app_launch');
 
     // App Lifecycle (Background/Foreground)
     AppLifecycleService.onAppStateChange(({ isActive }) => {
@@ -289,6 +291,7 @@ export default function App() {
         if (update?.hasUpdate) {
             setUpdateInfo({ url: update.url, latest: update.latest });
             setShowUpdateModal(true);
+            playSound('update_available');
         }
     });
 
@@ -731,6 +734,7 @@ export default function App() {
           if (vidTrack) {
               vidTrack.enabled = !vidTrack.enabled;
               setIsVideoEnabled(vidTrack.enabled);
+              playSound(vidTrack.enabled ? 'video_on' : 'video_off');
           }
       }
   };
@@ -1087,6 +1091,8 @@ export default function App() {
       className="flex w-full h-screen bg-discord-main text-discord-text overflow-hidden font-sans relative"
       onContextMenu={handleContextMenu}
     >
+      <VoidBackground />
+
       {/* Audio Unlock Banner */}
       {audioUnlockNeeded && (
         <div 
@@ -1416,7 +1422,7 @@ export default function App() {
           <Sidebar onServerClick={() => setActiveChannelId('1')} />
 
           {/* CHANNEL LIST + VOICE CONTROLS */}
-          <div className="flex flex-col h-full bg-discord-sidebar w-60">
+          <div className="flex flex-col h-full bg-discord-sidebar w-60 relative scanlines">
               <ChannelList
                 channels={INITIAL_CHANNELS}
                 activeChannelId={activeChannelId}
@@ -1485,7 +1491,7 @@ export default function App() {
                />
              </div>
           ) : (
-             <div className="flex-1 flex min-w-0">
+             <div className="flex-1 flex min-w-0 relative scanlines">
                  <ChatArea
                     channel={activeChannel}
                     messages={messages[activeChannel.id] || []}
