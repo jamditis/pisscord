@@ -3,12 +3,19 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## 🚨 Handoff Note / Status (v1.4.7)
-**Current State:** v1.4.7 Release Candidate.
+**Current State:** v1.4.7 Released.
 - **Visuals:** Desktop UI now matches Mobile/Web "Void" aesthetic (Glassmorphism, Scanlines).
 - **Sounds:** Complete replacement with 'UIAlert' set.
 - **Encryption:** Removed. Plaintext messaging only.
-- **Deployment:** Web deployed. Desktop built. **Android APK pending manual build.**
+- **Deployment:** All platforms deployed (Web, Desktop EXE, Android APK).
 - **Action Item:** If you are Claude, please do not revert the UI changes or the `services/platform.ts` abstraction.
+
+## 🐛 Known Issues (v1.4.8 Backlog)
+**Sound Effects Not Playing:**
+- Startup/launch sound doesn't play during splash animation
+- Video on/off toggle sounds not triggering
+- Join/leave voice channel sounds not playing
+- **Location:** `services/sounds.ts` and call sites in `App.tsx`, `VoiceStage.tsx`
 
 ## Project Overview
 
