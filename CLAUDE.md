@@ -4,13 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 🚨 Handoff Note / Status (v1.4.8-dev)
 **Current State:** v1.4.8 in development on `fix/mobile-web-bugs` branch.
+**Last Updated:** 2025-12-08
+
+### Recent Work (This Session)
+- **Chat Input Features:** Added voice messages, emoji picker, markdown toolbar, server dropdown
+- **Voice Message Recording:** Fixed 0-byte bug (component remount issue), added caption support
+- **Codex PR Reverted:** PR #11 reverted and branch deleted - clean slate for proper auth implementation
+- **Backlog Updated:** Added voice channel defaults + auth plan items
+
+### Previous Work
 - **Mobile Safe Areas:** Fixed mobile layout cutoff issues with dynamic safe area padding (`env(safe-area-inset-*)`)
 - **Dynamic Viewport:** Updated CSS to use `100dvh` for proper mobile browser support
 - **Process.env Fix:** Added Vite polyfill to fix blank page in browsers (`define: { 'process.env': {} }`)
 - **Splash Screen:** Rewritten with CSS animations (no Framer Motion) to fix flickering
 - **Approval System Removed:** Completely removed voice channel join request/approval system
-- **Direct Calls Removed:** Removed all direct peer-to-peer calling UI (VoiceStage peer ID form, UserList call buttons). Voice channels are now the only way to make voice/video calls. Internal mesh networking still uses `handleStartCall` but without user-facing "calling" notifications.
-- **Action Item:** If you are Claude, please do not revert the mobile layout fixes or the `services/platform.ts` abstraction.
+- **Direct Calls Removed:** Removed all direct peer-to-peer calling UI. Voice channels are now the only way to make voice/video calls.
+
+### Action Items for Next Session
+- Do not revert the mobile layout fixes or the `services/platform.ts` abstraction
+- Consider implementing voice channel join defaults (muted + camera off)
+- Auth implementation plan ready at `CLAUDE_IMPLEMENTATION_PLAN_AUTH_AND_STABLE.md`
 
 ## 🐛 Known Issues (v1.4.8 Backlog)
 
@@ -24,20 +37,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Currently users join with mic/camera on, which can be jarring
 - **Location:** `App.tsx` - `handleJoinVoiceChannel()` and initial state for `isMuted`/`isVideoOff`
 
-**Pending: Codex PR Revert Decision:**
-- PR #11 (`codex/stabilize-loading-and-main-features`) was merged to master but contains incomplete auth scaffolding
-- PR #12 (revert PR) is ready for review: https://github.com/jamditis/pisscord/pull/12
-- **Recommendation:** Accept the revert - the Codex changes add `AuthGate.tsx` and `auth.ts` but:
-  - The auth gate is never actually shown to users (dead code)
-  - The implementation is incomplete and adds complexity without functioning auth
-  - A cleaner implementation is planned in `CLAUDE_IMPLEMENTATION_PLAN_AUTH_AND_STABLE.md`
-
 **Upcoming: Auth & Stability Plan:**
-- New comprehensive plan at `CLAUDE_IMPLEMENTATION_PLAN_AUTH_AND_STABLE.md` covers:
+- Comprehensive plan at `CLAUDE_IMPLEMENTATION_PLAN_AUTH_AND_STABLE.md` covers:
   - Stabilizing app loading with Firebase init guardrails
   - Persistent voice/video with HD screensharing
   - Unified Firebase Auth credentials across web/Android/desktop
-- Should be implemented **after** reverting PR #11 for a clean slate
+- ✅ Codex PR #11 reverted (PR #12 merged), branch deleted - ready for clean implementation
 
 ## Project Overview
 
