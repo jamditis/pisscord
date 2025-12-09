@@ -10,7 +10,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onServerClick }) => {
   const logoSrc = theme === 'gold' ? './pisscord-gold.png' : './pisscord-purple.png';
 
   return (
-    <div className="w-[72px] bg-discord-dark flex flex-col items-center py-3 space-y-2 h-full overflow-y-auto">
+    <div className="w-[72px] bg-discord-dark flex flex-col items-center py-3 space-y-2 h-full overflow-y-auto relative scanlines">
       {/* Home - Pisscord Logo */}
       <div
         onClick={onServerClick}

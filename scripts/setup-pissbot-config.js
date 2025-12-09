@@ -35,7 +35,7 @@ Your personality:
 - Speaks like a tech-savvy friend, not a corporate bot`,
 
   context: `About Pisscord:
-- Current Version: v1.4.6 (Released December 8, 2025)
+- Current Version: v1.4.7 (Released December 8, 2025)
 - Built with: Electron 30, React 18, TypeScript, Vite, Firebase
 - P2P Architecture: Uses PeerJS for WebRTC mesh networking
 - Real-time presence: Firebase Realtime Database
@@ -81,7 +81,13 @@ Technical Architecture:
 - Services: firebase.ts (presence, messages, files), geminiService.ts (AI), sounds.ts (audio), github.ts (dev feed)
 - Components: Sidebar, ChannelList, ChatArea, VoiceStage, UserList`,
 
-  patchNotes: `v1.4.6 (December 8, 2025):
+  patchNotes: `v1.4.7 (December 8, 2025):
+- Fixed splash screen animation repeating on app load
+- Fixed release notes modal not dismissing on web refresh
+- Removed scanlines overlay (interfered with video content)
+- Updated sound effects: distinct errors, update alerts, and video toggle sounds
+
+v1.4.6 (December 8, 2025):
 - Removed encryption - simplified for private family server
 - Mobile audio unlock banner - tap to enable audio when browser blocks autoplay
 - App lifecycle handling - mutes mic/camera when app is backgrounded to save battery

@@ -30,23 +30,21 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // UPDATE THESE FOR EACH RELEASE
-const CURRENT_VERSION = "1.4.6";
+const CURRENT_VERSION = "1.4.7";
 const DOWNLOAD_URL = `https://github.com/jamditis/pisscord/releases/download/v${CURRENT_VERSION}/Pisscord.Setup.${CURRENT_VERSION}.exe`;
 
 const RELEASE_NOTES = `## What's New in v${CURRENT_VERSION}
 
-### Simplified Experience
-- **Removed encryption** - No more passphrase prompts! Messages are stored securely in your private Firebase database.
-- **Cleaner setup** - Just set your name and start chatting
+### Bug Fixes
+- **Fixed splash screen** - Animation no longer repeats during app initialization
+- **Fixed release notes popup** - Modal now properly dismisses after clicking refresh
+- **Removed scanlines** - Video and screen share content displays cleanly without overlay
 
-### Mobile Improvements
-- **Audio unlock banner** - Tap the yellow banner to enable audio when your browser blocks autoplay
-- **Battery saver** - App now mutes mic/camera when minimized to save battery
-
-### Visual Refresh
-- **Void/Cyberpunk theme** - New dark aesthetic with glassmorphism effects
-- **Updated fonts** - Outfit for body, Dela Gothic One for headers
-- **Smoother UI** - More rounded corners and subtle animations
+### From v1.4.6
+- **Removed encryption** - No more passphrase prompts for private family server
+- **Audio unlock banner** - Tap to enable audio when browser blocks autoplay
+- **Battery saver** - App mutes mic/camera when minimized
+- **Void/Cyberpunk theme** - Dark aesthetic with glassmorphism effects
 `;
 
 async function setupReleaseNotes() {

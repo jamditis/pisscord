@@ -11,6 +11,7 @@
 - **Storage:** Firebase Storage (File uploads).
 
 ## Key Notes
+- **Current Version:** v1.4.7 (in progress)
 - **No Encryption:** v1.4.6 removed client-side encryption. Messages are stored as plaintext in Firebase (private family server).
 - **Pissbot:** AI Agent (Channel '3') powered by Gemini 2.5 Flash.
 
@@ -36,6 +37,31 @@
 - [x] Fix Mobile Audio Autoplay (Added Tap Banner).
 - [x] Fix Background Crashes (Added AppLifecycleService).
 - [x] Update Desktop UI to match Mobile/Web (Fonts, Colors, Glass).
+
+## Completed Tasks (v1.4.7)
+- [x] Fixed splash screen animation (Claude).
+- [x] Fixed release notes modal (Claude).
+- [x] **UI Standardization**:
+    - Added `components/Visuals.tsx` (VoidBackground, GlitchText).
+    - Added `VoidBackground` to App root.
+    - Added `GlitchText` to "PISSCORD" header in ChannelList.
+    - Fixed "Scanlines over Video": Removed global body::after, applied `.scanlines` class to Sidebar, ChannelList, ChatArea, and UserList containers only.
+- [x] **Encryption Removal**: Cleaned up App.tsx to remove PassphraseModal and encryption checks completely.
+- [x] **Sound Effects**:
+    - Split 'error-new-update' into separate files.
+    - Wired up `app_launch`, `video_on`, `video_off`, `error`, `update_available` sounds.
+    - Renamed sound files for clarity.
+- [x] **Docs & Config**:
+    - Updated website (`docs/index.html`) with v1.4.7 badge.
+    - Updated Pissbot config (`setup-pissbot-config.js`) with v1.4.7 release notes.
+    - Updated `CLAUDE.md` and `GEMINI.md` with new project state.
+
+## Active Tasks
+- [ ] Deployment:
+    - `npm run build`
+    - `firebase deploy`
+    - `npm run dist`
+    - `npm run cap:sync`
 
 ## Agent Coordination
 - **Claude:** Often works on this repo. Check `CLAUDE.md` for shared context.

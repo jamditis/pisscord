@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Channel, ChannelType, UserProfile, ConnectionState, PresenceUser } from '../types';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useTheme } from '../contexts/ThemeContext';
+import { GlitchText } from './Visuals';
 
 interface ChannelListProps {
   channels: Channel[];
@@ -260,10 +261,22 @@ export const ChannelList: React.FC<ChannelListProps> = ({
   // Desktop layout (original)
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      {/* Header */}
-      <div className="h-12 shadow-sm flex items-center px-4 font-display tracking-wider text-white border-b border-discord-dark hover:bg-discord-hover transition-colors cursor-pointer shrink-0">
-        <span>PISSCORD</span>
-        <i className="fas fa-chevron-down ml-auto text-xs"></i>
+      {/* Header with glassmorphism */}
+      <div
+        className="h-12 flex items-center px-4 font-display tracking-wider border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer shrink-0 relative"
+        style={{
+          background: 'linear-gradient(180deg, rgba(26, 26, 38, 0.95), rgba(18, 18, 26, 0.98))',
+        }}
+      >
+        <div style={{ color: colors.primary, textShadow: `0 0 20px ${colors.glow}` }}>
+            <GlitchText text="PISSCORD" className="text-lg font-display tracking-widest" />
+        </div>
+        <i className="fas fa-chevron-down ml-auto text-xs text-gray-500"></i>
+        {/* Gradient glow line */}
+        <div
+          className="absolute bottom-0 left-0 right-0 h-px"
+          style={{ background: `linear-gradient(90deg, transparent, ${colors.glowLight}, transparent)` }}
+        />
       </div>
 
       {/* Channels */}

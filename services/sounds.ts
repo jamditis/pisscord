@@ -9,7 +9,12 @@ export type SoundEffect =
   | 'mute'
   | 'unmute'
   | 'deafen'
-  | 'undeafen';
+  | 'undeafen'
+  | 'app_launch'
+  | 'error'
+  | 'update_available'
+  | 'video_on'
+  | 'video_off';
 
 // Get base path for assets - works in both dev and production Electron
 const getBasePath = () => {
@@ -23,15 +28,20 @@ const getBasePath = () => {
 const getSoundPaths = (): Record<SoundEffect, string> => {
   const base = getBasePath();
   return {
-    user_join: `${base}assets/user_join_sound.mp3`,
-    user_leave: `${base}assets/user_leave_sound.mp3`,
-    message: '', // To be added
-    call_incoming: `${base}assets/incoming_call_sound.mp3`,
-    call_outgoing: `${base}assets/outgoing_call_sound.mp3`,
-    mute: `${base}assets/mic_muted_sound.mp3`,
-    unmute: `${base}assets/mic_unmuted_sound.mp3`,
-    deafen: '', // To be added
-    undeafen: '', // To be added
+    user_join: `${base}assets/UIAlert-user-join-call.mp3`,
+    user_leave: `${base}assets/UIAlert-user-leave-call.mp3`,
+    message: `${base}assets/UIAlert-new-message-in-text-channel.mp3`,
+    call_incoming: `${base}assets/UIAlert-incoming-call.mp3`,
+    call_outgoing: `${base}assets/UIAlert-outgoing-call.mp3`,
+    mute: `${base}assets/UIAlert-mic_muted_sound.mp3`,
+    unmute: `${base}assets/UIAlert-mic_unmuted_sound.mp3`,
+    deafen: '',
+    undeafen: '',
+    app_launch: `${base}assets/UIAlert-app-launch.mp3`,
+    error: `${base}assets/UIAlert-error-message.mp3`,
+    update_available: `${base}assets/UIAlert-new-version-update.mp3`,
+    video_on: `${base}assets/UIAlert-video-on.mp3`,
+    video_off: `${base}assets/UIAlert-video-off.mp3`,
   };
 };
 
