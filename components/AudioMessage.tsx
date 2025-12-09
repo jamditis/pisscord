@@ -2,6 +2,61 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../contexts/ThemeContext';
 import { transcribeAudio } from '../services/geminiService';
+import { saveTranscript, getTranscript } from '../services/firebase';
+
+// Simple markdown renderer for transcripts (bold, italic, line breaks)
+const renderTranscriptMarkdown = (text: string): React.ReactNode[] => {
+  const elements: React.ReactNode[] = [];
+  let key = 0;
+
+  // Split by line breaks first
+  const lines = text.split('\n');
+
+  lines.forEach((line, lineIndex) => {
+    // Process inline: **bold**, *italic*
+    const inlineRegex = /(\*\*(.+?)\*\*|\*(.+?)\*)/g;
+    let lastIndex = 0;
+    let match;
+    const lineElements: React.ReactNode[] = [];
+    let inlineKey = 0;
+
+    while ((match = inlineRegex.exec(line)) !== null) {
+      // Add text before match
+      if (match.index > lastIndex) {
+        lineElements.push(line.substring(lastIndex, match.index));
+      }
+
+      if (match[2]) {
+        // **bold**
+        lineElements.push(<strong key={`b-${inlineKey++}`} className="font-semibold text-white">{match[2]}</strong>);
+      } else if (match[3]) {
+        // *italic*
+        lineElements.push(<em key={`i-${inlineKey++}`}>{match[3]}</em>);
+      }
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < line.length) {
+      lineElements.push(line.substring(lastIndex));
+    }
+
+    // If line is empty, just add a break
+    if (lineElements.length === 0 && line.trim() === '') {
+      elements.push(<br key={key++} />);
+    } else {
+      elements.push(
+        <span key={key++}>
+          {lineElements}
+          {lineIndex < lines.length - 1 && <br />}
+        </span>
+      );
+    }
+  });
+
+  return elements;
+};
 
 interface AudioMessageProps {
   url: string;
@@ -28,6 +83,7 @@ export const AudioMessage: React.FC<AudioMessageProps> = ({
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcript, setTranscript] = useState<string | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [isFromCache, setIsFromCache] = useState(false);
 
   // Generate stable waveform heights once per component instance
   // More bars for wider player (30 bars at 480px width)
@@ -134,9 +190,24 @@ export const AudioMessage: React.FC<AudioMessageProps> = ({
 
     setIsTranscribing(true);
     try {
+      // Check Firebase cache first
+      const cached = await getTranscript(url);
+      if (cached) {
+        setTranscript(cached);
+        setIsFromCache(true);
+        setShowTranscript(true);
+        return;
+      }
+
+      // No cache hit - transcribe with Gemini
       const result = await transcribeAudio(url);
       setTranscript(result);
       setShowTranscript(true);
+
+      // Save to Firebase cache (don't await - fire and forget)
+      if (!result.startsWith('⚠️')) {
+        saveTranscript(url, result);
+      }
     } catch (err) {
       console.error('Transcription failed:', err);
       setTranscript('⚠️ Transcription failed');
@@ -260,10 +331,13 @@ export const AudioMessage: React.FC<AudioMessageProps> = ({
               <div className="flex items-center gap-1 mb-1">
                 <i className="fas fa-robot text-[10px] text-purple-400"></i>
                 <span className="text-[10px] text-purple-400 font-medium">Transcript</span>
+                {isFromCache && (
+                  <span className="text-[9px] text-discord-muted ml-1">(cached)</span>
+                )}
               </div>
-              <p className="text-sm text-discord-text/80 italic leading-relaxed">
-                {transcript}
-              </p>
+              <div className="text-sm text-discord-text/80 italic leading-relaxed">
+                {renderTranscriptMarkdown(transcript)}
+              </div>
             </div>
           </motion.div>
         )}

@@ -311,3 +311,52 @@ export const cleanupOldMessages = async (channelIds: string[]) => {
     }
   }
 };
+
+/**
+ * Transcript Caching
+ * Store audio transcripts in Firebase to avoid re-transcribing
+ */
+
+// Create a safe key from URL (Firebase keys can't contain . # $ [ ] /)
+const urlToKey = (url: string): string => {
+  // Use btoa to encode, then replace unsafe characters
+  return btoa(url).replace(/[.#$\[\]/]/g, '_').slice(0, 200);
+};
+
+/**
+ * Save a transcript to Firebase
+ */
+export const saveTranscript = async (audioUrl: string, transcript: string): Promise<void> => {
+  try {
+    const key = urlToKey(audioUrl);
+    const transcriptRef = ref(db, `transcripts/${key}`);
+    await set(transcriptRef, {
+      transcript,
+      audioUrl,
+      createdAt: Date.now()
+    });
+    console.log('[Firebase] Transcript cached for:', audioUrl.slice(0, 50) + '...');
+  } catch (error) {
+    console.error('[Firebase] Failed to cache transcript:', error);
+  }
+};
+
+/**
+ * Get a cached transcript from Firebase
+ */
+export const getTranscript = async (audioUrl: string): Promise<string | null> => {
+  try {
+    const key = urlToKey(audioUrl);
+    const transcriptRef = ref(db, `transcripts/${key}`);
+    const snapshot = await get(transcriptRef);
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      console.log('[Firebase] Transcript cache hit for:', audioUrl.slice(0, 50) + '...');
+      return data.transcript;
+    }
+    return null;
+  } catch (error) {
+    console.error('[Firebase] Failed to get cached transcript:', error);
+    return null;
+  }
+};
