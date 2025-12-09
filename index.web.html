@@ -26,19 +26,29 @@
       tailwind.config = {
         theme: {
           extend: {
+            fontFamily: {
+              sans: ['Outfit', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+              display: ['Dela Gothic One', 'cursive'],
+            },
             colors: {
               discord: {
-                dark: '#202225',
-                sidebar: '#2f3136',
-                main: '#36393f',
-                chat: '#36393f',
-                header: '#36393f',
-                accent: '#5865F2',
-                green: '#3ba55c',
-                red: '#ed4245',
-                hover: '#393c43',
-                text: '#dcddde',
-                muted: '#72767d'
+                dark: '#0a0a0f',      /* var(--void) */
+                sidebar: '#12121a',   /* var(--abyss) */
+                main: '#0a0a0f',      /* var(--void) */
+                chat: '#0a0a0f',      /* var(--void) */
+                header: '#1a1a26',    /* var(--surface) */
+                accent: '#f0e130',    /* var(--piss-yellow) */
+                green: '#22c55e',
+                red: '#ef4444',
+                hover: '#252533',     /* var(--elevated) */
+                text: '#e8e8f0',      /* var(--text) */
+                muted: '#9898a8'      /* var(--text-dim) */
+              },
+              piss: {
+                yellow: '#f0e130',
+                gold: '#ffd700',
+                purple: '#8b5cf6'
               }
             }
           }
@@ -47,8 +57,9 @@
     </script>
     <style>
       body {
-        background-color: #202225;
-        color: #dcddde;
+        background-color: #0a0a0f;
+        color: #e8e8f0;
+        font-family: 'Outfit', sans-serif;
         overflow: hidden;
       }
       ::-webkit-scrollbar {
@@ -56,11 +67,14 @@
         height: 8px;
       }
       ::-webkit-scrollbar-track {
-        background-color: #2f3136;
+        background-color: #12121a;
       }
       ::-webkit-scrollbar-thumb {
-        background-color: #202225;
+        background-color: #252533;
         border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background-color: #f0e130;
       }
       /* Fix for text cursor visibility */
       input, textarea {

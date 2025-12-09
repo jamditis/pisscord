@@ -1,7 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../contexts/ThemeContext';
-import { useIsMobile } from '../hooks/useIsMobile';
 import { uploadFile } from '../services/firebase';
 
 interface VoiceMessageButtonProps {
@@ -11,6 +10,7 @@ interface VoiceMessageButtonProps {
 }
 
 const MAX_DURATION = 60; // Maximum recording duration in seconds
+const SAMPLE_RATE = 44100;
 
 export const VoiceMessageButton: React.FC<VoiceMessageButtonProps> = ({
   onVoiceMessageSent,
@@ -18,7 +18,6 @@ export const VoiceMessageButton: React.FC<VoiceMessageButtonProps> = ({
   disabled = false
 }) => {
   const { colors } = useTheme();
-  const isMobile = useIsMobile();
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -30,11 +29,12 @@ export const VoiceMessageButton: React.FC<VoiceMessageButtonProps> = ({
     onRecordingStateChange?.(isRecording);
   }, [isRecording, onRecordingStateChange]);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const recordingDurationRef = useRef<number>(0); // Track duration in ref to avoid stale closure
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const audioDataRef = useRef<Float32Array[]>([]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingDurationRef = useRef<number>(0);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -45,118 +45,118 @@ export const VoiceMessageButton: React.FC<VoiceMessageButtonProps> = ({
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
     };
   }, []);
 
+  const encodeToWav = (audioData: Float32Array[], sampleRate: number): Blob => {
+    // Combine all audio chunks
+    const totalLength = audioData.reduce((sum, chunk) => sum + chunk.length, 0);
+    const combined = new Float32Array(totalLength);
+    let offset = 0;
+    for (const chunk of audioData) {
+      combined.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    // Convert float32 to int16
+    const samples = new Int16Array(combined.length);
+    for (let i = 0; i < combined.length; i++) {
+      const s = Math.max(-1, Math.min(1, combined[i]));
+      samples[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+
+    // Create WAV file
+    const buffer = new ArrayBuffer(44 + samples.length * 2);
+    const view = new DataView(buffer);
+
+    // WAV header
+    const writeString = (offset: number, str: string) => {
+      for (let i = 0; i < str.length; i++) {
+        view.setUint8(offset + i, str.charCodeAt(i));
+      }
+    };
+
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + samples.length * 2, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true); // Subchunk1Size
+    view.setUint16(20, 1, true); // AudioFormat (PCM)
+    view.setUint16(22, 1, true); // NumChannels (mono)
+    view.setUint32(24, sampleRate, true); // SampleRate
+    view.setUint32(28, sampleRate * 2, true); // ByteRate
+    view.setUint16(32, 2, true); // BlockAlign
+    view.setUint16(34, 16, true); // BitsPerSample
+    writeString(36, 'data');
+    view.setUint32(40, samples.length * 2, true);
+
+    // Write audio data
+    const dataOffset = 44;
+    for (let i = 0; i < samples.length; i++) {
+      view.setInt16(dataOffset + i * 2, samples[i], true);
+    }
+
+    return new Blob([buffer], { type: 'audio/wav' });
+  };
+
   const startRecording = useCallback(async () => {
     setError(null);
+    audioDataRef.current = [];
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          sampleRate: SAMPLE_RATE,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+        }
+      });
       streamRef.current = stream;
 
-      // Find best supported MIME type
-      const mimeTypes = [
-        'audio/webm;codecs=opus',
-        'audio/webm',
-        'audio/mp4',
-        'audio/ogg;codecs=opus',
-        'audio/ogg',
-        ''  // Let browser choose default
-      ];
-      const supportedMimeType = mimeTypes.find(type =>
-        type === '' || MediaRecorder.isTypeSupported(type)
-      ) || '';
+      // Log audio track info
+      const audioTracks = stream.getAudioTracks();
+      console.log('[VoiceMessage] Audio tracks:', audioTracks.length);
+      audioTracks.forEach((track, i) => {
+        console.log(`[VoiceMessage] Track ${i}: label=${track.label}, enabled=${track.enabled}, muted=${track.muted}`);
+      });
 
-      console.log('[VoiceMessage] Using MIME type:', supportedMimeType || 'browser default');
+      // Create audio context and processor
+      const audioContext = new AudioContext({ sampleRate: SAMPLE_RATE });
+      audioContextRef.current = audioContext;
 
-      const mediaRecorderOptions: MediaRecorderOptions = {};
-      if (supportedMimeType) {
-        mediaRecorderOptions.mimeType = supportedMimeType;
-      }
+      const source = audioContext.createMediaStreamSource(stream);
+      const processor = audioContext.createScriptProcessor(4096, 1, 1);
+      processorRef.current = processor;
 
-      const mediaRecorder = new MediaRecorder(stream, mediaRecorderOptions);
-      console.log('[VoiceMessage] MediaRecorder created with mimeType:', mediaRecorder.mimeType);
+      processor.onaudioprocess = (e) => {
+        const inputData = e.inputBuffer.getChannelData(0);
+        // Copy the data since the buffer gets reused
+        const copy = new Float32Array(inputData);
+        audioDataRef.current.push(copy);
 
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        console.log('[VoiceMessage] Data available:', event.data.size, 'bytes');
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
+        // Log audio level periodically (every ~1 second)
+        if (audioDataRef.current.length % 11 === 1) {
+          const max = Math.max(...Array.from(copy).map(Math.abs));
+          const rms = Math.sqrt(copy.reduce((sum, x) => sum + x * x, 0) / copy.length);
+          console.log(`[VoiceMessage] Audio level - max: ${max.toFixed(4)}, rms: ${rms.toFixed(4)}`);
         }
       };
 
-      mediaRecorder.onstop = async () => {
-        console.log('[VoiceMessage] Recording stopped, chunks:', audioChunksRef.current.length);
+      source.connect(processor);
+      processor.connect(audioContext.destination);
 
-        // Stop the stream
-        stream.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-
-        // Get MIME type from recorder
-        const mimeType = mediaRecorder.mimeType || 'audio/webm';
-        console.log('[VoiceMessage] Final mimeType:', mimeType);
-
-        // Create blob from chunks
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-        console.log('[VoiceMessage] Blob size:', audioBlob.size, 'bytes');
-
-        // Get the final duration from ref (avoids stale closure)
-        const finalDuration = recordingDurationRef.current;
-
-        // Reset timer
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
-        setRecordingDuration(0);
-        recordingDurationRef.current = 0;
-
-        // Upload to Firebase - allow even 0 duration if blob has data
-        if (audioBlob.size > 0) {
-          setIsUploading(true);
-          try {
-            // Determine file extension based on MIME type
-            let extension = 'webm';
-            if (mimeType.includes('mp4') || mimeType.includes('m4a')) {
-              extension = 'm4a';
-            } else if (mimeType.includes('ogg')) {
-              extension = 'ogg';
-            } else if (mimeType.includes('wav')) {
-              extension = 'wav';
-            }
-
-            const fileName = `voice_${Date.now()}.${extension}`;
-            const file = new File([audioBlob], fileName, { type: mimeType });
-            console.log('[VoiceMessage] Uploading file:', fileName, 'type:', mimeType);
-
-            const url = await uploadFile(file);
-            console.log('[VoiceMessage] Upload complete:', url);
-            onVoiceMessageSent(url, Math.max(finalDuration, 1), fileName);
-          } catch (err) {
-            console.error('[VoiceMessage] Upload failed:', err);
-            setError('Failed to upload voice message');
-          } finally {
-            setIsUploading(false);
-          }
-        } else {
-          console.warn('[VoiceMessage] No audio data recorded');
-          setError('No audio recorded');
-        }
-      };
-
-      mediaRecorderRef.current = mediaRecorder;
-      // Start with timeslice to ensure data is captured in chunks
-      // This helps with short recordings and ensures ondataavailable fires regularly
-      mediaRecorder.start(100); // Collect data every 100ms
       setIsRecording(true);
+      console.log('[VoiceMessage] Recording started with Web Audio API');
 
       // Start duration timer
       timerRef.current = setInterval(() => {
         setRecordingDuration(prev => {
           const newDuration = prev + 1;
-          recordingDurationRef.current = newDuration; // Keep ref in sync
+          recordingDurationRef.current = newDuration;
           if (newDuration >= MAX_DURATION) {
             stopRecording();
             return prev;
@@ -166,35 +166,101 @@ export const VoiceMessageButton: React.FC<VoiceMessageButtonProps> = ({
       }, 1000);
 
     } catch (err: any) {
-      console.error('Failed to start recording:', err);
+      console.error('[VoiceMessage] Failed to start recording:', err);
       setError(err.message || 'Microphone access denied');
     }
-  }, [onVoiceMessageSent]);
+  }, []);
 
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
+  const stopRecording = useCallback(async () => {
+    if (!isRecording) return;
+
+    console.log('[VoiceMessage] Stopping recording...');
+    setIsRecording(false);
+
+    // Stop timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
-  }, [isRecording]);
 
-  const cancelRecording = useCallback(() => {
-    if (mediaRecorderRef.current && isRecording) {
-      // Clear chunks before stopping to prevent upload
-      audioChunksRef.current = [];
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      setRecordingDuration(0);
+    // Disconnect processor
+    if (processorRef.current) {
+      processorRef.current.disconnect();
+      processorRef.current = null;
+    }
 
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
+    // Close audio context
+    if (audioContextRef.current) {
+      await audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+
+    // Stop stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+
+    const finalDuration = recordingDurationRef.current;
+    setRecordingDuration(0);
+    recordingDurationRef.current = 0;
+
+    // Encode to WAV
+    if (audioDataRef.current.length > 0) {
+      setIsUploading(true);
+      try {
+        console.log('[VoiceMessage] Encoding to WAV...', audioDataRef.current.length, 'chunks');
+        const wavBlob = encodeToWav(audioDataRef.current, SAMPLE_RATE);
+        console.log('[VoiceMessage] WAV blob size:', wavBlob.size, 'bytes');
+
+        const fileName = `voice_${Date.now()}.wav`;
+        const file = new File([wavBlob], fileName, { type: 'audio/wav' });
+
+        console.log('[VoiceMessage] Uploading file:', fileName);
+        const url = await uploadFile(file);
+        console.log('[VoiceMessage] Upload complete:', url);
+
+        onVoiceMessageSent(url, Math.max(finalDuration, 1), fileName);
+      } catch (err) {
+        console.error('[VoiceMessage] Processing/upload failed:', err);
+        setError('Failed to process voice message');
+      } finally {
+        setIsUploading(false);
+        audioDataRef.current = [];
       }
+    } else {
+      console.warn('[VoiceMessage] No audio data recorded');
+      setError('No audio recorded');
+    }
+  }, [isRecording, onVoiceMessageSent]);
 
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
+  const cancelRecording = useCallback(async () => {
+    if (!isRecording) return;
+
+    console.log('[VoiceMessage] Canceling recording...');
+    setIsRecording(false);
+    setRecordingDuration(0);
+    recordingDurationRef.current = 0;
+    audioDataRef.current = [];
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    if (processorRef.current) {
+      processorRef.current.disconnect();
+      processorRef.current = null;
+    }
+
+    if (audioContextRef.current) {
+      await audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
     }
   }, [isRecording]);
 

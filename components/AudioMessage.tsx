@@ -34,6 +34,9 @@ export const AudioMessage: React.FC<AudioMessageProps> = ({
     const audio = audioRef.current;
     if (!audio) return;
 
+    // Ensure audio is at full volume
+    audio.volume = 1.0;
+
     const handleLoadedMetadata = () => {
       setAudioDuration(audio.duration);
       setIsLoading(false);
@@ -54,8 +57,10 @@ export const AudioMessage: React.FC<AudioMessageProps> = ({
 
     const handleError = () => {
       setIsLoading(false);
-      setError('Failed to load audio');
-      console.error('Audio load error:', audio.error);
+      const errorCode = audio.error?.code;
+      const errorMessage = audio.error?.message || 'Unknown error';
+      console.error('Audio load error:', { code: errorCode, message: errorMessage, url });
+      setError(`Failed to load audio (${errorCode || 'unknown'})`);
     };
 
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);

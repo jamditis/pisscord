@@ -32,10 +32,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - This is expected behavior - user must tap/click first to unlock audio
 - **Location:** `services/sounds.ts` and call sites in `App.tsx`, `VoiceStage.tsx`
 
-**Voice Channel Join Defaults:**
-- Users should join voice channels **muted and with camera off** by default
-- Currently users join with mic/camera on, which can be jarring
-- **Location:** `App.tsx` - `handleJoinVoiceChannel()` and initial state for `isMuted`/`isVideoOff`
+**Voice Channel Join Defaults:** ✅ FIXED
+- Users now join voice channels **muted and with camera off** by default
+- Changed `isVideoEnabled` and `isAudioEnabled` initial state to `false` in `App.tsx:132-133`
+- Tracks are disabled immediately after `getLocalStream()` at `App.tsx:516-519`
 
 **Upcoming: Auth & Stability Plan:**
 - Comprehensive plan at `CLAUDE_IMPLEMENTATION_PLAN_AUTH_AND_STABLE.md` covers:
@@ -43,6 +43,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Persistent voice/video with HD screensharing
   - Unified Firebase Auth credentials across web/Android/desktop
 - ✅ Codex PR #11 reverted (PR #12 merged), branch deleted - ready for clean implementation
+
+**Feature Idea: #dev Channel with AI Error Translation:**
+- Password-protected developer channel that captures console logs/errors
+- Sends errors to Pissbot for translation into user-friendly language
+- Displays translated errors as dynamic toast notifications
+- **Safeguards needed:**
+  - Rate limiting (max N requests per minute)
+  - Chunking/truncation for long error messages
+  - Token budget to prevent overloads
+  - Deduplication of repeated errors
+- **Implementation notes:**
+  - Hook into `console.error` and `window.onerror`
+  - Queue errors with debounce before sending to Gemini
+  - Cache translations for identical errors
 
 ## Project Overview
 

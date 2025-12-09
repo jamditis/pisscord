@@ -129,8 +129,8 @@ export default function App() {
   // --- STATE: Media ---
   const [myStream, setMyStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
-  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
-  const [isAudioEnabled, setIsAudioEnabled] = useState(true);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(false); // Start with camera off
+  const [isAudioEnabled, setIsAudioEnabled] = useState(false); // Start muted
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [remoteVolume, setRemoteVolume] = useState<number>(100); // Master volume (0-200)
   const [userVolumes, setUserVolumes] = useState<Map<string, number>>(new Map()); // Per-user volume overrides (0-200)
@@ -512,6 +512,11 @@ export default function App() {
         } else {
             log("⚠️ WARNING: No audio track in stream! Microphone may not be available.", 'error');
         }
+
+        // Apply initial muted/video-off state (users join muted with camera off by default)
+        stream.getAudioTracks().forEach(t => t.enabled = isAudioEnabledRef.current);
+        stream.getVideoTracks().forEach(t => t.enabled = isVideoEnabledRef.current);
+        log(`Applied initial state: audio=${isAudioEnabledRef.current}, video=${isVideoEnabledRef.current}`, 'webrtc');
 
         setMyStream(stream);
         return stream;
