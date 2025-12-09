@@ -9,29 +9,28 @@ This document defines the design system used in the Pisscord mobile app (Capacit
 ### Primary Colors
 | Name | Hex | Usage |
 |------|-----|-------|
-| **Piss Gold** | `#f0e130` | Primary accent, active states, branding |
-| **Purple** | `#a855f7` / `#6366f1` | Secondary accent, AI/bot elements, buttons |
-| **Green (Live)** | `#22c55e` | Connected state, success, live indicators |
-| **Red** | `#ef4444` | Disconnect, errors, danger actions |
+| **Piss Yellow** | `#f0e130` | Primary accent, selections, branding |
+| **Piss Gold** | `#ffd700` | Secondary gold tone |
+| **Angry Purple** | `#8b5cf6` | Secondary accent, glitches |
+| **Electric Violet** | `#a855f7` | Gradients |
+| **Hot Pink** | `#ec4899` | Glitch highlights |
+| **Neon Cyan** | `#22d3ee` | Data streams, futuristic accents |
+| **Sick Green** | `#84cc16` | Badges, success |
 
 ### Background Colors
 | Name | Hex | Usage |
 |------|-----|-------|
-| **Dark Base** | `#16162a` | Main background, input areas |
-| **Dark Gradient Start** | `#1a1a2e` | Gradient top |
-| **Dark Gradient End** | `#0f0f1a` | Gradient bottom (modals) |
-| **Discord Dark** | `#202225` | Legacy desktop background |
-| **Discord Sidebar** | `#2f3136` | Desktop sidebar |
-| **Discord Main** | `#36393f` | Desktop main content |
+| **Void** | `#0a0a0f` | Main app background (deepest black) |
+| **Abyss** | `#12121a` | Sidebars, panels |
+| **Surface** | `#1a1a26` | Cards, headers |
+| **Elevated** | `#252533` | Hovers, active states |
 
 ### Text Colors
-| Name | Value | Usage |
-|------|-------|-------|
-| **Primary** | `text-white` | Headers, important text |
-| **Secondary** | `text-white/80` | Body text, messages |
-| **Muted** | `text-white/50` | Labels, timestamps |
-| **Subtle** | `text-white/30` | Placeholders, hints |
-| **Inactive** | `#6b7280` | Inactive nav items |
+| Name | Hex | Usage |
+|------|-----|-------|
+| **Text** | `#e8e8f0` | Primary text |
+| **Text Dim** | `#9898a8` | Secondary text, metadata |
+| **Muted** | `#4a4a5a` | Disabled, placeholders |
 
 ### Transparency Levels
 ```css
@@ -57,37 +56,30 @@ bg-red-500/20     /* Danger/disconnect background */
 
 ## Typography
 
-### Font Sizes
-| Class | Size | Usage |
-|-------|------|-------|
-| `text-lg` | 18px | Screen titles, headers |
-| `text-sm` | 14px | Body text, messages |
-| `text-xs` | 12px | Labels, timestamps, badges |
-| `text-[10px]` | 10px | Nav labels, micro text |
-
-### Font Weights
-```css
-font-bold      /* Headers, usernames */
-font-semibold  /* Sub-headers */
-font-medium    /* Button text, labels */
-```
+### Fonts
+| Family | Usage |
+|--------|-------|
+| **Outfit** | Body text, UI elements (Sans-serif) |
+| **Dela Gothic One** | Headers, Branding (Display) |
+| **JetBrains Mono** | Code blocks, IDs, technical data |
 
 ### Text Styles
 ```css
-/* Headers */
-.header-title {
-  font-semibold text-lg tracking-wide
-  color: #f0e130; /* Piss Gold */
+/* Branding Header */
+.font-display {
+  font-family: 'Dela Gothic One', cursive;
+  letter-spacing: 0.05em;
 }
 
-/* Section labels */
-.section-label {
-  text-xs font-bold text-white/40 uppercase tracking-wider
+/* Code */
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
 }
 
-/* Timestamps */
-.timestamp {
-  text-[10px] text-white/30
+/* Glitch Effect */
+.glitch-text {
+  position: relative;
+  /* ... see index.css for keyframes ... */
 }
 ```
 
@@ -336,6 +328,23 @@ whileTap={{ scale: 0.95 }}
 ---
 
 ## Animations
+
+### Visual Effects
+
+#### Scanlines
+Utility class: `.scanlines`
+- Applies a CRT-style scanline overlay to the container.
+- **Usage:** Apply to UI containers (Sidebar, Chat) but NOT video feeds to maintain clarity.
+
+#### Glitch Text
+Component: `<GlitchText />`
+- Creates a chromatic aberration glitch effect on hover.
+- **Usage:** Branding headers ("PISSCORD").
+
+#### Void Background
+Component: `<VoidBackground />`
+- Slow-moving, deep gradient blobs in the background.
+- **Usage:** App root.
 
 ### Framer Motion Presets
 ```tsx
