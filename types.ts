@@ -26,8 +26,6 @@ export interface PresenceUser extends UserProfile {
   peerId: string;
   lastSeen: number;
   voiceChannelId?: string;
-  authUserId?: string;
-  email?: string;
 }
 
 export interface Message {
