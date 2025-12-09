@@ -5,7 +5,6 @@ import { ChannelList } from './components/ChannelList';
 import { ChatArea } from './components/ChatArea';
 import { VoiceStage } from './components/VoiceStage';
 import { UserList } from './components/UserList';
-import { AuthGate } from './components/AuthGate';
 import { UpdateModal } from './components/UpdateModal';
 import { UserSettingsModal } from './components/UserSettingsModal';
 import { ScreenPickerModal } from './components/ScreenPickerModal';
@@ -24,9 +23,7 @@ import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, up
 import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
 import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService, AppLifecycleService } from './services/platform';
-import { listenToAuthChanges, updateDisplayName as updateAuthDisplayName } from './services/auth';
 import { VoidBackground } from './components/Visuals';
-import { User } from 'firebase/auth';
 
 const APP_VERSION = "1.4.7";
 
@@ -94,7 +91,6 @@ export default function App() {
   
   // --- STATE: Data ---
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
-  const [authUser, setAuthUser] = useState<User | null | undefined>(undefined);
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
       const saved = localStorage.getItem('pisscord_profile');
       if (saved) {
@@ -183,29 +179,6 @@ export default function App() {
 
   const activeChannel = INITIAL_CHANNELS.find(c => c.id === activeChannelId) || INITIAL_CHANNELS[0];
 
-  const syncProfileWithAuthUser = useCallback((user: User) => {
-    setUserProfile(prev => {
-      const displayName = user.displayName || user.email?.split('@')[0] || prev.displayName || generateName();
-      const updatedProfile = {
-        ...prev,
-        displayName,
-        photoURL: user.photoURL || prev.photoURL,
-      };
-      localStorage.setItem('pisscord_profile', JSON.stringify(updatedProfile));
-      return updatedProfile;
-    });
-  }, [authUser]);
-
-  useEffect(() => {
-    const unsubscribeAuth = listenToAuthChanges((user) => {
-      setAuthUser(user);
-      if (user) {
-        syncProfileWithAuthUser(user);
-      }
-    });
-    return unsubscribeAuth;
-  }, [syncProfileWithAuthUser]);
-
   // --- SUBSCRIPTIONS ---
   useEffect(() => {
       // Subscribe to messages for the active channel
@@ -213,13 +186,13 @@ export default function App() {
           // Dev Updates Channel - Fetch from GitHub (Releases + Events)
           Promise.all([fetchGitHubReleases(), fetchGitHubEvents()]).then(([releases, events]) => {
               const allMessages = [...releases, ...events].sort((a, b) => a.timestamp - b.timestamp);
-
+              
               // Add Roadmap as a pinned message (fake timestamp)
               const roadmapMessage: Message = {
                   id: 'roadmap',
                   sender: 'System',
                   content: "# 🗺️ Roadmap\n\n- [x] Group Calls\n- [x] File Sharing\n- [x] Profile Pictures\n- [x] Mobile App\n- [x] Theme Customization\n- [x] End-to-End Encryption\n- [x] Web Browser Version\n- [ ] Direct Messages (DMs)\n- [ ] iOS App\n\n*Updates every commit.*",
-                  timestamp: Date.now(), // Always at bottom? Or top?
+                  timestamp: Date.now(), // Always at bottom? Or top? 
                   // If we want it at top, set timestamp 0. If bottom, Date.now().
                   // Actually, let's just put it in the list.
                   isAi: false
@@ -260,18 +233,6 @@ export default function App() {
 
   // --- LIFECYCLE: Updates & Peer Init ---
   useEffect(() => {
-    if (authUser === undefined) return;
-
-    if (authUser === null) {
-      if (peerInstance.current?.id) {
-        removePresence(peerInstance.current.id);
-      }
-      if (peerInstance.current) {
-        peerInstance.current.destroy();
-      }
-      return;
-    }
-
     isMountedRef.current = true;
 
     // Preload sound effects
@@ -427,7 +388,7 @@ export default function App() {
     peer.on('open', (id) => {
       if (!isMountedRef.current) return;
       setMyPeerId(id);
-      registerPresence(id, userProfile, authUser?.uid || undefined, authUser?.email || undefined);
+      registerPresence(id, userProfile);
       log(`PeerJS initialized with ID: ${id}`);
       log(`Platform: ${navigator.userAgent}`, 'info');
       log(`MediaDevices available: ${!!navigator.mediaDevices}`, 'info');
@@ -601,10 +562,10 @@ export default function App() {
       setConnectionState(ConnectionState.DISCONNECTED);
       setActiveVoiceChannelId(null);
       setIsScreenSharing(false);
-
+      
       // Update presence to show not in voice
       if (myPeerId) {
-          updatePresence(myPeerId, userProfile, null, authUser?.uid || undefined, authUser?.email || undefined);
+          updatePresence(myPeerId, userProfile, null);
       }
       
       log("Left voice channel.", 'info');
@@ -628,7 +589,7 @@ export default function App() {
       setConnectionState(ConnectionState.CONNECTING);
 
       if (myPeerId) {
-          updatePresence(myPeerId, userProfile, channelId, authUser?.uid || undefined, authUser?.email || undefined);
+          updatePresence(myPeerId, userProfile, channelId);
       }
 
       try {
@@ -1013,11 +974,8 @@ export default function App() {
   const handleSaveProfile = (newProfile: UserProfile) => {
       setUserProfile(newProfile);
       localStorage.setItem('pisscord_profile', JSON.stringify(newProfile));
-      if (authUser && newProfile.displayName !== authUser.displayName) {
-          updateAuthDisplayName(newProfile.displayName).catch(err => log(`Failed to sync display name: ${err.message}`, 'error'));
-      }
       // Preserve voice channel when updating profile
-      if (myPeerId) updatePresence(myPeerId, newProfile, activeVoiceChannelId, authUser?.uid || undefined, authUser?.email || undefined);
+      if (myPeerId) updatePresence(myPeerId, newProfile, activeVoiceChannelId);
   };
 
   const handleSaveDevices = (newDevices: DeviceSettings) => {
@@ -1075,15 +1033,6 @@ export default function App() {
       }
   };
 
-  const handleAuthSuccess = (userInfo: { email: string; displayName?: string }) => {
-      setUserProfile(prev => {
-          const displayName = userInfo.displayName || prev.displayName || userInfo.email.split('@')[0] || generateName();
-          const updated = { ...prev, displayName };
-          localStorage.setItem('pisscord_profile', JSON.stringify(updated));
-          return updated;
-      });
-  };
-
   // Global right-click handler
   const handleContextMenu = (e: React.MouseEvent) => {
     // Only show context menu if we're not clicking on an input, textarea, or element with its own context menu
@@ -1135,28 +1084,6 @@ export default function App() {
       });
       setAudioUnlockNeeded(false);
   }, []);
-
-  if (authUser === undefined) {
-    return (
-      <ThemeProvider initialTheme={appSettings.theme}>
-        <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f] text-white relative overflow-hidden">
-          <VoidBackground />
-          <div className="relative z-10 text-center">
-            <p className="text-lg font-semibold">Checking your credentials…</p>
-            <p className="text-sm text-white/70">Connecting to Firebase Auth</p>
-          </div>
-        </div>
-      </ThemeProvider>
-    );
-  }
-
-  if (!authUser) {
-    return (
-      <ThemeProvider initialTheme={appSettings.theme}>
-        <AuthGate onAuthenticated={handleAuthSuccess} />
-      </ThemeProvider>
-    );
-  }
 
   return (
     <ThemeProvider initialTheme={appSettings.theme}>

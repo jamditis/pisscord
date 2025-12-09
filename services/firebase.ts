@@ -28,7 +28,6 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const firebaseApp = app;
 const db = getDatabase(app);
 const storage = getStorage(app);
 
@@ -114,7 +113,7 @@ export const checkForMOTD = async (): Promise<string | null> => {
     }
 };
 
-export const registerPresence = (peerId: string, profile: UserProfile, authUserId?: string, email?: string) => {
+export const registerPresence = (peerId: string, profile: UserProfile) => {
   const userRef = ref(db, `users/${peerId}`);
 
   // Set initial status
@@ -125,9 +124,7 @@ export const registerPresence = (peerId: string, profile: UserProfile, authUserI
     color: profile.color,
     photoURL: profile.photoURL || null,
     lastSeen: Date.now(),
-    voiceChannelId: null,
-    authUserId: authUserId || null,
-    email: email || null
+    voiceChannelId: null
   });
 
   // Automatically remove user when they disconnect (close app/lose internet)
@@ -135,13 +132,7 @@ export const registerPresence = (peerId: string, profile: UserProfile, authUserI
 };
 
 // Also export a way to update presence while online without reconnecting
-export const updatePresence = (
-  peerId: string,
-  profile: UserProfile,
-  voiceChannelId: string | null = null,
-  authUserId?: string,
-  email?: string
-) => {
+export const updatePresence = (peerId: string, profile: UserProfile, voiceChannelId: string | null = null) => {
     const userRef = ref(db, `users/${peerId}`);
     set(userRef, {
       peerId,
@@ -150,9 +141,7 @@ export const updatePresence = (
       color: profile.color,
       photoURL: profile.photoURL || null,
       lastSeen: Date.now(),
-      voiceChannelId,
-      authUserId: authUserId || null,
-      email: email || null
+      voiceChannelId
     });
     // Ensure disconnect handler is still active (it usually persists on the socket connection)
     onDisconnect(userRef).remove();
