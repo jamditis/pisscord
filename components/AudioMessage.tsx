@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../contexts/ThemeContext';
+import { transcribeAudio } from '../services/geminiService';
 
 interface AudioMessageProps {
   url: string;
@@ -22,6 +23,11 @@ export const AudioMessage: React.FC<AudioMessageProps> = ({
   const [audioDuration, setAudioDuration] = useState(duration);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Transcription state
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcript, setTranscript] = useState<string | null>(null);
+  const [showTranscript, setShowTranscript] = useState(false);
 
   // Generate stable waveform heights once per component instance
   const waveformHeights = useMemo(() => {
@@ -118,84 +124,149 @@ export const AudioMessage: React.FC<AudioMessageProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const handleTranscribe = async () => {
+    if (isTranscribing || transcript) {
+      // If already transcribed, just toggle visibility
+      setShowTranscript(!showTranscript);
+      return;
+    }
+
+    setIsTranscribing(true);
+    try {
+      const result = await transcribeAudio(url);
+      setTranscript(result);
+      setShowTranscript(true);
+    } catch (err) {
+      console.error('Transcription failed:', err);
+      setTranscript('⚠️ Transcription failed');
+      setShowTranscript(true);
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
   const progress = audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0;
 
   return (
-    <div className="flex items-center bg-discord-dark/60 rounded-lg p-3 max-w-xs border border-discord-dark">
-      {/* Hidden audio element */}
-      <audio ref={audioRef} src={url} preload="metadata" />
+    <div className="max-w-xs">
+      <div className="flex items-center bg-discord-dark/60 rounded-lg p-3 border border-discord-dark">
+        {/* Hidden audio element */}
+        <audio ref={audioRef} src={url} preload="metadata" />
 
-      {/* Play/Pause button */}
-      <motion.button
-        onClick={() => {
-          setError(null); // Clear error on retry
-          togglePlayPause();
-        }}
-        disabled={isLoading}
-        whileTap={{ scale: 0.95 }}
-        className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors"
-        style={{ backgroundColor: error ? '#ef4444' : colors.primary }}
-        title={error || (isPlaying ? 'Pause' : 'Play')}
-      >
-        {isLoading ? (
-          <i className="fas fa-spinner fa-spin text-white text-sm"></i>
-        ) : error ? (
-          <i className="fas fa-exclamation-triangle text-white text-sm"></i>
-        ) : isPlaying ? (
-          <i className="fas fa-pause text-white text-sm"></i>
-        ) : (
-          <i className="fas fa-play text-white text-sm ml-0.5"></i>
-        )}
-      </motion.button>
-
-      {/* Waveform / Progress */}
-      <div className="flex-1 ml-3">
-        {/* Simple waveform visualization */}
-        <div
-          ref={progressRef}
-          onClick={handleProgressClick}
-          className="h-8 bg-discord-sidebar rounded cursor-pointer relative overflow-hidden group"
+        {/* Play/Pause button */}
+        <motion.button
+          onClick={() => {
+            setError(null); // Clear error on retry
+            togglePlayPause();
+          }}
+          disabled={isLoading}
+          whileTap={{ scale: 0.95 }}
+          className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors"
+          style={{ backgroundColor: error ? '#ef4444' : colors.primary }}
+          title={error || (isPlaying ? 'Pause' : 'Play')}
         >
-          {/* Waveform bars (decorative) */}
-          <div className="absolute inset-0 flex items-center justify-around px-1">
-            {waveformHeights.map((height, i) => {
-              const isActive = (i / 20) * 100 <= progress;
-              return (
-                <div
-                  key={i}
-                  className="w-1 rounded-full transition-colors"
-                  style={{
-                    height: `${height}%`,
-                    backgroundColor: isActive ? colors.primary : 'rgba(255, 255, 255, 0.2)',
-                  }}
-                />
-              );
-            })}
+          {isLoading ? (
+            <i className="fas fa-spinner fa-spin text-white text-sm"></i>
+          ) : error ? (
+            <i className="fas fa-exclamation-triangle text-white text-sm"></i>
+          ) : isPlaying ? (
+            <i className="fas fa-pause text-white text-sm"></i>
+          ) : (
+            <i className="fas fa-play text-white text-sm ml-0.5"></i>
+          )}
+        </motion.button>
+
+        {/* Waveform / Progress */}
+        <div className="flex-1 ml-3">
+          {/* Simple waveform visualization */}
+          <div
+            ref={progressRef}
+            onClick={handleProgressClick}
+            className="h-8 bg-discord-sidebar rounded cursor-pointer relative overflow-hidden group"
+          >
+            {/* Waveform bars (decorative) */}
+            <div className="absolute inset-0 flex items-center justify-around px-1">
+              {waveformHeights.map((height, i) => {
+                const isActive = (i / 20) * 100 <= progress;
+                return (
+                  <div
+                    key={i}
+                    className="w-1 rounded-full transition-colors"
+                    style={{
+                      height: `${height}%`,
+                      backgroundColor: isActive ? colors.primary : 'rgba(255, 255, 255, 0.2)',
+                    }}
+                  />
+                );
+              })}
+            </div>
+
+            {/* Progress overlay */}
+            <div
+              className="absolute inset-y-0 left-0 bg-white/5 transition-all"
+              style={{ width: `${progress}%` }}
+            />
           </div>
 
-          {/* Progress overlay */}
-          <div
-            className="absolute inset-y-0 left-0 bg-white/5 transition-all"
-            style={{ width: `${progress}%` }}
-          />
+          {/* Time display */}
+          <div className="flex justify-between mt-1 text-[10px] text-discord-muted">
+            <span>{formatTime(currentTime)}</span>
+            <span>{formatTime(audioDuration)}</span>
+          </div>
         </div>
 
-        {/* Time display */}
-        <div className="flex justify-between mt-1 text-[10px] text-discord-muted">
-          <span>{formatTime(currentTime)}</span>
-          <span>{formatTime(audioDuration)}</span>
-        </div>
+        {/* Transcribe button */}
+        <motion.button
+          onClick={handleTranscribe}
+          disabled={isTranscribing}
+          whileTap={{ scale: 0.95 }}
+          className={`ml-2 p-2 rounded transition-colors ${
+            transcript
+              ? 'text-purple-400 hover:text-purple-300 hover:bg-purple-500/20'
+              : 'text-discord-muted hover:text-white hover:bg-discord-hover'
+          }`}
+          title={isTranscribing ? 'Transcribing...' : transcript ? (showTranscript ? 'Hide transcript' : 'Show transcript') : 'Transcribe with Pissbot'}
+        >
+          {isTranscribing ? (
+            <i className="fas fa-spinner fa-spin text-xs"></i>
+          ) : (
+            <i className={`fas fa-closed-captioning text-xs ${transcript ? 'text-purple-400' : ''}`}></i>
+          )}
+        </motion.button>
+
+        {/* Download button */}
+        <a
+          href={url}
+          download={fileName}
+          className="ml-1 p-2 rounded hover:bg-discord-hover text-discord-muted hover:text-white transition-colors"
+          title="Download"
+        >
+          <i className="fas fa-download text-xs"></i>
+        </a>
       </div>
 
-      {/* Download button */}
-      <a
-        href={url}
-        download={fileName}
-        className="ml-2 p-2 rounded hover:bg-discord-hover text-discord-muted hover:text-white transition-colors"
-        title="Download"
-      >
-        <i className="fas fa-download text-xs"></i>
-      </a>
+      {/* Expandable Transcript */}
+      <AnimatePresence>
+        {showTranscript && transcript && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-2 px-3 py-2 bg-discord-dark/40 rounded-lg border border-discord-dark">
+              <div className="flex items-center gap-1 mb-1">
+                <i className="fas fa-robot text-[10px] text-purple-400"></i>
+                <span className="text-[10px] text-purple-400 font-medium">Transcript</span>
+              </div>
+              <p className="text-sm text-discord-text/80 italic leading-relaxed">
+                {transcript}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

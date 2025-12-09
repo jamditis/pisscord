@@ -53,6 +53,75 @@ export interface ChatMessage {
   content: string;
 }
 
+// Transcribe audio from URL using Gemini
+export const transcribeAudio = async (audioUrl: string): Promise<string> => {
+  try {
+    const client = getClient();
+    if (!client) {
+      return "⚠️ Transcription unavailable: API key not configured.";
+    }
+
+    // Fetch audio file and convert to base64
+    const response = await fetch(audioUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch audio: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        // Extract base64 part after the data URL prefix
+        const base64Data = dataUrl.split(',')[1];
+        resolve(base64Data);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+    // Determine MIME type
+    const mimeType = blob.type || 'audio/wav';
+
+    // Timeout Promise
+    const timeout = new Promise<string>((_, reject) =>
+      setTimeout(() => reject(new Error("Transcription timed out after 30s")), 30000)
+    );
+
+    const transcribePromise = async () => {
+      const result = await client.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                inlineData: {
+                  mimeType,
+                  data: base64
+                }
+              },
+              {
+                text: "Transcribe this audio message exactly as spoken. Only output the transcription text, nothing else. If the audio is unclear or silent, respond with '[Audio unclear or silent]'."
+              }
+            ]
+          }
+        ],
+        config: {
+          maxOutputTokens: 1024,
+          temperature: 0.1, // Low temperature for accurate transcription
+        },
+      });
+      return result.text || "[No transcription generated]";
+    };
+
+    return await Promise.race([transcribePromise(), timeout]);
+  } catch (error: any) {
+    console.error("Error transcribing audio:", error);
+    return `⚠️ Transcription failed: ${error.message || "Unknown error"}`;
+  }
+};
+
 export const generateAIResponse = async (
   prompt: string,
   conversationHistory: ChatMessage[] = []
