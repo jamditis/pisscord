@@ -30,8 +30,9 @@ export const AudioMessage: React.FC<AudioMessageProps> = ({
   const [showTranscript, setShowTranscript] = useState(false);
 
   // Generate stable waveform heights once per component instance
+  // More bars for wider player (30 bars at 480px width)
   const waveformHeights = useMemo(() => {
-    return Array.from({ length: 20 }).map((_, i) =>
+    return Array.from({ length: 30 }).map((_, i) =>
       20 + Math.sin(i * 0.5) * 15 + Math.random() * 10
     );
   }, []);
@@ -148,7 +149,7 @@ export const AudioMessage: React.FC<AudioMessageProps> = ({
   const progress = audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0;
 
   return (
-    <div className="max-w-xs">
+    <div className="max-w-[480px]">
       <div className="flex items-center bg-discord-dark/60 rounded-lg p-3 border border-discord-dark">
         {/* Hidden audio element */}
         <audio ref={audioRef} src={url} preload="metadata" />
@@ -187,7 +188,7 @@ export const AudioMessage: React.FC<AudioMessageProps> = ({
             {/* Waveform bars (decorative) */}
             <div className="absolute inset-0 flex items-center justify-around px-1">
               {waveformHeights.map((height, i) => {
-                const isActive = (i / 20) * 100 <= progress;
+                const isActive = (i / 30) * 100 <= progress;
                 return (
                   <div
                     key={i}

@@ -102,7 +102,7 @@ export const transcribeAudio = async (audioUrl: string): Promise<string> => {
                 }
               },
               {
-                text: "Transcribe this audio message exactly as spoken. Only output the transcription text, nothing else. If the audio is unclear or silent, respond with '[Audio unclear or silent]'."
+                text: "Transcribe this audio message. Format the transcript nicely with proper punctuation and capitalization. If multiple speakers are detected, label them as 'Speaker 1:', 'Speaker 2:', etc. on separate lines. Keep the transcription accurate to what was spoken. If the audio is unclear or silent, respond with '[Audio unclear or silent]'."
               }
             ]
           }
