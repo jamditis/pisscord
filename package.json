@@ -83,6 +83,7 @@
     "electron": "^30.0.1",
     "electron-builder": "^24.13.3",
     "ico-to-png": "^0.2.2",
+    "playwright": "^1.57.0",
     "png-to-ico": "^3.0.1",
     "sharp": "^0.34.5",
     "typescript": "^5.2.2",

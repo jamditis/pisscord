@@ -13,10 +13,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Action Item:** If you are Claude, please do not revert the mobile layout fixes or the `services/platform.ts` abstraction.
 
 ## 🐛 Known Issues (v1.4.8 Backlog)
+
 **Sound Effects (Browser Limitation):**
 - Startup/launch sound doesn't play during splash (browser blocks autoplay without user interaction)
 - This is expected behavior - user must tap/click first to unlock audio
 - **Location:** `services/sounds.ts` and call sites in `App.tsx`, `VoiceStage.tsx`
+
+**Voice Channel Join Defaults:**
+- Users should join voice channels **muted and with camera off** by default
+- Currently users join with mic/camera on, which can be jarring
+- **Location:** `App.tsx` - `handleJoinVoiceChannel()` and initial state for `isMuted`/`isVideoOff`
+
+**Pending: Codex PR Revert Decision:**
+- PR #11 (`codex/stabilize-loading-and-main-features`) was merged to master but contains incomplete auth scaffolding
+- PR #12 (revert PR) is ready for review: https://github.com/jamditis/pisscord/pull/12
+- **Recommendation:** Accept the revert - the Codex changes add `AuthGate.tsx` and `auth.ts` but:
+  - The auth gate is never actually shown to users (dead code)
+  - The implementation is incomplete and adds complexity without functioning auth
+  - A cleaner implementation is planned in `CLAUDE_IMPLEMENTATION_PLAN_AUTH_AND_STABLE.md`
+
+**Upcoming: Auth & Stability Plan:**
+- New comprehensive plan at `CLAUDE_IMPLEMENTATION_PLAN_AUTH_AND_STABLE.md` covers:
+  - Stabilizing app loading with Firebase init guardrails
+  - Persistent voice/video with HD screensharing
+  - Unified Firebase Auth credentials across web/Android/desktop
+- Should be implemented **after** reverting PR #11 for a clean slate
 
 ## Project Overview
 

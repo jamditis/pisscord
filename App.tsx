@@ -16,6 +16,8 @@ import { MobileNav, MobileView } from './components/MobileNav';
 import { SplashScreen } from './components/SplashScreen';
 import { ReleaseNotesModal, shouldShowReleaseNotes, markVersionAsSeen } from './components/ReleaseNotesModal';
 import { useIsMobile } from './hooks/useIsMobile';
+import { useResizablePanel } from './hooks/useResizablePanel';
+import { ResizeHandle } from './components/ResizeHandle';
 import { markChannelAsRead, updateNewestFromMessages, getUnreadChannels } from './services/unread';
 import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs, AppSettings, AppTheme } from './types';
 import { ThemeProvider, themeColors } from './contexts/ThemeContext';
@@ -150,10 +152,27 @@ export default function App() {
 
   // --- UI STATE ---
   const [isUserListCollapsed, setIsUserListCollapsed] = useState(false);
+  const [isChannelListCollapsed, setIsChannelListCollapsed] = useState(false);
   const [mobileView, setMobileView] = useState<MobileView>('chat');
   const [showSplash, setShowSplash] = useState(true);
   const [audioUnlockNeeded, setAudioUnlockNeeded] = useState(false);
   const isMobile = useIsMobile();
+
+  // --- RESIZABLE SIDEBARS ---
+  const channelListResize = useResizablePanel({
+    storageKey: 'pisscord_channel_list_width',
+    defaultWidth: 240,
+    minWidth: 180,
+    maxWidth: 400,
+    side: 'right'
+  });
+  const userListResize = useResizablePanel({
+    storageKey: 'pisscord_user_list_width',
+    defaultWidth: 240,
+    minWidth: 180,
+    maxWidth: 400,
+    side: 'left'
+  });
 
   // --- REFS ---
   const peerInstance = useRef<Peer | null>(null);
@@ -1421,7 +1440,10 @@ export default function App() {
           <Sidebar onServerClick={() => setActiveChannelId('1')} />
 
           {/* CHANNEL LIST + VOICE CONTROLS */}
-          <div className="flex flex-col h-full bg-discord-sidebar w-60 relative scanlines">
+          <div
+            className="flex flex-col h-full bg-discord-sidebar relative scanlines"
+            style={{ width: isChannelListCollapsed ? 72 : channelListResize.width }}
+          >
               <ChannelList
                 channels={INITIAL_CHANNELS}
                 activeChannelId={activeChannelId}
@@ -1453,7 +1475,16 @@ export default function App() {
                 onVolumeChange={setRemoteVolume}
                 onShowToast={(type, title, message) => toast[type](title, message)}
                 unreadChannels={unreadChannels}
+                isCollapsed={isChannelListCollapsed}
+                onToggleCollapse={() => setIsChannelListCollapsed(!isChannelListCollapsed)}
               />
+              {!isChannelListCollapsed && (
+                <ResizeHandle
+                  side="right"
+                  onMouseDown={channelListResize.handleMouseDown}
+                  isResizing={channelListResize.isResizing}
+                />
+              )}
           </div>
 
           {/* MAIN VIEW AREA */}
@@ -1478,13 +1509,26 @@ export default function App() {
                     onUserVolumeChange={(peerId, volume) => setUserVolumes(prev => new Map(prev).set(peerId, volume))}
                  />
                </div>
-               <UserList
-                  connectionState={connectionState}
-                  onlineUsers={onlineUsers}
-                  myPeerId={myPeerId}
-                                    isCollapsed={isUserListCollapsed}
-                  onToggleCollapse={() => setIsUserListCollapsed(!isUserListCollapsed)}
-               />
+               <div
+                  className="relative h-full"
+                  style={{ width: isUserListCollapsed ? 48 : userListResize.width }}
+               >
+                  {!isUserListCollapsed && (
+                    <ResizeHandle
+                      side="left"
+                      onMouseDown={userListResize.handleMouseDown}
+                      isResizing={userListResize.isResizing}
+                    />
+                  )}
+                  <UserList
+                    connectionState={connectionState}
+                    onlineUsers={onlineUsers}
+                    myPeerId={myPeerId}
+                    isCollapsed={isUserListCollapsed}
+                    onToggleCollapse={() => setIsUserListCollapsed(!isUserListCollapsed)}
+                    width={userListResize.width}
+                  />
+               </div>
              </div>
           ) : (
              <div className="flex-1 flex min-w-0 relative scanlines">
@@ -1496,13 +1540,26 @@ export default function App() {
                     onSendAIMessage={(text, response) => addMessage(activeChannel.id, response, 'Pissbot', true)}
                     onOpenReportModal={() => setShowReportModal(true)}
                  />
-                 <UserList
-                    connectionState={connectionState}
-                    onlineUsers={onlineUsers}
-                    myPeerId={myPeerId}
-                                        isCollapsed={isUserListCollapsed}
-                    onToggleCollapse={() => setIsUserListCollapsed(!isUserListCollapsed)}
-                 />
+                 <div
+                    className="relative h-full"
+                    style={{ width: isUserListCollapsed ? 48 : userListResize.width }}
+                 >
+                    {!isUserListCollapsed && (
+                      <ResizeHandle
+                        side="left"
+                        onMouseDown={userListResize.handleMouseDown}
+                        isResizing={userListResize.isResizing}
+                      />
+                    )}
+                    <UserList
+                      connectionState={connectionState}
+                      onlineUsers={onlineUsers}
+                      myPeerId={myPeerId}
+                      isCollapsed={isUserListCollapsed}
+                      onToggleCollapse={() => setIsUserListCollapsed(!isUserListCollapsed)}
+                      width={userListResize.width}
+                    />
+                 </div>
              </div>
           )}
         </>

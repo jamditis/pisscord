@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Channel, ChannelType, UserProfile, ConnectionState, PresenceUser } from '../types';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useTheme } from '../contexts/ThemeContext';
 import { GlitchText } from './Visuals';
+import { ServerDropdown } from './ServerDropdown';
 
 interface ChannelListProps {
   channels: Channel[];
@@ -25,6 +26,8 @@ interface ChannelListProps {
   onVolumeChange?: (volume: number) => void;
   onShowToast?: (type: 'success' | 'error' | 'info' | 'warning', title: string, message?: string) => void;
   unreadChannels?: string[]; // Channel IDs with unread messages
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export const ChannelList: React.FC<ChannelListProps> = ({
@@ -46,7 +49,9 @@ export const ChannelList: React.FC<ChannelListProps> = ({
   remoteVolume = 100,
   onVolumeChange,
   onShowToast,
-  unreadChannels = []
+  unreadChannels = [],
+  isCollapsed = false,
+  onToggleCollapse
 }) => {
   // Check if a channel has unread messages
   const hasUnread = (channelId: string) => unreadChannels.includes(channelId);
@@ -54,7 +59,8 @@ export const ChannelList: React.FC<ChannelListProps> = ({
   const getUsersInVoiceChannel = (channelId: string) => {
     return onlineUsers.filter(u => u.voiceChannelId === channelId);
   };
-  const [showVolumeSlider, setShowVolumeSlider] = React.useState(false);
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [showServerDropdown, setShowServerDropdown] = useState(false);
   const isMobile = useIsMobile();
   const { colors, theme } = useTheme();
 
@@ -258,24 +264,178 @@ export const ChannelList: React.FC<ChannelListProps> = ({
     );
   }
 
-  // Desktop layout (original)
+  // Desktop collapsed layout (icons only)
+  if (!isMobile && isCollapsed) {
+    return (
+      <div className="flex-1 flex flex-col min-h-0 w-[72px]">
+        {/* Collapsed header - expand button */}
+        <div
+          className="h-12 flex items-center justify-center border-b border-white/5 shrink-0 relative cursor-pointer hover:bg-white/5 transition-colors"
+          style={{
+            background: 'linear-gradient(180deg, rgba(26, 26, 38, 0.95), rgba(18, 18, 26, 0.98))',
+          }}
+          onClick={onToggleCollapse}
+          title="Expand Sidebar"
+        >
+          <i className="fas fa-chevron-right text-gray-500 hover:text-white transition-colors"></i>
+          <div
+            className="absolute bottom-0 left-0 right-0 h-px"
+            style={{ background: `linear-gradient(90deg, transparent, ${colors.glowLight}, transparent)` }}
+          />
+        </div>
+
+        {/* Collapsed channels - icons only */}
+        <div className="flex-1 overflow-y-auto py-3 flex flex-col items-center space-y-1">
+          {/* Text/AI Channels */}
+          {channels.filter(c => c.type === ChannelType.TEXT || c.type === ChannelType.AI).map(channel => {
+            const isUnread = hasUnread(channel.id);
+            const isActive = activeChannelId === channel.id;
+            return (
+              <div
+                key={channel.id}
+                onClick={() => onSelectChannel(channel.id)}
+                className={`relative w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer transition-all ${
+                  isActive
+                    ? 'bg-discord-hover text-white'
+                    : isUnread
+                      ? 'text-white bg-white/10'
+                      : 'text-discord-muted hover:bg-discord-hover hover:text-discord-text'
+                }`}
+                title={channel.name}
+              >
+                <i className={`${channel.type === ChannelType.AI ? 'fas fa-robot' : 'fas fa-hashtag'} ${isActive ? 'text-lg' : 'text-base'}`}></i>
+                {isUnread && !isActive && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Divider */}
+          <div className="w-8 h-px bg-white/10 my-2"></div>
+
+          {/* Voice Channels */}
+          {channels.filter(c => c.type === ChannelType.VOICE).map(channel => {
+            const usersInChannel = getUsersInVoiceChannel(channel.id);
+            const isActive = activeChannelId === channel.id;
+            return (
+              <div
+                key={channel.id}
+                onClick={() => onSelectChannel(channel.id)}
+                className={`relative w-10 h-10 rounded-xl flex items-center justify-center cursor-pointer transition-all ${
+                  isActive ? 'bg-discord-hover text-white' : 'text-discord-muted hover:bg-discord-hover hover:text-discord-text'
+                }`}
+                title={channel.name}
+              >
+                <i className="fas fa-volume-up"></i>
+                {usersInChannel.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 text-white text-[8px] rounded-full flex items-center justify-center font-bold">
+                    {usersInChannel.length}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Collapsed voice controls (when connected) */}
+        {connectionState === ConnectionState.CONNECTED && (
+          <div className="bg-discord-dark/80 p-2 border-t border-discord-dark shrink-0 flex flex-col items-center space-y-2">
+            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" title="Voice Connected"></div>
+            <button
+              onClick={() => {
+                onToggleAudio?.();
+                onShowToast?.('info', isAudioEnabled ? 'Muted' : 'Unmuted');
+              }}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                isAudioEnabled ? 'bg-discord-main hover:bg-discord-hover text-white' : 'bg-red-500 text-white'
+              }`}
+              title={isAudioEnabled ? 'Mute' : 'Unmute'}
+            >
+              <i className={`fas ${isAudioEnabled ? 'fa-microphone' : 'fa-microphone-slash'} text-xs`}></i>
+            </button>
+            <button
+              onClick={() => {
+                onToggleVideo?.();
+                onShowToast?.('info', isVideoEnabled ? 'Camera Off' : 'Camera On');
+              }}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                isVideoEnabled ? 'bg-discord-main hover:bg-discord-hover text-white' : 'bg-red-500 text-white'
+              }`}
+              title={isVideoEnabled ? 'Stop Video' : 'Start Video'}
+            >
+              <i className={`fas ${isVideoEnabled ? 'fa-video' : 'fa-video-slash'} text-xs`}></i>
+            </button>
+            <button
+              onClick={() => {
+                onDisconnect?.();
+                onShowToast?.('info', 'Disconnected');
+              }}
+              className="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-all"
+              title="Disconnect"
+            >
+              <i className="fas fa-phone-slash text-xs"></i>
+            </button>
+          </div>
+        )}
+
+        {/* Collapsed user status */}
+        <div className="bg-discord-dark p-2 flex justify-center shrink-0">
+          <button
+            onClick={onOpenSettings}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold relative overflow-hidden hover:ring-2 hover:ring-white/20 transition-all"
+            style={{ backgroundColor: userProfile.photoURL ? 'transparent' : userProfile.color }}
+            title={userProfile.displayName}
+          >
+            {userProfile.photoURL ? (
+              <img src={userProfile.photoURL} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <i className="fas fa-user"></i>
+            )}
+            <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-discord-dark bg-green-500"></div>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop layout (expanded)
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Header with glassmorphism */}
-      <div
-        className="h-12 flex items-center px-4 font-display tracking-wider border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer shrink-0 relative"
-        style={{
-          background: 'linear-gradient(180deg, rgba(26, 26, 38, 0.95), rgba(18, 18, 26, 0.98))',
-        }}
-      >
-        <div style={{ color: colors.primary, textShadow: `0 0 20px ${colors.glow}` }}>
-            <GlitchText text="PISSCORD" className="text-lg font-display tracking-widest" />
-        </div>
-        <i className="fas fa-chevron-down ml-auto text-xs text-gray-500"></i>
-        {/* Gradient glow line */}
+      <div className="relative">
         <div
-          className="absolute bottom-0 left-0 right-0 h-px"
-          style={{ background: `linear-gradient(90deg, transparent, ${colors.glowLight}, transparent)` }}
+          className="h-12 flex items-center px-4 font-display tracking-wider border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer shrink-0 relative"
+          style={{
+            background: 'linear-gradient(180deg, rgba(26, 26, 38, 0.95), rgba(18, 18, 26, 0.98))',
+          }}
+          onClick={() => setShowServerDropdown(!showServerDropdown)}
+        >
+          <div style={{ color: colors.primary, textShadow: `0 0 20px ${colors.glow}` }}>
+              <GlitchText text="PISSCORD" className="text-lg font-display tracking-widest" />
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleCollapse?.();
+            }}
+            className="ml-2 p-1 text-gray-500 hover:text-white transition-colors"
+            title="Collapse Sidebar"
+          >
+            <i className="fas fa-chevron-left text-xs"></i>
+          </button>
+          <i className={`fas fa-chevron-${showServerDropdown ? 'up' : 'down'} ml-auto text-xs text-gray-500 transition-transform`}></i>
+          {/* Gradient glow line */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-px"
+            style={{ background: `linear-gradient(90deg, transparent, ${colors.glowLight}, transparent)` }}
+          />
+        </div>
+
+        {/* Server Dropdown */}
+        <ServerDropdown
+          isOpen={showServerDropdown}
+          onClose={() => setShowServerDropdown(false)}
         />
       </div>
 

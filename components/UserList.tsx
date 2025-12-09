@@ -10,6 +10,7 @@ interface UserListProps {
   myPeerId: string | null;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  width?: number;
 }
 
 // Mobile user card component - display only, no call functionality
@@ -85,7 +86,8 @@ export const UserList: React.FC<UserListProps> = ({
   onlineUsers,
   myPeerId,
   isCollapsed = false,
-  onToggleCollapse
+  onToggleCollapse,
+  width = 240
 }) => {
   const isMobile = useIsMobile();
   const { colors } = useTheme();
@@ -198,7 +200,10 @@ export const UserList: React.FC<UserListProps> = ({
 
   // Desktop layout
   return (
-    <div className="w-60 bg-discord-sidebar hidden lg:flex flex-col p-3 border-l border-discord-dark relative scanlines">
+    <div
+      className="bg-discord-sidebar hidden lg:flex flex-col p-3 border-l border-discord-dark relative scanlines h-full"
+      style={{ width }}
+    >
 
       {/* Collapse button */}
       {onToggleCollapse && (

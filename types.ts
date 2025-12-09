@@ -36,8 +36,9 @@ export interface Message {
   isAi?: boolean;
   attachment?: {
     url: string;
-    type: 'image' | 'file';
+    type: 'image' | 'file' | 'audio';
     name: string;
+    duration?: number; // Duration in seconds for audio messages
   };
 }
 

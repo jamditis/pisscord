@@ -4,6 +4,10 @@ import { Message, Channel, ChannelType } from '../types';
 import { generateAIResponse, ChatMessage } from '../services/geminiService';
 import { uploadFile } from '../services/firebase';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { VoiceMessageButton } from './VoiceMessageButton';
+import { AudioMessage } from './AudioMessage';
+import { MarkdownToolbar } from './MarkdownToolbar';
+import { QuickEmojiPicker } from './QuickEmojiPicker';
 
 // Simple Discord-style Markdown renderer
 const renderMarkdown = (text: string): React.ReactNode[] => {
@@ -156,9 +160,70 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
   const [inputValue, setInputValue] = useState('');
   const [isTypingAI, setIsTypingAI] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [showMarkdownToolbar, setShowMarkdownToolbar] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [pendingCaption, setPendingCaption] = useState('');
+  const [pendingFile, setPendingFile] = useState<{ file: File; type: 'image' | 'file' | 'audio' } | null>(null);
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const markdownToggleRef = useRef<HTMLButtonElement>(null);
+  const emojiToggleRef = useRef<HTMLButtonElement>(null);
   const isMobile = useIsMobile();
+
+  // Handle voice message sent
+  const handleVoiceMessageSent = (audioUrl: string, duration: number, fileName: string) => {
+    onSendMessage('', {
+      url: audioUrl,
+      type: 'audio',
+      name: fileName,
+      duration
+    });
+  };
+
+  // Handle markdown insert
+  const handleMarkdownInsert = (before: string, after: string, placeholder: string) => {
+    const input = inputRef.current;
+    if (!input) {
+      setInputValue(prev => prev + before + placeholder + after);
+      return;
+    }
+
+    const start = input.selectionStart || 0;
+    const end = input.selectionEnd || 0;
+    const selectedText = inputValue.substring(start, end);
+    const textToInsert = selectedText || placeholder;
+    const newValue = inputValue.substring(0, start) + before + textToInsert + after + inputValue.substring(end);
+
+    setInputValue(newValue);
+
+    // Set cursor position after insert
+    setTimeout(() => {
+      const cursorPos = start + before.length + textToInsert.length;
+      input.setSelectionRange(cursorPos, cursorPos);
+      input.focus();
+    }, 0);
+  };
+
+  // Handle emoji insert
+  const handleEmojiInsert = (emoji: string) => {
+    const input = inputRef.current;
+    if (!input) {
+      setInputValue(prev => prev + emoji);
+      return;
+    }
+
+    const start = input.selectionStart || inputValue.length;
+    const newValue = inputValue.substring(0, start) + emoji + inputValue.substring(start);
+    setInputValue(newValue);
+
+    setTimeout(() => {
+      const cursorPos = start + emoji.length;
+      input.setSelectionRange(cursorPos, cursorPos);
+      input.focus();
+    }, 0);
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -168,41 +233,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
     scrollToBottom();
   }, [messages]);
 
-  const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) => {
+    // Enter sends, Shift+Enter creates new line (only applies to textarea)
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (!inputValue.trim()) return;
-
-      const text = inputValue;
-      setInputValue('');
-
-      if (channel.type === ChannelType.AI) {
-        // AI Logic - build conversation history from recent messages
-        setIsTypingAI(true);
-        onSendMessage(text);
-
-        // Convert messages to conversation history format (last 10 exchanges)
-        const conversationHistory: ChatMessage[] = messages
-          .slice(-20) // Get last 20 messages
-          .map(msg => ({
-            role: msg.isAi ? 'model' as const : 'user' as const,
-            content: msg.content
-          }));
-
-        try {
-            const response = await generateAIResponse(text, conversationHistory);
-            onSendAIMessage(text, response);
-        } catch (err: any) {
-            const errorMsg = `AI Error: ${err.message || "Unknown error"}`;
-            console.error(errorMsg);
-            onSendAIMessage(text, "😵 Pissbot crashed! Check debug logs.");
-        } finally {
-            setIsTypingAI(false);
-        }
-      } else {
-        // Standard Chat Logic
-        onSendMessage(text);
-      }
+      handleSend();
     }
   };
 
@@ -210,23 +245,39 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const type = file.type.startsWith('image/') ? 'image' as const : 'file' as const;
+
+    // Set pending file - allow user to add caption before sending
+    setPendingFile({ file, type });
+    setPendingCaption(inputValue); // Carry over any existing text as caption
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const sendPendingFile = async () => {
+    if (!pendingFile) return;
+
     setIsUploading(true);
     try {
-      const url = await uploadFile(file);
-      const type = file.type.startsWith('image/') ? 'image' : 'file';
-      onSendMessage('', {
+      const url = await uploadFile(pendingFile.file);
+      onSendMessage(pendingCaption.trim(), {
         url,
-        type,
-        name: file.name
+        type: pendingFile.type,
+        name: pendingFile.file.name
       });
     } catch (error) {
       console.error('Upload failed', error);
-      // Ideally show a toast here, but we'd need to pass toast prop or use a context
-      alert('File upload failed.'); 
+      alert('File upload failed.');
     } finally {
       setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setPendingFile(null);
+      setPendingCaption('');
+      setInputValue('');
     }
+  };
+
+  const cancelPendingFile = () => {
+    setPendingFile(null);
+    setPendingCaption('');
   };
 
   // Helper to find user avatar
@@ -380,6 +431,12 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                               className="rounded-xl max-h-60 border border-white/10"
                             />
                           </a>
+                        ) : msg.attachment.type === 'audio' ? (
+                          <AudioMessage
+                            url={msg.attachment.url}
+                            duration={msg.attachment.duration}
+                            fileName={msg.attachment.name}
+                          />
                         ) : (
                           <div className="flex items-center bg-white/5 p-3 rounded-xl border border-white/10">
                             <i className="fas fa-file-download text-xl text-purple-400 mr-3"></i>
@@ -571,12 +628,18 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                 <div className="mt-2">
                   {msg.attachment.type === 'image' ? (
                     <a href={msg.attachment.url} target="_blank" rel="noopener noreferrer" className="block max-w-sm">
-                       <img 
-                         src={msg.attachment.url} 
-                         alt={msg.attachment.name} 
+                       <img
+                         src={msg.attachment.url}
+                         alt={msg.attachment.name}
                          className="rounded-lg max-h-80 border border-discord-dark cursor-zoom-in"
                        />
                     </a>
+                  ) : msg.attachment.type === 'audio' ? (
+                    <AudioMessage
+                      url={msg.attachment.url}
+                      duration={msg.attachment.duration}
+                      fileName={msg.attachment.name}
+                    />
                   ) : (
                     <div className="flex items-center bg-discord-dark p-3 rounded max-w-sm border border-discord-sidebar">
                       <i className="fas fa-file-download text-2xl text-discord-accent mr-3"></i>
@@ -584,10 +647,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                         <div className="text-discord-link font-medium truncate" title={msg.attachment.name}>{msg.attachment.name}</div>
                         <div className="text-xs text-discord-muted">Attachment</div>
                       </div>
-                      <a 
-                        href={msg.attachment.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
+                      <a
+                        href={msg.attachment.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="ml-auto bg-discord-sidebar hover:bg-discord-hover p-2 rounded text-discord-muted hover:text-white transition-colors"
                       >
                         <i className="fas fa-download"></i>
@@ -610,9 +673,81 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
 
       {/* Input Area */}
       <div className="px-4 pb-6 pt-2 shrink-0">
+        {/* Pending File Preview */}
+        <AnimatePresence>
+          {pendingFile && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="mb-2 bg-discord-dark rounded-lg p-3 border border-discord-sidebar"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  {pendingFile.type === 'image' ? (
+                    <img
+                      src={URL.createObjectURL(pendingFile.file)}
+                      alt="Preview"
+                      className="w-12 h-12 object-cover rounded mr-3"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 bg-discord-sidebar rounded flex items-center justify-center mr-3">
+                      <i className="fas fa-file text-discord-muted text-xl"></i>
+                    </div>
+                  )}
+                  <div className="overflow-hidden">
+                    <div className="text-sm text-white truncate max-w-[200px]">{pendingFile.file.name}</div>
+                    <div className="text-xs text-discord-muted">
+                      {(pendingFile.file.size / 1024).toFixed(1)} KB
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={cancelPendingFile}
+                  className="w-8 h-8 rounded-lg bg-discord-sidebar hover:bg-discord-hover flex items-center justify-center text-discord-muted hover:text-white transition-colors"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="Add a caption (optional)"
+                value={pendingCaption}
+                onChange={(e) => setPendingCaption(e.target.value)}
+                className="mt-2 w-full bg-discord-sidebar border-none outline-none text-white text-sm px-3 py-2 rounded placeholder-discord-muted"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendPendingFile();
+                  }
+                }}
+              />
+              <div className="flex justify-end mt-2">
+                <button
+                  onClick={sendPendingFile}
+                  disabled={isUploading}
+                  className="px-4 py-2 bg-discord-accent hover:bg-discord-accent/80 text-white text-sm font-medium rounded transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center"
+                >
+                  {isUploading ? (
+                    <>
+                      <i className="fas fa-spinner fa-spin mr-2"></i>
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-paper-plane mr-2"></i>
+                      Send
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* #issues Channel - Special Button */}
         {channel.id === '5' ? (
-            <button 
+            <button
                 onClick={onOpenReportModal}
                 className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded flex items-center justify-center transition-all shadow-lg"
             >
@@ -626,42 +761,114 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
             </div>
         ) : (
             /* Standard Input */
-            <div className="bg-discord-chat rounded-lg px-4 py-2.5 flex items-center shadow-sm border border-transparent focus-within:border-discord-accent/50 transition-colors">
-              
+            <div className="bg-discord-chat rounded-lg px-4 py-2.5 flex items-start shadow-sm border border-transparent focus-within:border-discord-accent/50 transition-colors">
+
               {/* Hidden File Input */}
-              <input 
-                 type="file" 
-                 ref={fileInputRef} 
-                 onChange={handleFileSelect} 
-                 className="hidden" 
+              <input
+                 type="file"
+                 ref={fileInputRef}
+                 onChange={handleFileSelect}
+                 className="hidden"
               />
 
-              <button 
+              <button
                  onClick={() => fileInputRef.current?.click()}
-                 disabled={isUploading}
-                 className={`text-discord-muted hover:text-discord-text mr-3 bg-discord-sidebar rounded-full w-6 h-6 flex items-center justify-center transition-colors ${isUploading ? 'animate-pulse cursor-wait' : ''}`}
+                 disabled={isUploading || !!pendingFile}
+                 className="w-8 h-8 rounded-lg bg-discord-sidebar hover:bg-discord-hover text-discord-muted hover:text-white flex items-center justify-center transition-colors mt-0.5 mr-3 disabled:opacity-50 disabled:cursor-not-allowed"
                  title="Upload File"
               >
-                {isUploading ? <i className="fas fa-spinner fa-spin text-xs"></i> : <i className="fas fa-plus text-xs"></i>}
+                {isUploading ? <i className="fas fa-spinner fa-spin text-sm"></i> : <i className="fas fa-plus text-sm"></i>}
               </button>
-              
-              <input
-                type="text"
-                className="bg-transparent border-none outline-none text-discord-text flex-1 placeholder-discord-muted"
+
+              <textarea
+                ref={inputRef}
+                className="bg-transparent border-none outline-none text-discord-text flex-1 placeholder-discord-muted resize-none text-sm leading-6 py-1.5"
                 placeholder={`Message #${channel.name}`}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 autoFocus
+                rows={1}
+                style={{ minHeight: '32px', maxHeight: '120px' }}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = 'auto';
+                  target.style.height = Math.min(target.scrollHeight, 120) + 'px';
+                }}
               />
-              <div className="flex items-center space-x-3 text-discord-muted ml-2 text-xl">
-                 <i className="fas fa-gift hover:text-discord-text cursor-pointer"></i>
-                 <i className="fas fa-sticky-note hover:text-discord-text cursor-pointer"></i>
-                 <i className="fas fa-smile hover:text-discord-text cursor-pointer"></i>
+
+              <div className="flex items-center space-x-1 ml-2 mt-0.5">
+                 {/* Voice Message Button - single instance, handles its own recording UI */}
+                 <VoiceMessageButton
+                   onVoiceMessageSent={handleVoiceMessageSent}
+                   onRecordingStateChange={setIsRecordingVoice}
+                   disabled={channel.type === ChannelType.AI}
+                 />
+
+                 {/* Hide other buttons while recording */}
+                 {!isRecordingVoice && (
+                   <>
+                     {/* Markdown Formatting Button */}
+                     <div className="relative">
+                       <button
+                         ref={markdownToggleRef}
+                         onClick={() => {
+                           setShowEmojiPicker(false); // Close other dropdown
+                           setShowMarkdownToolbar(prev => !prev);
+                         }}
+                         className="w-8 h-8 rounded-lg bg-discord-sidebar hover:bg-discord-hover text-discord-muted hover:text-white flex items-center justify-center transition-colors"
+                         title="Formatting"
+                       >
+                         <i className="fas fa-font text-sm"></i>
+                       </button>
+                       <MarkdownToolbar
+                         isOpen={showMarkdownToolbar}
+                         onClose={() => setShowMarkdownToolbar(false)}
+                         onInsert={handleMarkdownInsert}
+                         toggleRef={markdownToggleRef}
+                       />
+                     </div>
+
+                     {/* Emoji Picker Button */}
+                     <div className="relative">
+                       <button
+                         ref={emojiToggleRef}
+                         onClick={() => {
+                           setShowMarkdownToolbar(false); // Close other dropdown
+                           setShowEmojiPicker(prev => !prev);
+                         }}
+                         className="w-8 h-8 rounded-lg bg-discord-sidebar hover:bg-discord-hover text-discord-muted hover:text-white flex items-center justify-center transition-colors"
+                         title="Emoji"
+                       >
+                         <i className="fas fa-smile text-sm"></i>
+                       </button>
+                       <QuickEmojiPicker
+                         isOpen={showEmojiPicker}
+                         onClose={() => setShowEmojiPicker(false)}
+                         onEmojiSelect={handleEmojiInsert}
+                         toggleRef={emojiToggleRef}
+                       />
+                     </div>
+
+                     {/* Send Button */}
+                     <button
+                       onClick={handleSend}
+                       disabled={!inputValue.trim()}
+                       className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                         inputValue.trim()
+                           ? 'bg-discord-accent hover:bg-discord-accent/80 text-white'
+                           : 'bg-discord-sidebar text-discord-muted cursor-not-allowed'
+                       }`}
+                       title="Send Message"
+                     >
+                       <i className="fas fa-paper-plane text-sm"></i>
+                     </button>
+                   </>
+                 )}
               </div>
             </div>
         )}
-        
+
         {channel.type === ChannelType.AI && (
              <div className="text-xs text-discord-muted mt-1 ml-1">
                  AI responses are generated by Pissbot.
