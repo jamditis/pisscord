@@ -32,7 +32,9 @@
       "Bash(node scripts/setup-release-notes.js:*)",
       "Bash(npm run build:web:*)",
       "Bash(npx firebase deploy:*)",
-      "Bash(npx electron-builder:*)"
+      "Bash(npx electron-builder:*)",
+      "Bash(git checkout:*)",
+      "Bash(git rebase:*)"
     ],
     "deny": [],
     "ask": []

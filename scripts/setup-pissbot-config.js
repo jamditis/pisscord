@@ -82,10 +82,11 @@ Technical Architecture:
 - Components: Sidebar, ChannelList, ChatArea, VoiceStage, UserList`,
 
   patchNotes: `v1.4.7 (December 8, 2025):
-- Fixed splash screen animation repeating on app load
+- Desktop/Web UI parity - full Void/Cyberpunk aesthetic across all platforms
+- New UIAlert sound effects throughout the app
+- Fixed splash screen animation repeating on load
 - Fixed release notes modal not dismissing on web refresh
-- Removed scanlines overlay (interfered with video content)
-- Updated sound effects: distinct errors, update alerts, and video toggle sounds
+- CRT scanlines effect (doesn't obscure video content)
 
 v1.4.6 (December 8, 2025):
 - Removed encryption - simplified for private family server

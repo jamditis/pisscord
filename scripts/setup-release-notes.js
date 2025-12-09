@@ -35,16 +35,19 @@ const DOWNLOAD_URL = `https://github.com/jamditis/pisscord/releases/download/v${
 
 const RELEASE_NOTES = `## What's New in v${CURRENT_VERSION}
 
+### UI Refresh
+- **Desktop/Web Parity** - Desktop now matches Mobile/Web with full Void aesthetic
+- **New Sounds** - Fresh UIAlert sound effects throughout the app
+- **CRT Scanlines** - Retro effect that doesn't obscure video content
+
 ### Bug Fixes
-- **Fixed splash screen** - Animation no longer repeats during app initialization
-- **Fixed release notes popup** - Modal now properly dismisses after clicking refresh
-- **Removed scanlines** - Video and screen share content displays cleanly without overlay
+- **Fixed Splash Screen** - Animation no longer repeats during app load
+- **Fixed Release Notes** - Modal properly dismisses on web refresh
 
 ### From v1.4.6
-- **Removed encryption** - No more passphrase prompts for private family server
-- **Audio unlock banner** - Tap to enable audio when browser blocks autoplay
-- **Battery saver** - App mutes mic/camera when minimized
-- **Void/Cyberpunk theme** - Dark aesthetic with glassmorphism effects
+- No more encryption prompts - just set your name and chat
+- Mobile audio unlock banner when browser blocks autoplay
+- Battery saver - mutes mic/camera when minimized
 `;
 
 async function setupReleaseNotes() {
