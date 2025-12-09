@@ -183,6 +183,7 @@ export default function App() {
   const isAudioEnabledRef = useRef(isAudioEnabled);
   const isVideoEnabledRef = useRef(isVideoEnabled);
   const myStreamRef = useRef<MediaStream | null>(null);
+  const activeVoiceChannelIdRef = useRef<string | null>(activeVoiceChannelId);
 
   useEffect(() => {
     isAudioEnabledRef.current = isAudioEnabled;
@@ -195,6 +196,10 @@ export default function App() {
   useEffect(() => {
     myStreamRef.current = myStream;
   }, [myStream]);
+
+  useEffect(() => {
+    activeVoiceChannelIdRef.current = activeVoiceChannelId;
+  }, [activeVoiceChannelId]);
 
   const activeChannel = INITIAL_CHANNELS.find(c => c.id === activeChannelId) || INITIAL_CHANNELS[0];
 
@@ -258,16 +263,25 @@ export default function App() {
     preloadSounds();
     playSound('app_launch');
 
-    // App Lifecycle (Background/Foreground)
-    AppLifecycleService.onAppStateChange(({ isActive }) => {
+    // App Lifecycle (Background/Foreground) - handles both Capacitor and Web
+    const handleAppStateChange = (isActive: boolean) => {
         log(`App state changed: ${isActive ? 'active' : 'background'}`, 'info');
         const stream = myStreamRef.current;
         if (!stream) return;
 
+        const isInVoiceCall = !!activeVoiceChannelIdRef.current;
+
         if (!isActive) {
-            // Background: Disable tracks to release hardware
-            stream.getAudioTracks().forEach(t => t.enabled = false);
+            // Background: Only disable video (saves battery, no one sees you)
+            // Keep audio ENABLED if in a voice call so others can still hear you!
             stream.getVideoTracks().forEach(t => t.enabled = false);
+
+            if (!isInVoiceCall) {
+                // Not in a call - safe to disable audio too
+                stream.getAudioTracks().forEach(t => t.enabled = false);
+            } else {
+                log('Keeping audio enabled - active voice call in progress', 'info');
+            }
         } else {
             // Foreground: Restore tracks based on user preference
             stream.getAudioTracks().forEach(t => t.enabled = isAudioEnabledRef.current);
@@ -275,7 +289,16 @@ export default function App() {
             // Also try to unlock audio context
             unlockAudio();
         }
-    });
+    };
+
+    // Capacitor (native mobile apps)
+    AppLifecycleService.onAppStateChange(({ isActive }) => handleAppStateChange(isActive));
+
+    // Web Visibility API (mobile web browsers like Safari, Chrome mobile)
+    const handleVisibilityChange = () => {
+        handleAppStateChange(!document.hidden);
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Check for release notes (show popup on new version)
     getReleaseNotes().then(notes => {
@@ -452,6 +475,7 @@ export default function App() {
 
     return () => {
       isMountedRef.current = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (peerInstance.current) {
           if (peerInstance.current.id) removePresence(peerInstance.current.id);
           peerInstance.current.destroy();

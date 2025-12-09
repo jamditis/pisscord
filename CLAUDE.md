@@ -49,12 +49,14 @@ All features from the plan file are now implemented:
   - Unified Firebase Auth credentials across web/Android/desktop
 - ✅ Codex PR #11 reverted (PR #12 merged), branch deleted - ready for clean implementation
 
-**Bug: Battery Saving Feature Interrupts Active Voice Calls:**
-- App goes to sleep/pauses when minimized even during active voice channel sessions
-- This breaks the voice call experience on mobile
-- **Fix needed:** Disable battery saving / app sleep when `activeVoiceChannelId` is set
-- **Location:** `App.tsx` lifecycle handlers around `document.visibilitychange`
-- **Priority:** High - directly impacts core voice call functionality
+**Bug: Battery Saving Feature Interrupts Active Voice Calls:** ✅ FIXED
+- App used to go to sleep/pause when minimized, breaking active voice calls
+- **Fix:** Added `activeVoiceChannelIdRef` to track voice call state in async callbacks
+- When app goes to background:
+  - If in voice call: Keep audio enabled, only disable video (saves battery, call continues)
+  - If not in call: Disable both audio and video (original behavior)
+- Also added `document.visibilitychange` listener for mobile web browsers
+- **Location:** `App.tsx:186` (ref), `App.tsx:266-301` (lifecycle handlers)
 
 **Feature Idea: #dev Channel with AI Error Translation:**
 - Password-protected developer channel that captures console logs/errors
