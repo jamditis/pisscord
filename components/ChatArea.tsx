@@ -147,6 +147,22 @@ const renderMarkdown = (text: string): React.ReactNode[] => {
   return elements;
 };
 
+// Format file size for display (bytes to human-readable)
+const formatFileSize = (bytes?: number): string => {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+};
+
+// Get file extension from filename
+const getFileExtension = (fileName: string): string => {
+  const parts = fileName.split('.');
+  if (parts.length < 2) return 'FILE';
+  return parts[parts.length - 1].toUpperCase();
+};
+
 interface ChatAreaProps {
   channel: Channel;
   messages: Message[];
@@ -173,11 +189,12 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
   const isMobile = useIsMobile();
 
   // Handle voice message sent
-  const handleVoiceMessageSent = (audioUrl: string, duration: number, fileName: string) => {
+  const handleVoiceMessageSent = (audioUrl: string, duration: number, fileName: string, fileSize: number) => {
     onSendMessage('', {
       url: audioUrl,
       type: 'audio',
       name: fileName,
+      size: fileSize,
       duration
     });
   };
@@ -262,7 +279,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
       onSendMessage(pendingCaption.trim(), {
         url,
         type: pendingFile.type,
-        name: pendingFile.file.name
+        name: pendingFile.file.name,
+        size: pendingFile.file.size
       });
     } catch (error) {
       console.error('Upload failed', error);
@@ -439,10 +457,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                           />
                         ) : (
                           <div className="flex items-center bg-white/5 p-3 rounded-xl border border-white/10">
-                            <i className="fas fa-file-download text-xl text-purple-400 mr-3"></i>
+                            <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center mr-3">
+                              <span className="text-[10px] font-bold text-purple-400">{getFileExtension(msg.attachment.name)}</span>
+                            </div>
                             <div className="overflow-hidden flex-1">
                               <div className="text-white/80 text-sm font-medium truncate">{msg.attachment.name}</div>
-                              <div className="text-[10px] text-white/40">Attachment</div>
+                              <div className="text-[10px] text-white/40">
+                                {formatFileSize(msg.attachment.size)}{msg.attachment.size ? ' • ' : ''}{getFileExtension(msg.attachment.name)} file
+                              </div>
                             </div>
                             <a
                               href={msg.attachment.url}
@@ -642,16 +664,20 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                     />
                   ) : (
                     <div className="flex items-center bg-discord-dark p-3 rounded max-w-sm border border-discord-sidebar">
-                      <i className="fas fa-file-download text-2xl text-discord-accent mr-3"></i>
-                      <div className="overflow-hidden">
+                      <div className="w-10 h-10 rounded bg-discord-accent/20 flex items-center justify-center mr-3 flex-shrink-0">
+                        <span className="text-[10px] font-bold text-discord-accent">{getFileExtension(msg.attachment.name)}</span>
+                      </div>
+                      <div className="overflow-hidden flex-1 min-w-0">
                         <div className="text-discord-link font-medium truncate" title={msg.attachment.name}>{msg.attachment.name}</div>
-                        <div className="text-xs text-discord-muted">Attachment</div>
+                        <div className="text-xs text-discord-muted">
+                          {formatFileSize(msg.attachment.size)}{msg.attachment.size ? ' • ' : ''}{getFileExtension(msg.attachment.name)} file
+                        </div>
                       </div>
                       <a
                         href={msg.attachment.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="ml-auto bg-discord-sidebar hover:bg-discord-hover p-2 rounded text-discord-muted hover:text-white transition-colors"
+                        className="ml-auto bg-discord-sidebar hover:bg-discord-hover p-2 rounded text-discord-muted hover:text-white transition-colors flex-shrink-0"
                       >
                         <i className="fas fa-download"></i>
                       </a>
@@ -691,14 +717,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                       className="w-12 h-12 object-cover rounded mr-3"
                     />
                   ) : (
-                    <div className="w-12 h-12 bg-discord-sidebar rounded flex items-center justify-center mr-3">
-                      <i className="fas fa-file text-discord-muted text-xl"></i>
+                    <div className="w-12 h-12 bg-discord-accent/20 rounded flex items-center justify-center mr-3">
+                      <span className="text-[10px] font-bold text-discord-accent">{getFileExtension(pendingFile.file.name)}</span>
                     </div>
                   )}
                   <div className="overflow-hidden">
                     <div className="text-sm text-white truncate max-w-[200px]">{pendingFile.file.name}</div>
                     <div className="text-xs text-discord-muted">
-                      {(pendingFile.file.size / 1024).toFixed(1)} KB
+                      {formatFileSize(pendingFile.file.size)} • {getFileExtension(pendingFile.file.name)} file
                     </div>
                   </div>
                 </div>

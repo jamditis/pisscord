@@ -4,7 +4,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { uploadFile } from '../services/firebase';
 
 interface VoiceMessageButtonProps {
-  onVoiceMessageSent: (audioUrl: string, duration: number, fileName: string) => void;
+  onVoiceMessageSent: (audioUrl: string, duration: number, fileName: string, fileSize: number) => void;
   onRecordingStateChange?: (isRecording: boolean) => void;
   disabled?: boolean;
 }
@@ -220,7 +220,7 @@ export const VoiceMessageButton: React.FC<VoiceMessageButtonProps> = ({
         const url = await uploadFile(file);
         console.log('[VoiceMessage] Upload complete:', url);
 
-        onVoiceMessageSent(url, Math.max(finalDuration, 1), fileName);
+        onVoiceMessageSent(url, Math.max(finalDuration, 1), fileName, wavBlob.size);
       } catch (err) {
         console.error('[VoiceMessage] Processing/upload failed:', err);
         setError('Failed to process voice message');

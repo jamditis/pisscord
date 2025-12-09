@@ -38,6 +38,7 @@ export interface Message {
     url: string;
     type: 'image' | 'file' | 'audio';
     name: string;
+    size?: number; // File size in bytes
     duration?: number; // Duration in seconds for audio messages
   };
 }
