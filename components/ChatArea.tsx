@@ -262,7 +262,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const type = file.type.startsWith('image/') ? 'image' as const : 'file' as const;
+    // Determine file type - check for images, audio, or generic file
+    let type: 'image' | 'file' | 'audio' = 'file';
+    if (file.type.startsWith('image/')) {
+      type = 'image';
+    } else if (file.type.startsWith('audio/') ||
+               /\.(mp3|wav|aiff|aif|m4a|ogg|flac|wma|aac)$/i.test(file.name)) {
+      type = 'audio';
+    }
 
     // Set pending file - allow user to add caption before sending
     setPendingFile({ file, type });
@@ -716,6 +723,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                       alt="Preview"
                       className="w-12 h-12 object-cover rounded mr-3"
                     />
+                  ) : pendingFile.type === 'audio' ? (
+                    <div className="w-12 h-12 bg-purple-500/20 rounded flex items-center justify-center mr-3">
+                      <i className="fas fa-music text-purple-400"></i>
+                    </div>
                   ) : (
                     <div className="w-12 h-12 bg-discord-accent/20 rounded flex items-center justify-center mr-3">
                       <span className="text-[10px] font-bold text-discord-accent">{getFileExtension(pendingFile.file.name)}</span>
@@ -724,7 +735,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                   <div className="overflow-hidden">
                     <div className="text-sm text-white truncate max-w-[200px]">{pendingFile.file.name}</div>
                     <div className="text-xs text-discord-muted">
-                      {formatFileSize(pendingFile.file.size)} • {getFileExtension(pendingFile.file.name)} file
+                      {formatFileSize(pendingFile.file.size)} • {pendingFile.type === 'audio' ? 'Audio' : getFileExtension(pendingFile.file.name)} file
                     </div>
                   </div>
                 </div>
