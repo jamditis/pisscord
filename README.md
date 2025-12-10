@@ -2,7 +2,7 @@
 
 # Pisscord
 
-**Current Version:** v1.4.5 | [Download Latest](https://github.com/jamditis/pisscord/releases/latest) | [Use in Browser](https://pisscord-edbca.web.app)
+**Current Version:** v1.5.0 | [Download Latest](https://github.com/jamditis/pisscord/releases/latest) | [Use in Browser](https://web.pisscord.app)
 
 A private, peer-to-peer Discord clone for trusted groups with encrypted messaging, voice/video calling, AI assistance, and real-time presence. Available as a desktop app, Android app, or directly in your web browser.
 
