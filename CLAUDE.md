@@ -2,8 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 🚨 Handoff Note / Status (v1.4.8-dev)
-**Current State:** v1.4.8 in development on `fix/mobile-web-bugs` branch.
+## 🚨 Handoff Note / Status (v1.5.0)
+**Current State:** v1.5.0 released.
 **Last Updated:** 2025-12-09
 
 ### Recent Work (This Session)
@@ -56,6 +56,14 @@ All features from the plan file are now implemented:
 - **Location:** `App.tsx` lifecycle handlers around `document.visibilitychange`
 - **Priority:** High - directly impacts core voice call functionality
 
+**Upgrade to Gemini 2.5 Flash:**
+- Currently using `gemini-2.0-flash` for Pissbot and transcription
+- Attempted upgrade to `gemini-2.5-flash` caused "API connection error" in Pissbot channel
+- Transcription worked fine with 2.5, but chat with systemInstruction failed
+- **Next steps:** Investigate if issue is with systemInstruction config format for 2.5
+- **Location:** `services/geminiService.ts`
+- **Priority:** Low - 2.0 Flash works fine, 2.5 just has better reasoning
+
 **Feature Idea: #dev Channel with AI Error Translation:**
 - Password-protected developer channel that captures console logs/errors
 - Sends errors to Pissbot for translation into user-friendly language
@@ -75,8 +83,8 @@ All features from the plan file are now implemented:
 Pisscord is a private, multi-platform Discord clone built with React, TypeScript, and PeerJS. It enables direct P2P voice/video calling, text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
 
 **Platforms:** Desktop (Electron), Web Browser, Android (Capacitor), Mobile Web
-**Current Version:** 1.4.7
-**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.4.7
+**Current Version:** 1.5.0
+**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.5.0
 
 ## Key Architecture
 
@@ -353,7 +361,23 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - `noUnusedLocals` and `noUnusedParameters` disabled (intentional)
 - React JSX transform (no need to import React in TSX files)
 
-## Recent Changes (v1.1.0 - v1.4.7)
+## Recent Changes (v1.1.0 - v1.5.0)
+
+### v1.5.0 (2025-12-09)
+- **Voice Messages:** Record and send voice messages with VoiceMessageButton component
+- **Audio Transcription:** Voice messages and audio files automatically transcribed via Gemini 2.0 Flash
+- **Transcript Caching:** Transcripts stored in Firebase `/transcripts` to avoid duplicate API calls
+- **Audio Player:** Waveform audio player with playback controls (480px wide, 30 bars)
+- **File Upload Metadata:** All files now show size badge and extension label
+- **Resizable Sidebars:** Channel and user lists can be resized via drag handles
+- **Collapsible Sidebars:** Click arrows to collapse/expand sidebars
+- **Server Dropdown Menu:** PISSCORD header now has dropdown with Product Page, User Guide, Latest Release, Contact links
+- **Quick Emoji Picker:** Compact emoji picker with categories and recent emojis
+- **Markdown Toolbar:** Formatting help popup for chat messages
+- **Mobile Safe Areas:** Fixed mobile layout cutoff with `env(safe-area-inset-*)`
+- **Dynamic Viewport:** Updated CSS to use `100dvh` for proper mobile browser support
+- **Simplified Voice:** Removed direct calls - voice channels are now the only way to make voice/video calls
+- **Voice Join Defaults:** Users now join voice channels muted with camera off by default
 
 ### v1.4.7 (2025-12-08)
 - **UI Parity**: Desktop UI now matches Mobile/Web with full Void/Cyberpunk aesthetic
