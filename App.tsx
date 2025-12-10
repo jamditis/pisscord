@@ -27,7 +27,7 @@ import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
 import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService, AppLifecycleService } from './services/platform';
 import { VoidBackground } from './components/Visuals';
 
-const APP_VERSION = "1.5.0";
+const APP_VERSION = "1.5.1";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [

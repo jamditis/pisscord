@@ -1,6 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { AuthProvider } from './contexts/AuthContext';
+import { AuthGate } from './components/AuthGate';
 import { Platform, StatusBarService, AppLifecycleService } from './services/platform';
 
 // Initialize mobile-specific features
@@ -39,6 +41,10 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <AuthProvider>
+      <AuthGate>
+        <App />
+      </AuthGate>
+    </AuthProvider>
   </React.StrictMode>
 );

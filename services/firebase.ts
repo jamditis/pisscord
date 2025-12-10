@@ -14,6 +14,7 @@ import {
   endAt
 } from "firebase/database";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { getAuth } from "firebase/auth";
 import { UserProfile, PresenceUser } from "../types";
 
 // Safe environment variable access for both Vite (browser) and Node.js environments
@@ -43,6 +44,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const storage = getStorage(app);
+export const auth = getAuth(app);
 
 // Re-export type to avoid conflict
 export type { PresenceUser as OnlineUser };
