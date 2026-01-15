@@ -61,7 +61,7 @@ import { getPissbotConfig, PissbotConfig } from "./firebase";
  * @internal This is a private helper function, not exported
  */
 const getClient = () => {
-  // Safe environment variable access - try Vite first, then Node.js
+  // Safe environment variable access - try Vite first, then Node.js, then hardcoded fallback
   let apiKey: string | undefined;
 
   // Try Vite's import.meta.env first (browser)
@@ -73,10 +73,11 @@ const getClient = () => {
     apiKey = process.env.GEMINI_API_KEY;
   }
 
+  // Hardcoded fallback for web builds where env vars aren't available
   if (!apiKey) {
-    console.error("GEMINI_API_KEY is missing. Create a .env.local file with VITE_GEMINI_API_KEY=...");
-    return null;
+    apiKey = "AIzaSyDTo6S99xWmmqdMgsz7LPpoacWKwTw91F0";
   }
+
   return new GoogleGenAI({ apiKey });
 };
 
