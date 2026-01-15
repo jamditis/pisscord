@@ -9,16 +9,34 @@ import {
   isSignInWithEmailLink,
   signInWithPopup,
   signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   User
 } from 'firebase/auth';
 import { auth } from './firebase';
+import { Platform } from './platform';
 
 const EMAIL_STORAGE_KEY = 'emailForSignIn';
 
 const googleProvider = new GoogleAuthProvider();
+
+/**
+ * Handle redirect result on page load (for mobile/web Google sign-in)
+ */
+export const handleGoogleRedirectResult = async (): Promise<User | null> => {
+  try {
+    const result = await getRedirectResult(auth);
+    if (result) {
+      return result.user;
+    }
+  } catch (error: any) {
+    console.error('Google redirect result error:', error);
+    throw error;
+  }
+  return null;
+};
 
 /**
  * Get action code settings for email link sign-in
@@ -65,14 +83,27 @@ export const completeEmailLinkSignIn = async (): Promise<User | null> => {
 
 /**
  * Sign in with Google
+ * Uses redirect flow on mobile/web (more reliable), popup on Electron desktop
  */
 export const signInWithGoogle = async (): Promise<User> => {
+  // Use redirect flow on mobile and web browsers (popup often fails)
+  // Only use popup on Electron where it works reliably
+  if (!Platform.isElectron) {
+    await signInWithRedirect(auth, googleProvider);
+    // User will be redirected to Google, then back to app
+    // Result handled by handleGoogleRedirectResult on page load
+    throw new Error('Redirecting to Google sign-in...');
+  }
+
+  // Electron desktop - use popup
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error: any) {
-    // If popup blocked, try redirect
-    if (error.code === 'auth/popup-blocked') {
+    // Fallback to redirect if popup fails for any reason
+    if (error.code === 'auth/popup-blocked' ||
+        error.code === 'auth/popup-closed-by-user' ||
+        error.code === 'auth/cancelled-popup-request') {
       await signInWithRedirect(auth, googleProvider);
       throw new Error('Redirecting to Google sign-in...');
     }

@@ -5,7 +5,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
-import { subscribeToAuth, completeEmailLinkSignIn } from '../services/auth';
+import { subscribeToAuth, completeEmailLinkSignIn, handleGoogleRedirectResult } from '../services/auth';
 
 interface AuthContextType {
   user: User | null;
@@ -43,6 +43,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     };
 
+    // Check for Google redirect result on mount (mobile/web flow)
+    const handleGoogleRedirect = async () => {
+      try {
+        const googleUser = await handleGoogleRedirectResult();
+        if (googleUser) {
+          setUser(googleUser);
+          setLoading(false);
+          return true;
+        }
+      } catch (err: any) {
+        console.error('Google redirect sign-in error:', err);
+        setError(err.message);
+      }
+      return false;
+    };
+
     // Subscribe to auth state
     const unsubscribe = subscribeToAuth((authUser) => {
       setUser(authUser);
@@ -51,6 +67,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Handle email link if present
     handleEmailLink();
+
+    // Handle Google redirect result if returning from Google sign-in
+    handleGoogleRedirect();
 
     return unsubscribe;
   }, []);

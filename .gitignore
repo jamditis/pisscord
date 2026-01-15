@@ -41,3 +41,6 @@ android/
 # Capacitor plugin builds
 capacitor-cordova-android-plugins/
 capacitor-cordova-ios-plugins/
+
+# Firebase Admin SDK credentials (contains private keys)
+pisscord-edbca-firebase-adminsdk-*.json
