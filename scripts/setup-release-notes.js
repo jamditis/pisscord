@@ -30,24 +30,31 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // UPDATE THESE FOR EACH RELEASE
-const CURRENT_VERSION = "1.4.7";
+const CURRENT_VERSION = "1.5.0";
 const DOWNLOAD_URL = `https://github.com/jamditis/pisscord/releases/download/v${CURRENT_VERSION}/Pisscord.Setup.${CURRENT_VERSION}.exe`;
 
 const RELEASE_NOTES = `## What's New in v${CURRENT_VERSION}
 
-### UI Refresh
-- **Desktop/Web Parity** - Desktop now matches Mobile/Web with full Void aesthetic
-- **New Sounds** - Fresh UIAlert sound effects throughout the app
-- **CRT Scanlines** - Retro effect that doesn't obscure video content
+### Voice Messages & AI Transcription
+- **Voice Messages** - Record and send voice messages with the new microphone button
+- **AI Transcription** - Voice messages & audio files automatically transcribed via Gemini 2.0 Flash
+- **Transcript Caching** - Transcripts stored in Firebase to avoid duplicate API calls
+- **Waveform Player** - Enhanced audio player with 480px wide waveform
 
-### Bug Fixes
-- **Fixed Splash Screen** - Animation no longer repeats during app load
-- **Fixed Release Notes** - Modal properly dismisses on web refresh
+### New UI Features
+- **Resizable Sidebars** - Drag handles to resize channel and user lists
+- **Collapsible Sidebars** - Click arrows to collapse/expand
+- **Server Dropdown** - PISSCORD header has dropdown with useful links
+- **Quick Emoji Picker** - Compact picker with categories and recent emojis
+- **Markdown Toolbar** - Formatting help popup for chat messages
 
-### From v1.4.6
-- No more encryption prompts - just set your name and chat
-- Mobile audio unlock banner when browser blocks autoplay
-- Battery saver - mutes mic/camera when minimized
+### Mobile Improvements
+- **Fixed Safe Areas** - No more layout cutoff on mobile
+- **Dynamic Viewport** - Uses 100dvh for proper mobile browser support
+
+### Simplified Voice
+- Voice channels are now the only way to make voice/video calls
+- Join muted with camera off by default
 `;
 
 async function setupReleaseNotes() {
