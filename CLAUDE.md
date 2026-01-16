@@ -556,3 +556,19 @@ Pissbot's AI context is now fetched from Firebase instead of being hardcoded. Th
 3. `ChatArea.tsx` passes last 20 messages as conversation history
 4. If Firebase unavailable, falls back to minimal hardcoded prompt
 5. System instruction built from: systemPrompt + context + patchNotes + documentation
+
+---
+
+## Multi-machine workflow
+
+This repo is developed across multiple machines (MacBook, work Windows PC, home Windows PC). GitHub is the source of truth.
+
+**Before switching machines:**
+```bash
+git add . && git commit -m "WIP" && git push
+```
+
+**After switching machines:**
+```bash
+git pull
+```
