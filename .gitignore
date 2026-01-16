@@ -44,3 +44,12 @@ capacitor-cordova-ios-plugins/
 
 # Firebase Admin SDK credentials (contains private keys)
 pisscord-edbca-firebase-adminsdk-*.json
+
+# Build artifacts (APKs)
+*.apk
+
+# Screenshots (large, local only)
+screenshots/
+
+# Claude local settings
+.claude/settings.local.json
