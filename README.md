@@ -8,7 +8,7 @@
 [![GitHub last commit](https://img.shields.io/github/last-commit/jamditis/pisscord)](https://github.com/jamditis/pisscord/commits)
 [![Update Firebase Version](https://github.com/jamditis/pisscord/actions/workflows/update-firebase-version.yml/badge.svg)](https://github.com/jamditis/pisscord/actions/workflows/update-firebase-version.yml)
 
-**Current Version:** v1.5.0 | [Download Latest](https://github.com/jamditis/pisscord/releases/latest) | [Use in Browser](https://web.pisscord.app)
+**Current Version:** v2.0.0 | [Download Latest](https://github.com/jamditis/pisscord/releases/latest) | [Use in Browser](https://web.pisscord.app)
 
 A private, peer-to-peer Discord clone for trusted groups with encrypted messaging, voice/video calling, AI assistance, and real-time presence. Available as a desktop app, Android app, or directly in your web browser.
 
