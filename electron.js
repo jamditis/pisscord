@@ -97,12 +97,16 @@ async function createWindow() {
   }
 
   // Intercept navigation to external links and open in default browser
+  // Allow Firebase/Google auth URLs to navigate normally (needed for auth flow)
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    const parsedUrl = new URL(url);
     const currentUrl = mainWindow.webContents.getURL();
 
     // Allow navigation within the app (localhost or file://)
     if (currentUrl.startsWith('http://localhost') || currentUrl.startsWith('file://')) {
+      // Allow Firebase auth and Google sign-in URLs
+      if (url.includes('firebaseapp.com/__/auth') || url.includes('accounts.google.com')) {
+        return; // Let these navigate normally
+      }
       // If navigating away from app, open in external browser
       if (!url.startsWith('http://localhost') && !url.startsWith('file://')) {
         event.preventDefault();
@@ -112,9 +116,24 @@ async function createWindow() {
   });
 
   // Handle new window requests (e.g., target="_blank" links)
+  // Allow Firebase auth popups to open inside Electron so signInWithPopup works
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.includes('firebaseapp.com/__/auth') || url.includes('accounts.google.com')) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 500,
+          height: 600,
+          autoHideMenuBar: true,
+          webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+          }
+        }
+      };
+    }
     shell.openExternal(url);
-    return { action: 'deny' }; // Prevent new Electron window
+    return { action: 'deny' };
   });
 
   // Handle minimize to tray
