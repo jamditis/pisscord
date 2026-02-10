@@ -33,7 +33,7 @@ const getEnvVar = (viteKey: string, nodeKey?: string): string | undefined => {
 
 const firebaseConfig = {
   apiKey: getEnvVar('VITE_FIREBASE_API_KEY') || "AIzaSyAHXVi7SSSCOYQswb_MxeydAlNWq86XYXI",
-  authDomain: "pisscord-edbca.firebaseapp.com",
+  authDomain: "pisscord-edbca.web.app",
   databaseURL: "https://pisscord-edbca-default-rtdb.firebaseio.com",
   projectId: "pisscord-edbca",
   storageBucket: "pisscord-edbca.firebasestorage.app",
