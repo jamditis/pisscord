@@ -35,49 +35,43 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
-import { getPissbotConfig, PissbotConfig } from "./firebase";
+import { getPissbotConfig, PissbotConfig, getGeminiApiKey } from "./firebase";
+import { logger } from "./logger";
 
 /**
- * Creates and returns a Google GenAI client instance.
+ * Resolves the Gemini API key from available sources:
+ * 1. Vite env var (VITE_GEMINI_API_KEY)
+ * 2. Node.js/Electron env var (GEMINI_API_KEY)
+ * 3. Firebase Remote Config (system/geminiApiKey in RTDB)
  *
- * This function attempts to load the API key from multiple sources to support
- * different runtime environments:
- *
- * 1. **Vite (Browser)**: Checks `import.meta.env.VITE_GEMINI_API_KEY`
- * 2. **Node.js/Electron**: Falls back to `process.env.GEMINI_API_KEY`
- *
- * @returns {GoogleGenAI | null} A configured GenAI client, or null if no API key is found
- *
- * @example
- * ```typescript
- * const client = getClient();
- * if (!client) {
- *   console.error("API key not configured");
- *   return;
- * }
- * // Use client for API calls...
- * ```
- *
- * @internal This is a private helper function, not exported
+ * Returns null if no key is found anywhere.
  */
-const getClient = () => {
-  // Safe environment variable access - try Vite first, then Node.js, then hardcoded fallback
-  let apiKey: string | undefined;
-
+const resolveApiKey = async (): Promise<string | null> => {
   // Try Vite's import.meta.env first (browser)
   if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GEMINI_API_KEY) {
-    apiKey = (import.meta as any).env.VITE_GEMINI_API_KEY;
+    return (import.meta as any).env.VITE_GEMINI_API_KEY;
   }
   // Fallback to process.env (Node.js/Electron)
-  else if (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) {
-    apiKey = process.env.GEMINI_API_KEY;
+  if (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) {
+    return process.env.GEMINI_API_KEY;
   }
+  // Fallback to Firebase Remote Config
+  const firebaseKey = await getGeminiApiKey();
+  if (firebaseKey) return firebaseKey;
 
-  // Hardcoded fallback for web builds where env vars aren't available
+  return null;
+};
+
+/**
+ * Creates a Google GenAI client with the resolved API key.
+ * Returns null if no key is available.
+ */
+const getClient = async (): Promise<GoogleGenAI | null> => {
+  const apiKey = await resolveApiKey();
   if (!apiKey) {
-    apiKey = "AIzaSyDTo6S99xWmmqdMgsz7LPpoacWKwTw91F0";
+    logger.warn('gemini', 'No API key found in env vars or Firebase');
+    return null;
   }
-
   return new GoogleGenAI({ apiKey });
 };
 
@@ -121,7 +115,7 @@ const FALLBACK_SYSTEM_PROMPT = `You are Pissbot, the AI assistant for Pisscord -
  */
 const buildSystemInstruction = (config: PissbotConfig | null): string => {
   if (!config) {
-    console.warn("Pissbot config not available, using fallback");
+    logger.warn('gemini', 'Pissbot config not available, using fallback');
     return FALLBACK_SYSTEM_PROMPT;
   }
 
@@ -231,14 +225,17 @@ export interface ChatMessage {
  * @see {@link https://ai.google.dev/gemini-api/docs/audio} Gemini Audio Documentation
  */
 export const transcribeAudio = async (audioUrl: string): Promise<string> => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+
   try {
-    const client = getClient();
+    const client = await getClient();
     if (!client) {
       return "⚠️ Transcription unavailable: API key not configured.";
     }
 
     // Fetch audio file and convert to base64
-    const response = await fetch(audioUrl);
+    const response = await fetch(audioUrl, { signal: controller.signal });
     if (!response.ok) {
       throw new Error(`Failed to fetch audio: ${response.status}`);
     }
@@ -248,7 +245,6 @@ export const transcribeAudio = async (audioUrl: string): Promise<string> => {
       const reader = new FileReader();
       reader.onloadend = () => {
         const dataUrl = reader.result as string;
-        // Extract base64 part after the data URL prefix
         const base64Data = dataUrl.split(',')[1];
         resolve(base64Data);
       };
@@ -256,45 +252,41 @@ export const transcribeAudio = async (audioUrl: string): Promise<string> => {
       reader.readAsDataURL(blob);
     });
 
-    // Determine MIME type
     const mimeType = blob.type || 'audio/wav';
 
-    // Timeout Promise
-    const timeout = new Promise<string>((_, reject) =>
-      setTimeout(() => reject(new Error("Transcription timed out after 30s")), 30000)
-    );
-
-    const transcribePromise = async () => {
-      const result = await client.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                inlineData: {
-                  mimeType,
-                  data: base64
-                }
-              },
-              {
-                text: "Transcribe this audio message. Format the transcript nicely with proper punctuation and capitalization. If multiple speakers are detected, label them as 'Speaker 1:', 'Speaker 2:', etc. on separate lines. Keep the transcription accurate to what was spoken. If the audio is unclear or silent, respond with '[Audio unclear or silent]'."
+    const result = await client.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              inlineData: {
+                mimeType,
+                data: base64
               }
-            ]
-          }
-        ],
-        config: {
-          maxOutputTokens: 1024,
-          temperature: 0.1, // Low temperature for accurate transcription
-        },
-      });
-      return result.text || "[No transcription generated]";
-    };
-
-    return await Promise.race([transcribePromise(), timeout]);
+            },
+            {
+              text: "Transcribe this audio message. Format the transcript nicely with proper punctuation and capitalization. If multiple speakers are detected, label them as 'Speaker 1:', 'Speaker 2:', etc. on separate lines. Keep the transcription accurate to what was spoken. If the audio is unclear or silent, respond with '[Audio unclear or silent]'."
+            }
+          ]
+        }
+      ],
+      config: {
+        maxOutputTokens: 1024,
+        temperature: 0.1,
+      },
+    });
+    return result.text || "[No transcription generated]";
   } catch (error: any) {
-    console.error("Error transcribing audio:", error);
+    if (error.name === 'AbortError') {
+      logger.error('gemini', 'Transcription timed out after 30s');
+      return "⚠️ Transcription timed out. Please try again.";
+    }
+    logger.error('gemini', `Error transcribing audio: ${error.message}`);
     return `⚠️ Transcription failed: ${error.message || "Unknown error"}`;
+  } finally {
+    clearTimeout(timeoutId);
   }
 };
 
@@ -392,52 +384,47 @@ export const generateAIResponse = async (
     return "Please provide a prompt.";
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
   try {
-    const client = getClient();
+    const client = await getClient();
     if (!client) {
       return "⚠️ Pissbot is offline: API key not configured.";
     }
 
-    // Get config from Firebase
     const config = await getPissbotConfig();
     const systemInstruction = buildSystemInstruction(config);
 
-    // Build contents array with conversation history
     const contents = [
-      // Include last 10 messages of history for context
       ...conversationHistory.slice(-10).map(msg => ({
         role: msg.role,
         parts: [{ text: msg.content }]
       })),
-      // Current user message
       {
         role: 'user' as const,
         parts: [{ text: prompt }]
       }
     ];
 
-    // Timeout Promise
-    const timeout = new Promise<string>((_, reject) =>
-      setTimeout(() => reject(new Error("Request timed out after 15s")), 15000)
-    );
-
-    const fetchPromise = async () => {
-      const response = await client.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents,
-        config: {
-          systemInstruction,
-          maxOutputTokens: 1024,
-          temperature: 0.8,
-        },
-      });
-      return response.text || "No response generated.";
-    };
-
-    // Race fetch vs timeout
-    return await Promise.race([fetchPromise(), timeout]);
+    const response = await client.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents,
+      config: {
+        systemInstruction,
+        maxOutputTokens: 1024,
+        temperature: 0.8,
+      },
+    });
+    return response.text || "No response generated.";
   } catch (error: any) {
-    console.error("Error generating AI response:", error);
+    if (error.name === 'AbortError') {
+      logger.error('gemini', 'Pissbot request timed out after 15s');
+      return "⚠️ Pissbot took too long to respond. Try again.";
+    }
+    logger.error('gemini', `Error generating AI response: ${error.message}`);
     return `⚠️ Pissbot Error: ${error.message || "Connection failed"}`;
+  } finally {
+    clearTimeout(timeoutId);
   }
 };

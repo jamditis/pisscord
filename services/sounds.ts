@@ -1,5 +1,7 @@
 // Sound effects service for Pisscord
 
+import { logger } from './logger';
+
 export type SoundEffect =
   | 'user_join'
   | 'user_leave'
@@ -48,22 +50,37 @@ const getSoundPaths = (): Record<SoundEffect, string> => {
 // Volume level (0-1)
 let masterVolume = 0.7;
 
-// Audio elements cache
+// Audio elements cache — reused across playSound calls
 const audioCache: Record<string, HTMLAudioElement> = {};
 
 // Currently playing looped sound (for call ringing)
 let loopingSound: { sound: SoundEffect; audio: HTMLAudioElement } | null = null;
 
+/**
+ * Get or create a cached Audio element for the given sound.
+ * Reuses elements from preloadSounds() and creates on-demand if needed.
+ */
+const getAudioElement = (sound: SoundEffect, soundUrl: string): HTMLAudioElement => {
+  const cached = audioCache[sound];
+  if (cached) {
+    // Reuse cached element — reset it for replay
+    cached.currentTime = 0;
+    cached.volume = masterVolume;
+    return cached;
+  }
+
+  // Create and cache a new element
+  const audio = new Audio(soundUrl);
+  audio.preload = 'auto';
+  audioCache[sound] = audio;
+  return audio;
+};
+
 // Play a sound effect
 export const playSound = (sound: SoundEffect, loop: boolean = false) => {
   const soundPaths = getSoundPaths();
   const soundUrl = soundPaths[sound];
-  if (!soundUrl) {
-    console.warn(`Sound "${sound}" not configured`);
-    return;
-  }
-
-  console.log(`[SOUND] Attempting to play: ${sound}, URL: ${soundUrl}`);
+  if (!soundUrl) return;
 
   try {
     // For looping sounds, stop any existing loop first
@@ -71,39 +88,22 @@ export const playSound = (sound: SoundEffect, loop: boolean = false) => {
       stopLoopingSound();
     }
 
-    // Always create a fresh Audio element for reliability
-    const audio = new Audio(soundUrl);
+    const audio = getAudioElement(sound, soundUrl);
     audio.volume = masterVolume;
     audio.loop = loop;
 
-    // Add event listeners for debugging
-    audio.addEventListener('canplaythrough', () => {
-      console.log(`[SOUND] ${sound} can play through`);
-    });
-    audio.addEventListener('error', (e) => {
-      console.error(`[SOUND] ${sound} error:`, audio.error?.message || e);
-    });
-    audio.addEventListener('playing', () => {
-      console.log(`[SOUND] ${sound} is now playing!`);
-    });
-
     const playPromise = audio.play();
     if (playPromise !== undefined) {
-      playPromise
-        .then(() => {
-          console.log(`[SOUND] ${sound} play() succeeded`);
-        })
-        .catch(err => {
-          console.error(`[SOUND] ${sound} play() failed:`, err.name, err.message);
-        });
+      playPromise.catch(err => {
+        logger.warn('sounds', `${sound} play() failed: ${err.name} ${err.message}`);
+      });
     }
 
     if (loop) {
       loopingSound = { sound, audio };
     }
-
   } catch (err) {
-    console.error(`[SOUND] Error playing "${sound}":`, err);
+    logger.error('sounds', `Error playing "${sound}": ${err}`);
   }
 };
 
@@ -113,7 +113,6 @@ export const stopLoopingSound = () => {
     loopingSound.audio.pause();
     loopingSound.audio.currentTime = 0;
     loopingSound.audio.loop = false;
-    console.log(`Stopped looping sound: ${loopingSound.sound}`);
     loopingSound = null;
   }
 };
@@ -132,14 +131,12 @@ export const getMasterVolume = () => masterVolume;
 
 // Preload all sounds
 export const preloadSounds = () => {
-  console.log('Preloading sounds...');
   const soundPaths = getSoundPaths();
   Object.entries(soundPaths).forEach(([name, url]) => {
     if (url && !audioCache[name]) {
       const audio = new Audio(url);
       audio.preload = 'auto';
       audioCache[name] = audio;
-      console.log(`Preloaded: ${name} -> ${url}`);
     }
   });
 };

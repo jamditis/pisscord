@@ -208,6 +208,21 @@ export const subscribeToUsers = (
   );
 };
 
+/**
+ * Monitor Firebase connection state.
+ * Calls back with true when connected, false when disconnected.
+ */
+export const subscribeToConnectionState = (
+  onConnectionChange: (connected: boolean) => void
+): (() => void) => {
+  const connectedRef = ref(db, '.info/connected');
+  return onValue(connectedRef, (snapshot) => {
+    const connected = snapshot.val() === true;
+    logger.info('firebase', `Connection state: ${connected ? 'connected' : 'disconnected'}`);
+    onConnectionChange(connected);
+  });
+};
+
 export const removePresence = async (peerId: string): Promise<void> => {
   const userRef = ref(db, `users/${peerId}`);
   try {

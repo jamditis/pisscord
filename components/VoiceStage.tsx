@@ -150,8 +150,10 @@ const useAudioActivity = (stream: MediaStream | null, enabled: boolean = true) =
       return;
     }
 
+    let audioContext: AudioContext | null = null;
+
     try {
-      const audioContext = new AudioContext();
+      audioContext = new AudioContext();
       const analyser = audioContext.createAnalyser();
       const source = audioContext.createMediaStreamSource(stream);
 
@@ -163,7 +165,7 @@ const useAudioActivity = (stream: MediaStream | null, enabled: boolean = true) =
       analyserRef.current = analyser;
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      const THRESHOLD = 20; // Adjust sensitivity
+      const THRESHOLD = 20;
 
       const checkAudio = () => {
         if (!analyserRef.current) return;
@@ -176,18 +178,25 @@ const useAudioActivity = (stream: MediaStream | null, enabled: boolean = true) =
       };
 
       checkAudio();
-
-      return () => {
-        if (animationFrameRef.current) {
-          cancelAnimationFrame(animationFrameRef.current);
-        }
-        if (audioContextRef.current) {
-          audioContextRef.current.close();
-        }
-      };
     } catch (err) {
       console.error('Audio activity detection error:', err);
     }
+
+    // Cleanup always runs — whether try succeeded or caught
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      analyserRef.current = null;
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      } else if (audioContext) {
+        // If we created one but it wasn't stored in ref (error path)
+        audioContext.close();
+      }
+    };
   }, [stream, enabled]);
 
   return isSpeaking;
@@ -284,7 +293,7 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
         const animFrame = requestAnimationFrame(checkAudio);
         audioContexts.set(peerId, { ctx: audioContext, animFrame });
       } catch (err) {
-        console.error('Remote audio activity detection error:', err);
+        console.error('Remote audio activity error:', err);
       }
     });
 

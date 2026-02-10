@@ -329,15 +329,15 @@ export default function App() {
 
     // Check for release notes (show popup on new version)
     getReleaseNotes().then(notes => {
+      if (!isMountedRef.current) return;
       if (notes && shouldShowReleaseNotes(notes.version)) {
         setReleaseNotesData(notes);
-        // Delay showing modal until after splash screen
         setTimeout(() => {
-          setShowReleaseNotesModal(true);
+          if (isMountedRef.current) setShowReleaseNotesModal(true);
         }, 2000);
       }
     }).catch(err => {
-      console.error('[App] Failed to fetch release notes:', err);
+      logger.error('app', `Failed to fetch release notes: ${err}`);
     });
 
     // Cleanup old messages (14-day retention)
@@ -359,6 +359,7 @@ export default function App() {
 
     // Check Updates (both Firebase and Electron auto-updater)
     checkForUpdates(APP_VERSION).then(update => {
+        if (!isMountedRef.current) return;
         if (update?.hasUpdate) {
             setUpdateInfo({ url: update.url, latest: update.latest });
             setShowUpdateModal(true);
@@ -368,6 +369,7 @@ export default function App() {
 
     // Check Pissbot Updates
     getPissbotConfig().then(config => {
+        if (!isMountedRef.current) return;
         if (config) {
             const lastKnown = localStorage.getItem('pissbot_last_updated');
             if (lastKnown && Number(lastKnown) < config.lastUpdated) {
@@ -383,6 +385,7 @@ export default function App() {
 
     // Check MOTD
     checkForMOTD().then(motd => {
+        if (!isMountedRef.current) return;
         if (motd) {
             const lastMotd = localStorage.getItem('pisscord_motd');
             if (lastMotd !== motd) {
@@ -399,6 +402,7 @@ export default function App() {
     // Setup auto-updater listeners (Electron only - no-op on other platforms)
     if (UpdateService.isSupported) {
       UpdateService.onUpdateAvailable((data: any) => {
+        if (!isMountedRef.current) return;
         log(`Update available: ${data.version}`, 'info');
         setUpdateInfo({
           url: '',
@@ -410,6 +414,7 @@ export default function App() {
       });
 
       UpdateService.onUpdateProgress((data: any) => {
+        if (!isMountedRef.current) return;
         log(`Downloading update: ${data.percent}%`, 'info');
         setUpdateInfo(prev => prev ? {
           ...prev,
@@ -419,6 +424,7 @@ export default function App() {
       });
 
       UpdateService.onUpdateDownloaded((data: any) => {
+        if (!isMountedRef.current) return;
         log(`Update downloaded: ${data.version}`, 'info');
         setUpdateInfo(prev => prev ? {
           ...prev,
