@@ -13,6 +13,43 @@ interface GitHubRelease {
   };
 }
 
+interface GitHubActor {
+  login: string;
+  avatar_url: string;
+}
+
+interface GitHubPushEvent {
+  type: 'PushEvent';
+  id: string;
+  actor: GitHubActor;
+  created_at: string;
+  payload: {
+    ref: string;
+    size: number;
+    commits: Array<{ message: string }>;
+  };
+}
+
+interface GitHubIssuesEvent {
+  type: 'IssuesEvent';
+  id: string;
+  actor: GitHubActor;
+  created_at: string;
+  payload: {
+    action: string;
+    issue: { title: string; number: number; html_url: string };
+  };
+}
+
+interface GitHubReleaseEvent {
+  type: 'ReleaseEvent';
+  id: string;
+  actor: GitHubActor;
+  created_at: string;
+}
+
+type GitHubEvent = GitHubPushEvent | GitHubIssuesEvent | GitHubReleaseEvent | { type: string; id: string; actor: GitHubActor; created_at: string };
+
 // Cache to prevent rate limiting
 let releaseCache: Message[] | null = null;
 let eventsCache: Message[] | null = null;
@@ -58,23 +95,27 @@ export const fetchGitHubEvents = async (): Promise<Message[]> => {
         const response = await fetch('https://api.github.com/repos/jamditis/pisscord/events');
         if (!response.ok) throw new Error('Failed to fetch events');
         
-        const data: any[] = await response.json();
-        
-        const messages: Message[] = data.map(event => {
+        const data: GitHubEvent[] = await response.json();
+
+        const messages: Message[] = data.map((event): Message | null => {
             let content = '';
             let title = '';
-            
+
             switch(event.type) {
-                case 'PushEvent':
-                    title = `🔨 Pushed ${event.payload.size} commits to ${event.payload.ref.replace('refs/heads/', '')}`;
-                    content = event.payload.commits.map((c: any) => `- ${c.message}`).join('\n');
+                case 'PushEvent': {
+                    const push = event as GitHubPushEvent;
+                    title = `🔨 Pushed ${push.payload.size} commits to ${push.payload.ref.replace('refs/heads/', '')}`;
+                    content = push.payload.commits.map(c => `- ${c.message}`).join('\n');
                     break;
-                case 'IssuesEvent':
-                    title = `🐛 Issue ${event.payload.action}: ${event.payload.issue.title}`;
-                    content = `[#${event.payload.issue.number}](${event.payload.issue.html_url})`;
+                }
+                case 'IssuesEvent': {
+                    const issue = event as GitHubIssuesEvent;
+                    title = `🐛 Issue ${issue.payload.action}: ${issue.payload.issue.title}`;
+                    content = `[#${issue.payload.issue.number}](${issue.payload.issue.html_url})`;
                     break;
+                }
                 case 'ReleaseEvent':
-                    return null; // Handled by releases fetcher
+                    return null;
                 default:
                     return null;
             }
@@ -88,15 +129,12 @@ export const fetchGitHubEvents = async (): Promise<Message[]> => {
                 isAi: false,
                 attachment: {
                     url: event.actor.avatar_url,
-                    type: 'image',
+                    type: 'image' as const,
                     name: 'avatar.png'
-                }, // Hack: Use attachment to show avatar if we update ChatArea to use it? 
-                   // Or just trust the name. 
-                   // Actually, ChatArea uses 'sender' to find profile. 
-                   // We can set sender to "GitHub: user"
+                },
                 content: `**${title}**\n${content}`
-            } as Message;
-        }).filter(Boolean) as Message[];
+            };
+        }).filter((m): m is Message => m !== null);
 
         eventsCache = messages;
         lastEventsFetchTime = Date.now();

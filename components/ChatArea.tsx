@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Message, Channel, ChannelType } from '../types';
+import { Message, Channel, ChannelType, PresenceUser } from '../types';
 import { generateAIResponse, ChatMessage } from '../services/geminiService';
 import { uploadFile } from '../services/firebase';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -166,7 +166,7 @@ const getFileExtension = (fileName: string): string => {
 interface ChatAreaProps {
   channel: Channel;
   messages: Message[];
-  onlineUsers: Array<{ displayName: string; photoURL?: string }>;
+  onlineUsers: PresenceUser[];
   onSendMessage: (text: string, attachment?: Message['attachment']) => void;
   onSendAIMessage: (text: string, response: string) => void;
   onOpenReportModal?: () => void;

@@ -3,35 +3,46 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import { AuthGate } from './components/AuthGate';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Platform, StatusBarService, AppLifecycleService } from './services/platform';
+import { logger } from './services/logger';
+
+// Global error handlers — catch errors outside React's lifecycle
+window.onerror = (message, source, lineno, colno, error) => {
+  logger.error('global', `Unhandled error: ${message} at ${source}:${lineno}:${colno}`);
+  if (error?.stack) {
+    logger.error('global', `Stack: ${error.stack}`);
+  }
+};
+
+window.onunhandledrejection = (event: PromiseRejectionEvent) => {
+  const reason = event.reason;
+  const message = reason instanceof Error ? reason.message : String(reason);
+  logger.error('global', `Unhandled promise rejection: ${message}`);
+};
 
 // Initialize mobile-specific features
 const initializeMobile = async () => {
   if (Platform.isMobile) {
-    // Set dark status bar to match app theme
     await StatusBarService.setDarkStyle();
 
-    // Handle Android back button
     if (Platform.isAndroid) {
       AppLifecycleService.onBackButton(() => {
-        // Default behavior: let the app handle navigation
-        // Could be customized to show a confirm dialog before exit
-        console.log('[Mobile] Back button pressed');
+        logger.debug('mobile', 'Back button pressed');
       });
     }
 
-    // Handle app going to background/foreground
     AppLifecycleService.onAppStateChange((state) => {
-      console.log('[Mobile] App state changed:', state.isActive ? 'foreground' : 'background');
-      // Could pause/resume audio, update presence, etc.
+      logger.debug('mobile', `App state changed: ${state.isActive ? 'foreground' : 'background'}`);
     });
 
-    console.log(`[Mobile] Initialized on ${Platform.getName()}`);
+    logger.info('mobile', `Initialized on ${Platform.getName()}`);
   }
 };
 
-// Initialize mobile features before rendering
-initializeMobile().catch(console.error);
+initializeMobile().catch(err => {
+  logger.error('mobile', `Mobile init failed: ${err.message}`);
+});
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -41,10 +52,12 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <AuthProvider>
-      <AuthGate>
-        <App />
-      </AuthGate>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AuthGate>
+          <App />
+        </AuthGate>
+      </AuthProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );

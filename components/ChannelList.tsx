@@ -12,7 +12,7 @@ interface ChannelListProps {
   activeVoiceChannelId: string | null;
   onlineUsers: PresenceUser[];
   onSelectChannel: (id: string) => void;
-  connectionState: string;
+  connectionState: ConnectionState;
   peerId: string | null;
   userProfile: UserProfile;
   onCopyId: () => void;

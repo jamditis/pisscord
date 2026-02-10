@@ -25,8 +25,13 @@ export interface DeviceSettings {
 export interface PresenceUser extends UserProfile {
   peerId: string;
   lastSeen: number;
-  voiceChannelId?: string;
+  voiceChannelId: string | null;
 }
+
+export type MessageAttachment =
+  | { type: 'image'; url: string; name: string; size?: number }
+  | { type: 'file'; url: string; name: string; size?: number }
+  | { type: 'audio'; url: string; name: string; size?: number; duration?: number };
 
 export interface Message {
   id: string;
@@ -34,13 +39,7 @@ export interface Message {
   content: string;
   timestamp: number;
   isAi?: boolean;
-  attachment?: {
-    url: string;
-    type: 'image' | 'file' | 'audio';
-    name: string;
-    size?: number; // File size in bytes
-    duration?: number; // Duration in seconds for audio messages
-  };
+  attachment?: MessageAttachment;
 }
 
 export enum ChannelType {
@@ -75,20 +74,33 @@ export interface AppSettings {
 }
 
 // Electron API types
+export interface ElectronUpdateInfo {
+  version: string;
+  releaseDate?: string;
+}
+
+export interface ElectronDownloadProgress {
+  percent: number;
+  bytesPerSecond: number;
+  total: number;
+  transferred: number;
+}
+
 declare global {
   interface Window {
     electronAPI?: {
       downloadUpdate: () => void;
       installUpdate: () => void;
       showWindow: () => void;
-      getDesktopSources: () => Promise<Array<{id: string, name: string, thumbnail: any}>>;
+      getDesktopSources: () => Promise<Array<{id: string; name: string; thumbnail: string}>>;
       copyToClipboard: (text: string) => void;
-      onUpdateAvailable: (callback: (data: any) => void) => void;
-      onUpdateDownloadProgress: (callback: (data: any) => void) => void;
-      onUpdateDownloaded: (callback: (data: any) => void) => void;
+      onUpdateAvailable: (callback: (data: ElectronUpdateInfo) => void) => void;
+      onUpdateDownloadProgress: (callback: (data: ElectronDownloadProgress) => void) => void;
+      onUpdateDownloaded: (callback: (data: ElectronUpdateInfo) => void) => void;
       onUpdateError: (callback: (message: string) => void) => void;
       removeAllListeners: (channel: string) => void;
       logToFile: (message: string) => void;
+      openExternal: (url: string) => void;
     };
   }
 }

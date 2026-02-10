@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import Peer from 'peerjs';
+import Peer, { MediaConnection, DataConnection } from 'peerjs';
 import { Sidebar } from './components/Sidebar';
 import { ChannelList } from './components/ChannelList';
 import { ChatArea } from './components/ChatArea';
@@ -26,6 +26,7 @@ import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
 import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService, AppLifecycleService } from './services/platform';
 import { VoidBackground } from './components/Visuals';
+import { logger } from './services/logger';
 
 const APP_VERSION = "1.5.1";
 
@@ -89,27 +90,53 @@ export default function App() {
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   // Pending call state for incoming call confirmation
-  const pendingCallRef = useRef<any>(null);
+  const pendingCallRef = useRef<MediaConnection | null>(null);
   
   // --- STATE: Data ---
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
-      const saved = localStorage.getItem('pisscord_profile');
-      if (saved) {
-          return JSON.parse(saved);
+      try {
+        const saved = localStorage.getItem('pisscord_profile');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          // Validate required fields exist
+          if (typeof parsed.displayName === 'string' && typeof parsed.color === 'string') {
+            return { ...getDefaultProfile(), ...parsed };
+          }
+        }
+      } catch (e) {
+        logger.error('app', `Corrupt profile in localStorage, resetting: ${e}`);
+        localStorage.removeItem('pisscord_profile');
       }
-      // Generate and save a default profile on first launch
       const defaultProfile = getDefaultProfile();
       localStorage.setItem('pisscord_profile', JSON.stringify(defaultProfile));
       return defaultProfile;
   });
   const [deviceSettings, setDeviceSettings] = useState<DeviceSettings>(() => {
-      const saved = localStorage.getItem('pisscord_devices');
-      return saved ? JSON.parse(saved) : DEFAULT_DEVICES;
+      try {
+        const saved = localStorage.getItem('pisscord_devices');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return { ...DEFAULT_DEVICES, ...parsed };
+        }
+      } catch (e) {
+        logger.error('app', `Corrupt device settings in localStorage, resetting: ${e}`);
+        localStorage.removeItem('pisscord_devices');
+      }
+      return DEFAULT_DEVICES;
   });
   const [appSettings, setAppSettings] = useState<AppSettings>(() => {
-      const saved = localStorage.getItem('pisscord_app_settings');
-      return saved ? JSON.parse(saved) : DEFAULT_APP_SETTINGS;
+      try {
+        const saved = localStorage.getItem('pisscord_app_settings');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return { ...DEFAULT_APP_SETTINGS, ...parsed };
+        }
+      } catch (e) {
+        logger.error('app', `Corrupt app settings in localStorage, resetting: ${e}`);
+        localStorage.removeItem('pisscord_app_settings');
+      }
+      return DEFAULT_APP_SETTINGS;
   });
   const [onlineUsers, setOnlineUsers] = useState<PresenceUser[]>([]);
   const [logs, setLogs] = useState<AppLogs[]>([]);
@@ -176,8 +203,8 @@ export default function App() {
 
   // --- REFS ---
   const peerInstance = useRef<Peer | null>(null);
-  const callsRef = useRef<Map<string, any>>(new Map()); // Map of peerId -> MediaConnection
-  const dataConnectionsRef = useRef<Map<string, any>>(new Map()); // Map of peerId -> DataConnection
+  const callsRef = useRef<Map<string, MediaConnection>>(new Map());
+  const dataConnectionsRef = useRef<Map<string, DataConnection>>(new Map());
   const myVideoTrack = useRef<MediaStreamTrack | null>(null); // Keep original camera track for when screenshare ends
   const isMountedRef = useRef(true);
   const isAudioEnabledRef = useRef(isAudioEnabled);
@@ -235,7 +262,7 @@ export default function App() {
           const unsubscribe = subscribeToMessages(activeChannelId, (newMessages) => {
               setMessages(prev => ({
                   ...prev,
-                  [activeChannelId]: newMessages as Message[]
+                  [activeChannelId]: newMessages
               }));
               // Update newest message tracking for this channel
               updateNewestFromMessages(activeChannelId, newMessages);
@@ -315,7 +342,9 @@ export default function App() {
 
     // Cleanup old messages (14-day retention)
     const textChannels = INITIAL_CHANNELS.filter(c => c.type === ChannelType.TEXT || c.type === ChannelType.AI).map(c => c.id);
-    cleanupOldMessages(textChannels);
+    cleanupOldMessages(textChannels).catch(err => {
+      logger.error('app', `Message cleanup failed: ${err}`);
+    });
 
     // Subscribe to all text channels for unread tracking
     const unsubscribes: (() => void)[] = [];
@@ -343,10 +372,13 @@ export default function App() {
             const lastKnown = localStorage.getItem('pissbot_last_updated');
             if (lastKnown && Number(lastKnown) < config.lastUpdated) {
                 toast.info("🧠 Brain Upgrade", "Pissbot has been updated with new knowledge!");
-                // Maybe post to dev channel?
             }
-            localStorage.setItem('pissbot_last_updated', config.lastUpdated.toString());
+            try {
+              localStorage.setItem('pissbot_last_updated', config.lastUpdated.toString());
+            } catch { /* storage full — non-critical */ }
         }
+    }).catch(err => {
+        logger.warn('app', `Pissbot config check failed: ${err}`);
     });
 
     // Check MOTD
@@ -355,9 +387,13 @@ export default function App() {
             const lastMotd = localStorage.getItem('pisscord_motd');
             if (lastMotd !== motd) {
                 toast.info("📢 Announcement", motd);
-                localStorage.setItem('pisscord_motd', motd);
+                try {
+                  localStorage.setItem('pisscord_motd', motd);
+                } catch { /* storage full — non-critical */ }
             }
         }
+    }).catch(err => {
+        logger.warn('app', `MOTD check failed: ${err}`);
     });
 
     // Setup auto-updater listeners (Electron only - no-op on other platforms)
@@ -568,7 +604,7 @@ export default function App() {
     }
   };
 
-  const setupDataConnection = (conn: any) => {
+  const setupDataConnection = (conn: DataConnection) => {
       const peerId = conn.peer;
       dataConnectionsRef.current.set(peerId, conn);
 
@@ -664,7 +700,7 @@ export default function App() {
   };
 
 
-  const handleAcceptCall = async (call: any) => {
+  const handleAcceptCall = async (call: MediaConnection) => {
       setConnectionState(ConnectionState.CONNECTING);
       // Move user to voice channel view automatically
       const voiceChan = INITIAL_CHANNELS.find(c => c.type === ChannelType.VOICE);
@@ -726,7 +762,7 @@ export default function App() {
       initiateCall();
   };
 
-  const setupCallEvents = (call: any) => {
+  const setupCallEvents = (call: MediaConnection) => {
       const remotePeerId = call.peer;
       callsRef.current.set(remotePeerId, call);
 
@@ -1022,20 +1058,30 @@ export default function App() {
 
   const handleSaveProfile = (newProfile: UserProfile) => {
       setUserProfile(newProfile);
-      localStorage.setItem('pisscord_profile', JSON.stringify(newProfile));
-      // Preserve voice channel when updating profile
+      try {
+        localStorage.setItem('pisscord_profile', JSON.stringify(newProfile));
+      } catch (e) {
+        logger.error('app', `Failed to save profile: ${e}`);
+      }
       if (myPeerId) updatePresence(myPeerId, newProfile, activeVoiceChannelId);
   };
 
   const handleSaveDevices = (newDevices: DeviceSettings) => {
       setDeviceSettings(newDevices);
-      localStorage.setItem('pisscord_devices', JSON.stringify(newDevices));
-      // Re-trigger stream if connected? Ideally yes, but for now user must reconnect.
+      try {
+        localStorage.setItem('pisscord_devices', JSON.stringify(newDevices));
+      } catch (e) {
+        logger.error('app', `Failed to save device settings: ${e}`);
+      }
   };
 
   const handleSaveAppSettings = (newSettings: AppSettings) => {
       setAppSettings(newSettings);
-      localStorage.setItem('pisscord_app_settings', JSON.stringify(newSettings));
+      try {
+        localStorage.setItem('pisscord_app_settings', JSON.stringify(newSettings));
+      } catch (e) {
+        logger.error('app', `Failed to save app settings: ${e}`);
+      }
   };
 
   const handleCheckForUpdates = () => {
@@ -1072,13 +1118,15 @@ export default function App() {
 
   const copyId = async () => {
       if (myPeerId) {
-          // Use platform-agnostic clipboard service
-          await ClipboardService.write(myPeerId);
-          // Haptic feedback on mobile
-          if (Platform.isMobile) {
-              HapticsService.impact('light');
+          try {
+            await ClipboardService.write(myPeerId);
+            if (Platform.isMobile) {
+                HapticsService.impact('light');
+            }
+            toast.success("Copied!", "Your Peer ID has been copied to clipboard.");
+          } catch {
+            toast.error("Copy failed", "Could not copy to clipboard.");
           }
-          toast.success("Copied!", "Your Peer ID has been copied to clipboard.");
       }
   };
 

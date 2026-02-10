@@ -15,7 +15,8 @@ import {
 } from "firebase/database";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getAuth } from "firebase/auth";
-import { UserProfile, PresenceUser } from "../types";
+import { UserProfile, PresenceUser, Message } from "../types";
+import { logger } from "./logger";
 
 // Safe environment variable access for both Vite (browser) and Node.js environments
 const getEnvVar = (viteKey: string, nodeKey?: string): string | undefined => {
@@ -59,7 +60,7 @@ export const uploadFile = async (file: File): Promise<string> => {
     const url = await getDownloadURL(snapshot.ref);
     return url;
   } catch (error) {
-    console.error("File upload failed:", error);
+    logger.error('firebase', `File upload failed: ${error}`);
     throw error;
   }
 };
@@ -90,7 +91,8 @@ export const getResizedImageUrl = (originalUrl: string, size: '200x200' | '400x4
     // Re-encode and replace in URL
     const newEncodedPath = encodeURIComponent(resizedPath);
     return originalUrl.replace(encodedPath, newEncodedPath);
-  } catch {
+  } catch (error) {
+    logger.warn('firebase', `Failed to generate resized image URL: ${error}`);
     return originalUrl;
   }
 };
@@ -113,7 +115,7 @@ export const checkForUpdates = async (currentVersion: string): Promise<{ hasUpda
       }
     }
   } catch (error) {
-    console.error("Update check failed", error);
+    logger.error('firebase', `Update check failed: ${error}`);
   }
   return null;
 };
@@ -123,62 +125,96 @@ export const checkForMOTD = async (): Promise<string | null> => {
         const motdRef = ref(db, 'system/motd');
         const snapshot = await get(motdRef);
         return snapshot.exists() ? snapshot.val() : null;
-    } catch (e) {
+    } catch (error) {
+        logger.error('firebase', `Failed to check MOTD: ${error}`);
         return null;
     }
 };
 
-export const registerPresence = (peerId: string, profile: UserProfile) => {
+export const registerPresence = async (peerId: string, profile: UserProfile): Promise<boolean> => {
   const userRef = ref(db, `users/${peerId}`);
 
-  // Set initial status
-  set(userRef, {
-    peerId,
-    displayName: profile.displayName,
-    statusMessage: profile.statusMessage,
-    color: profile.color,
-    photoURL: profile.photoURL || null,
-    lastSeen: Date.now(),
-    voiceChannelId: null
-  });
-
-  // Automatically remove user when they disconnect (close app/lose internet)
-  onDisconnect(userRef).remove();
-};
-
-// Also export a way to update presence while online without reconnecting
-export const updatePresence = (peerId: string, profile: UserProfile, voiceChannelId: string | null = null) => {
-    const userRef = ref(db, `users/${peerId}`);
-    set(userRef, {
+  try {
+    await set(userRef, {
       peerId,
       displayName: profile.displayName,
       statusMessage: profile.statusMessage,
       color: profile.color,
       photoURL: profile.photoURL || null,
       lastSeen: Date.now(),
-      voiceChannelId
+      voiceChannelId: null
     });
-    // Ensure disconnect handler is still active (it usually persists on the socket connection)
-    onDisconnect(userRef).remove();
+
+    await onDisconnect(userRef).remove();
+    return true;
+  } catch (error) {
+    logger.error('firebase', `Failed to register presence for ${peerId}: ${error}`);
+    return false;
+  }
 };
 
-export const subscribeToUsers = (onUsersUpdate: (users: PresenceUser[]) => void) => {
-  const usersRef = ref(db, 'users');
-  
-  return onValue(usersRef, (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-      const userList = Object.values(data) as PresenceUser[];
-      onUsersUpdate(userList);
-    } else {
-      onUsersUpdate([]);
+export const updatePresence = async (peerId: string, profile: UserProfile, voiceChannelId: string | null = null): Promise<void> => {
+    const userRef = ref(db, `users/${peerId}`);
+    try {
+      await set(userRef, {
+        peerId,
+        displayName: profile.displayName,
+        statusMessage: profile.statusMessage,
+        color: profile.color,
+        photoURL: profile.photoURL || null,
+        lastSeen: Date.now(),
+        voiceChannelId
+      });
+      await onDisconnect(userRef).remove();
+    } catch (error) {
+      logger.error('firebase', `Failed to update presence for ${peerId}: ${error}`);
     }
-  });
 };
 
-export const removePresence = (peerId: string) => {
+/** Validate that a raw Firebase value looks like a PresenceUser */
+function isValidPresenceUser(raw: unknown): raw is PresenceUser {
+  if (typeof raw !== 'object' || raw === null) return false;
+  const obj = raw as Record<string, unknown>;
+  return typeof obj.peerId === 'string' &&
+         typeof obj.displayName === 'string' &&
+         typeof obj.lastSeen === 'number';
+}
+
+export const subscribeToUsers = (
+  onUsersUpdate: (users: PresenceUser[]) => void,
+  onError?: (error: Error) => void
+) => {
+  const usersRef = ref(db, 'users');
+
+  return onValue(
+    usersRef,
+    (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const rawValues = Object.values(data);
+        const userList = rawValues.filter(isValidPresenceUser);
+        if (userList.length !== rawValues.length) {
+          logger.warn('firebase', `Filtered ${rawValues.length - userList.length} invalid presence entries`);
+        }
+        onUsersUpdate(userList);
+      } else {
+        onUsersUpdate([]);
+      }
+    },
+    (error) => {
+      logger.error('firebase', `User subscription error: ${error.message}`);
+      onError?.(error);
+    }
+  );
+};
+
+export const removePresence = async (peerId: string): Promise<void> => {
   const userRef = ref(db, `users/${peerId}`);
-  remove(userRef);
+  try {
+    await remove(userRef);
+  } catch (error) {
+    logger.error('firebase', `Failed to remove presence for ${peerId}: ${error}`);
+  }
 };
 
 // Pissbot AI Configuration
@@ -210,7 +246,7 @@ export const getPissbotConfig = async (): Promise<PissbotConfig | null> => {
       return pissbotConfigCache;
     }
   } catch (error) {
-    console.error("Failed to fetch Pissbot config:", error);
+    logger.error('firebase', `Failed to fetch Pissbot config: ${error}`);
   }
   return null;
 };
@@ -249,7 +285,7 @@ export const getReleaseNotes = async (): Promise<ReleaseNotesConfig | null> => {
       return releaseNotesCache;
     }
   } catch (error) {
-    console.error("Failed to fetch release notes:", error);
+    logger.error('firebase', `Failed to fetch release notes: ${error}`);
   }
   return null;
 };
@@ -259,29 +295,44 @@ export const getReleaseNotes = async (): Promise<ReleaseNotesConfig | null> => {
 /**
  * Send a message to a channel
  */
-export const sendMessage = async (channelId: string, message: any) => {
+export const sendMessage = async (channelId: string, message: Message): Promise<void> => {
   const messagesRef = ref(db, `messages/${channelId}`);
   const newMessageRef = push(messagesRef);
-  set(newMessageRef, message);
+  try {
+    await set(newMessageRef, message);
+  } catch (error) {
+    logger.error('firebase', `Failed to send message to ${channelId}: ${error}`);
+    throw error;
+  }
 };
 
 /**
  * Subscribe to messages in a channel
  */
-export const subscribeToMessages = (channelId: string, onMessageUpdate: (messages: any[]) => void) => {
+export const subscribeToMessages = (
+  channelId: string,
+  onMessageUpdate: (messages: Message[]) => void,
+  onError?: (error: Error) => void
+) => {
   const messagesRef = ref(db, `messages/${channelId}`);
-  // Limit to last 100 messages to prevent lag
   const recentMessagesQuery = query(messagesRef, limitToLast(100));
 
-  return onValue(recentMessagesQuery, (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-      const messageList = Object.values(data) as any[];
-      onMessageUpdate(messageList);
-    } else {
-      onMessageUpdate([]);
+  return onValue(
+    recentMessagesQuery,
+    (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const messageList = Object.values(data) as Message[];
+        onMessageUpdate(messageList);
+      } else {
+        onMessageUpdate([]);
+      }
+    },
+    (error) => {
+      logger.error('firebase', `Message subscription error for ${channelId}: ${error.message}`);
+      onError?.(error);
     }
-  });
+  );
 };
 
 // Enforce 14-day message retention
@@ -296,20 +347,19 @@ export const cleanupOldMessages = async (channelIds: string[]) => {
     try {
       const snapshot = await get(oldMessagesQuery);
       if (snapshot.exists()) {
-        const updates: Record<string, null> = {};
+        const removePromises: Promise<void>[] = [];
         snapshot.forEach((child) => {
-          if (child.key) updates[child.key] = null;
+          removePromises.push(
+            remove(child.ref).catch(err => {
+              logger.error('firebase', `Failed to delete message ${child.key}: ${err}`);
+            })
+          );
         });
-        // Bulk delete
-        // Note: update() with null deletes keys, but ref should be parent.
-        // Iterate and remove is safer for now.
-        snapshot.forEach((child) => {
-           remove(child.ref);
-        });
-        console.log(`Cleaned up ${snapshot.size} old messages in channel ${channelId}`);
+        await Promise.all(removePromises);
+        logger.info('firebase', `Cleaned up ${snapshot.size} old messages in channel ${channelId}`);
       }
     } catch (error) {
-      console.error(`Failed to cleanup messages for ${channelId}:`, error);
+      logger.error('firebase', `Failed to cleanup messages for ${channelId}: ${error}`);
     }
   }
 };
@@ -337,9 +387,9 @@ export const saveTranscript = async (audioUrl: string, transcript: string): Prom
       audioUrl,
       createdAt: Date.now()
     });
-    console.log('[Firebase] Transcript cached for:', audioUrl.slice(0, 50) + '...');
+    logger.info('firebase', `Transcript cached for: ${audioUrl.slice(0, 50)}...`);
   } catch (error) {
-    console.error('[Firebase] Failed to cache transcript:', error);
+    logger.error('firebase', `Failed to cache transcript: ${error}`);
   }
 };
 
@@ -353,12 +403,39 @@ export const getTranscript = async (audioUrl: string): Promise<string | null> =>
     const snapshot = await get(transcriptRef);
     if (snapshot.exists()) {
       const data = snapshot.val();
-      console.log('[Firebase] Transcript cache hit for:', audioUrl.slice(0, 50) + '...');
+      logger.info('firebase', `Transcript cache hit for: ${audioUrl.slice(0, 50)}...`);
       return data.transcript;
     }
     return null;
   } catch (error) {
-    console.error('[Firebase] Failed to get cached transcript:', error);
+    logger.error('firebase', `Failed to get cached transcript: ${error}`);
     return null;
   }
+};
+
+/**
+ * Fetch Gemini API key from Firebase Remote Config
+ * Stored at system/geminiApiKey in RTDB
+ */
+let geminiKeyCache: string | null = null;
+let geminiKeyCacheTime = 0;
+const GEMINI_KEY_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+export const getGeminiApiKey = async (): Promise<string | null> => {
+  if (geminiKeyCache && Date.now() - geminiKeyCacheTime < GEMINI_KEY_CACHE_TTL) {
+    return geminiKeyCache;
+  }
+
+  try {
+    const keyRef = ref(db, 'system/geminiApiKey');
+    const snapshot = await get(keyRef);
+    if (snapshot.exists()) {
+      geminiKeyCache = snapshot.val();
+      geminiKeyCacheTime = Date.now();
+      return geminiKeyCache;
+    }
+  } catch (error) {
+    logger.error('firebase', `Failed to fetch Gemini API key: ${error}`);
+  }
+  return null;
 };

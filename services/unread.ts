@@ -76,7 +76,7 @@ export function updateNewestMessage(channelId: string, timestamp: number): void 
 /**
  * Update newest message from an array of messages
  */
-export function updateNewestFromMessages(channelId: string, messages: any[]): void {
+export function updateNewestFromMessages(channelId: string, messages: Array<{ timestamp: number }>): void {
   if (!messages || messages.length === 0) return;
 
   // Find the newest message timestamp
