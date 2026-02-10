@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { UserProfile, DeviceSettings, AppLogs, AppSettings, AppTheme } from '../types';
 import { uploadFile } from '../services/firebase';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { signOut } from '../services/auth';
 
 interface UserSettingsModalProps {
   currentProfile: UserProfile;
@@ -102,6 +103,18 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const handleCheckUpdates = () => {
     onShowToast?.('info', 'Checking for Updates', 'Looking for newer versions...');
     onCheckForUpdates();
+  };
+
+  const [signingOut, setSigningOut] = useState(false);
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await signOut();
+      // Auth state listener will handle the UI transition
+    } catch (err: any) {
+      onShowToast?.('error', 'Sign out failed', err.message);
+      setSigningOut(false);
+    }
   };
 
   const audioInputs = devices.filter(d => d.kind === 'audioinput');
@@ -260,6 +273,17 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                     </div>
                   </div>
                 </div>
+
+                {/* Sign out */}
+                <motion.button
+                  onClick={handleSignOut}
+                  disabled={signingOut}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <i className="fas fa-sign-out-alt"></i>
+                  {signingOut ? 'Signing out...' : 'Sign out'}
+                </motion.button>
               </motion.div>
             )}
 
@@ -602,6 +626,17 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
             >
                 About
             </button>
+            <div className="flex-1"></div>
+            <div className="border-t border-discord-muted/20 pt-2">
+                <button
+                    onClick={handleSignOut}
+                    disabled={signingOut}
+                    className="text-left px-3 py-2 rounded text-sm font-medium text-red-400 hover:bg-red-500/10 w-full transition-colors disabled:opacity-50"
+                >
+                    <i className="fas fa-sign-out-alt mr-2"></i>
+                    {signingOut ? 'Signing out...' : 'Sign out'}
+                </button>
+            </div>
         </div>
 
         {/* Content */}

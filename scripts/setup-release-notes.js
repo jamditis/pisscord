@@ -30,31 +30,28 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // UPDATE THESE FOR EACH RELEASE
-const CURRENT_VERSION = "1.5.0";
+const CURRENT_VERSION = "2.0.0";
 const DOWNLOAD_URL = `https://github.com/jamditis/pisscord/releases/download/v${CURRENT_VERSION}/Pisscord.Setup.${CURRENT_VERSION}.exe`;
 
 const RELEASE_NOTES = `## What's New in v${CURRENT_VERSION}
 
-### Voice Messages & AI Transcription
-- **Voice Messages** - Record and send voice messages with the new microphone button
-- **AI Transcription** - Voice messages & audio files automatically transcribed via Gemini 2.0 Flash
-- **Transcript Caching** - Transcripts stored in Firebase to avoid duplicate API calls
-- **Waveform Player** - Enhanced audio player with 480px wide waveform
+### Production hardening
+- **Centralized logging** - Structured logger replaces scattered console calls
+- **Error boundary** - App no longer white-screens on uncaught errors
+- **Type safety** - Fixed 13 critical type issues at data boundaries
+- **Auth fixed** - Login loop from redirect/auth state race condition resolved
+- **Google sign-in fixed** - Popup flow avoids browser storage partitioning
 
-### New UI Features
-- **Resizable Sidebars** - Drag handles to resize channel and user lists
-- **Collapsible Sidebars** - Click arrows to collapse/expand
-- **Server Dropdown** - PISSCORD header has dropdown with useful links
-- **Quick Emoji Picker** - Compact picker with categories and recent emojis
-- **Markdown Toolbar** - Formatting help popup for chat messages
+### Stability fixes
+- **Firebase operations** - All writes are now awaited with error handling
+- **Memory leaks fixed** - Audio contexts and sound objects properly cleaned up
+- **Gemini API key** - Moved from hardcoded fallback to Firebase config
 
-### Mobile Improvements
-- **Fixed Safe Areas** - No more layout cutoff on mobile
-- **Dynamic Viewport** - Uses 100dvh for proper mobile browser support
-
-### Simplified Voice
-- Voice channels are now the only way to make voice/video calls
-- Join muted with camera off by default
+### Test suite
+- **111 tests** across 14 test files
+- Vitest + Testing Library infrastructure
+- Playwright E2E smoke test setup
+- Services, components, hooks, and contexts covered
 `;
 
 async function setupReleaseNotes() {

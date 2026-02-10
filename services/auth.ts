@@ -16,7 +16,6 @@ import {
   User
 } from 'firebase/auth';
 import { auth } from './firebase';
-import { Platform } from './platform';
 import { logger } from './logger';
 
 const EMAIL_STORAGE_KEY = 'emailForSignIn';
@@ -53,18 +52,22 @@ function getAuthErrorMessage(error: any): string {
 }
 
 /**
- * Handle redirect result on page load (for mobile/web Google sign-in)
+ * Handle redirect result on page load.
+ * Only relevant if the redirect fallback was used (popup blocked).
+ * Errors are logged but not thrown — a failed redirect check shouldn't
+ * block the app from showing the login screen.
  */
 export const handleGoogleRedirectResult = async (): Promise<User | null> => {
   try {
     const result = await getRedirectResult(auth);
     if (result) {
+      logger.info('auth', `Redirect result: signed in as ${result.user.email}`);
       return result.user;
     }
   } catch (error: any) {
-    logger.error('auth', `Google redirect result error: ${error.code || error.message}`);
-    const friendlyMessage = getAuthErrorMessage(error);
-    throw new Error(friendlyMessage);
+    // Don't throw — redirect errors (storage partitioning, stale state)
+    // are common on normal page loads and shouldn't surface to the user
+    logger.warn('auth', `Redirect result check failed (expected on normal loads): ${error.code}`);
   }
   return null;
 };
@@ -136,23 +139,27 @@ export const completeEmailLinkSignIn = async (): Promise<User | null> => {
 
 /**
  * Sign in with Google
- * Uses redirect flow on mobile/web, popup on Electron
+ *
+ * Uses signInWithPopup on all platforms. signInWithRedirect is broken on
+ * browsers that partition third-party storage (Chrome, Safari, Firefox)
+ * because the auth handler (firebaseapp.com) and the app (web.app) are
+ * different origins, so sessionStorage can't be shared.
+ *
+ * Falls back to signInWithRedirect only when the popup is blocked.
  */
 export const signInWithGoogle = async (): Promise<User> => {
-  if (!Platform.isElectron) {
-    await signInWithRedirect(auth, googleProvider);
-    throw new Error('Redirecting to Google sign-in...');
-  }
-
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error: any) {
     if (error.code === 'auth/popup-blocked' ||
-        error.code === 'auth/popup-closed-by-user' ||
         error.code === 'auth/cancelled-popup-request') {
+      logger.warn('auth', 'Popup blocked, falling back to redirect flow');
       await signInWithRedirect(auth, googleProvider);
       throw new Error('Redirecting to Google sign-in...');
+    }
+    if (error.code === 'auth/popup-closed-by-user') {
+      throw new Error('Sign-in was cancelled.');
     }
     throw new Error(getAuthErrorMessage(error));
   }
