@@ -1,11 +1,14 @@
 /**
  * Authentication Context
- * Provides auth state and methods throughout the app
+ *
+ * Provides auth state throughout the app.
+ * Handles the race condition between onAuthStateChanged and getRedirectResult.
  */
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User } from 'firebase/auth';
 import { subscribeToAuth, completeEmailLinkSignIn, handleGoogleRedirectResult } from '../services/auth';
+import { logger } from '../services/logger';
 
 interface AuthContextType {
   user: User | null;
@@ -13,79 +16,119 @@ interface AuthContextType {
   error: string | null;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  loading: true,
-  error: null,
-});
+const AuthContext = createContext<AuthContextType | null>(null);
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = (): AuthContextType => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return ctx;
+};
+
+const AUTH_TIMEOUT_MS = 10_000;
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Track whether each signal has arrived
+  const redirectCheckedRef = useRef(false);
+  const authStateReceivedRef = useRef(false);
+  // Store the auth listener's value without applying it until redirects are done
+  const pendingAuthUserRef = useRef<User | null>(null);
+
   useEffect(() => {
     let isMounted = true;
-    let redirectChecked = false;
-    let authStateReceived = false;
-    let pendingAuthUser: User | null = null;
 
-    // Only set loading false when BOTH redirect check and initial auth state are done
-    const maybeFinishLoading = () => {
-      if (redirectChecked && authStateReceived && isMounted) {
-        setLoading(false);
-      }
+    const finishLoading = () => {
+      if (isMounted) setLoading(false);
     };
 
-    // Check for redirect results first (Google or email link)
+    /**
+     * Only finalize auth state when BOTH signals have arrived.
+     * The redirect check takes priority — if it found a user, that wins.
+     */
+    const maybeResolve = () => {
+      if (!redirectCheckedRef.current || !authStateReceivedRef.current) return;
+      if (!isMounted) return;
+
+      // At this point, both the redirect check and the initial auth state
+      // have resolved. The user state may have already been set by the
+      // redirect handler (if a redirect user was found) or by a subsequent
+      // auth listener call. Either way, loading is done.
+      finishLoading();
+    };
+
+    // 1) Check for redirect results first
     const checkRedirects = async () => {
-      // Check for Google redirect result (mobile/web flow)
+      logger.info('auth', 'Checking for redirect results...');
+
       try {
         const googleUser = await handleGoogleRedirectResult();
         if (googleUser && isMounted) {
-          console.log('[Auth] Google redirect sign-in successful');
+          logger.info('auth', `Google redirect sign-in successful: ${googleUser.email}`);
           setUser(googleUser);
         }
       } catch (err: any) {
-        console.error('Google redirect sign-in error:', err);
+        logger.error('auth', `Google redirect error: ${err.message}`);
         if (isMounted) setError(err.message);
       }
 
-      // Check for email link sign-in
       try {
         const emailLinkUser = await completeEmailLinkSignIn();
         if (emailLinkUser && isMounted) {
-          console.log('[Auth] Email link sign-in successful');
+          logger.info('auth', `Email link sign-in successful: ${emailLinkUser.email}`);
           setUser(emailLinkUser);
         }
       } catch (err: any) {
-        console.error('Email link sign-in error:', err);
+        logger.error('auth', `Email link error: ${err.message}`);
         if (isMounted) setError(err.message);
       }
 
-      redirectChecked = true;
-      maybeFinishLoading();
+      redirectCheckedRef.current = true;
+
+      // Now apply the pending auth state if no redirect user was set
+      // The auth listener may have fired with a real user while we were awaiting
+      if (pendingAuthUserRef.current !== null && isMounted) {
+        setUser(pendingAuthUserRef.current);
+      }
+
+      maybeResolve();
     };
 
-    // Subscribe to auth state changes
+    // 2) Subscribe to auth state changes
     const unsubscribe = subscribeToAuth((authUser) => {
-      console.log('[Auth] Auth state changed:', authUser ? authUser.email : 'null');
-      pendingAuthUser = authUser;
-      if (isMounted) {
+      logger.info('auth', `Auth state changed: ${authUser ? authUser.email : 'null'}`);
+      pendingAuthUserRef.current = authUser;
+      authStateReceivedRef.current = true;
+
+      if (redirectCheckedRef.current && isMounted) {
+        // Redirect check is done — safe to apply auth state directly
         setUser(authUser);
+        finishLoading();
       }
-      authStateReceived = true;
-      maybeFinishLoading();
+      // If redirect check hasn't completed yet, DON'T call setUser.
+      // The initial null from onAuthStateChanged fires before getRedirectResult
+      // resolves, so applying it would overwrite the redirect user.
+      maybeResolve();
     });
 
-    // Start redirect check
     checkRedirects();
+
+    // 3) Safety timeout — if both checks stall, stop loading after 10s
+    const timeout = setTimeout(() => {
+      if (isMounted && loading) {
+        logger.warn('auth', 'Auth initialization timed out after 10s');
+        finishLoading();
+      }
+    }, AUTH_TIMEOUT_MS);
 
     return () => {
       isMounted = false;
       unsubscribe();
+      clearTimeout(timeout);
     };
   }, []);
 
