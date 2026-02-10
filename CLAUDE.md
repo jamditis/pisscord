@@ -2,33 +2,24 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 🚨 Handoff Note / Status (v1.5.0)
-**Current State:** v1.5.0 released.
-**Last Updated:** 2025-12-09
+## 🚨 Handoff Note / Status (v2.0.0)
+**Current State:** v2.0.0 production hardening complete.
+**Last Updated:** 2026-02-10
 
-### Recent Work (This Session)
-- **Audio Transcription:** Voice messages & audio files now have transcription via Gemini 2.0 Flash
-- **Transcript Caching:** Transcripts stored in Firebase `/transcripts` to avoid duplicate API calls
-- **File Upload Metadata:** All files now show size badge and extension label
-- **Audio Player Widened:** Waveform player increased from 320px to 480px with 30 bars
-
-### UI Enhancement Plan (COMPLETED)
-All features from the plan file are now implemented:
-1. ✅ **Chat Input Features:** VoiceMessageButton, AudioMessage, MarkdownToolbar, QuickEmojiPicker
-2. ✅ **Resizable & Collapsible Sidebars:** useResizablePanel hook, ResizeHandle component, collapsed mode
-3. ✅ **Server Dropdown Menu:** PISSCORD header dropdown with Product Page, User Guide, Latest Release, Contact
-
-### Previous Work
-- **Mobile Safe Areas:** Fixed mobile layout cutoff with `env(safe-area-inset-*)`
-- **Dynamic Viewport:** Updated CSS to use `100dvh` for proper mobile browser support
-- **Process.env Fix:** Added Vite polyfill to fix blank page in browsers
-- **Splash Screen:** Rewritten with CSS animations (no Framer Motion) to fix flickering
-- **Approval System Removed:** Completely removed voice channel join request/approval system
-- **Direct Calls Removed:** Voice channels are now the only way to make voice/video calls
+### Recent Work (v2.0.0 - Production Hardening)
+- **Centralized Logging:** `services/logger.ts` replaces scattered console calls with structured `[TIMESTAMP] [LEVEL] [MODULE]` output, in-memory buffer (200 entries), debug log tab integration
+- **React Error Boundary:** `components/ErrorBoundary.tsx` catches render errors with fallback UI + global `window.onerror`/`onunhandledrejection` handlers
+- **Type Safety:** Fixed 13+ `any` types across firebase.ts, App.tsx, types.ts, geminiService.ts — PeerJS refs typed, Message/PresenceUser validated at boundaries
+- **Auth Race Condition Fixed:** `AuthContext.tsx` now defers auth state until redirect check completes, preventing infinite login loop
+- **Firebase Operations Hardened:** `sendMessage` awaited, `registerPresence`/`updatePresence` async with error handling, `subscribeToUsers` has error callback, batch cleanup
+- **Memory Leaks Fixed:** Audio cache reuse in sounds.ts, AudioContext cleanup in VoiceStage.tsx, isMountedRef guards in App.tsx async ops
+- **Gemini Service Fixed:** Removed hardcoded API key fallback, added Firebase Remote Config path, AbortController for timeouts
+- **Test Suite:** 111 unit tests across 14 files (Vitest + Testing Library), Playwright E2E smoke tests
+- **Auth Error Handling:** Specific error messages per Firebase error code, email link expiry, useAuth throws outside provider
 
 ### Action Items for Next Session
+- Merge `feature/production-hardening` to master after manual smoke test
 - Do not revert the mobile layout fixes or the `services/platform.ts` abstraction
-- Auth implementation plan ready at `CLAUDE_IMPLEMENTATION_PLAN_AUTH_AND_STABLE.md`
 
 ## 🐛 Known Issues (v1.4.8 Backlog)
 
@@ -42,12 +33,11 @@ All features from the plan file are now implemented:
 - Changed `isVideoEnabled` and `isAudioEnabled` initial state to `false` in `App.tsx:132-133`
 - Tracks are disabled immediately after `getLocalStream()` at `App.tsx:516-519`
 
-**Upcoming: Auth & Stability Plan:**
-- Comprehensive plan at `CLAUDE_IMPLEMENTATION_PLAN_AUTH_AND_STABLE.md` covers:
-  - Stabilizing app loading with Firebase init guardrails
-  - Persistent voice/video with HD screensharing
-  - Unified Firebase Auth credentials across web/Android/desktop
-- ✅ Codex PR #11 reverted (PR #12 merged), branch deleted - ready for clean implementation
+**Auth & Stability:** ✅ FIXED in v2.0.0
+- Auth race condition (infinite login loop) fixed in `contexts/AuthContext.tsx`
+- Firebase operations hardened with async/await and error handling
+- Memory leaks fixed across audio, WebRTC, and async operations
+- Error boundary added to catch render crashes
 
 **Bug: Battery Saving Feature Interrupts Active Voice Calls:** ✅ FIXED
 - App used to go to sleep/pause when minimized, breaking active voice calls
@@ -85,8 +75,8 @@ All features from the plan file are now implemented:
 Pisscord is a private, multi-platform Discord clone built with React, TypeScript, and PeerJS. It enables direct P2P voice/video calling, text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
 
 **Platforms:** Desktop (Electron), Web Browser, Android (Capacitor), Mobile Web
-**Current Version:** 1.5.0
-**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v1.5.0
+**Current Version:** 2.0.0
+**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v2.0.0
 
 ## Key Architecture
 
@@ -167,11 +157,13 @@ Pisscord is a private, multi-platform Discord clone built with React, TypeScript
 - `hooks/useResizablePanel.ts`: Drag-to-resize with localStorage persistence
 
 ### Services Layer
+- `services/logger.ts`: Structured logging with levels (debug/info/warn/error), module tagging, 200-entry buffer for debug log tab
 - `services/platform.ts`: Platform abstraction (Electron/Capacitor/Web detection, update service, link service)
 - `services/unread.ts`: Per-user unread message tracking via localStorage
 - `services/firebase.ts`: Firebase integration (presence, messaging, file uploads, transcript caching)
 - `services/geminiService.ts`: Pissbot AI + audio transcription via Gemini 2.0 Flash (multimodal)
-- `services/sounds.ts`: Sound effects with preloading
+- `services/sounds.ts`: Sound effects with preloading and audio cache reuse
+- `services/auth.ts`: Firebase Auth with email link + Google sign-in, specific error messages per failure code
 
 ### Persistent Voice Architecture
 **Key Feature**: Users can browse text channels while remaining in a voice call
@@ -214,6 +206,14 @@ npm run build:web        # Build for web browser deployment
 npm run dist             # Build + package Windows installer (.exe in dist/)
 npx cap sync android     # Sync web build to Android project
 npx cap open android     # Open Android project in Android Studio
+```
+
+### Testing
+```bash
+npm test                 # Run all unit tests (vitest)
+npm run test:watch       # Watch mode
+npm run test:coverage    # Coverage report (services, components, contexts, hooks)
+npm run test:e2e         # Playwright E2E smoke tests (requires dev server)
 ```
 
 ### TypeScript
@@ -363,7 +363,19 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - `noUnusedLocals` and `noUnusedParameters` disabled (intentional)
 - React JSX transform (no need to import React in TSX files)
 
-## Recent Changes (v1.1.0 - v1.5.0)
+## Recent Changes (v1.1.0 - v2.0.0)
+
+### v2.0.0 (2026-02-10) — Production Hardening
+- **Centralized Logging:** `services/logger.ts` with structured output, 200-entry in-memory buffer, debug/info/warn/error levels
+- **React Error Boundary:** `components/ErrorBoundary.tsx` wraps app with fallback UI, global error handlers
+- **Type Safety Overhaul:** 13+ `any` types replaced with proper types (PeerJS refs, Message, PresenceUser, Electron API)
+- **Auth Race Condition Fixed:** Infinite login loop caused by redirect/auth listener race condition resolved
+- **Firebase Operations Hardened:** All writes awaited, async error handling, batch cleanup, connection state monitoring
+- **Memory Leak Fixes:** Audio cache reuse, AudioContext cleanup, isMountedRef guards, AbortController for fetches
+- **Gemini Service Security:** Removed hardcoded API key fallback, Firebase Remote Config integration
+- **Test Suite (111 tests):** Vitest + Testing Library across services, components, hooks, contexts
+- **E2E Tests:** Playwright smoke tests (app loads, title check, UI renders, no console errors)
+- **Auth Error Messages:** Specific messages for each Firebase Auth error code, email link expiry cleanup
 
 ### v1.5.0 (2025-12-09)
 - **Voice Messages:** Record and send voice messages with VoiceMessageButton component

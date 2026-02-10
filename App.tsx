@@ -28,7 +28,7 @@ import { Platform, LogService, ClipboardService, UpdateService, ScreenShareServi
 import { VoidBackground } from './components/Visuals';
 import { logger } from './services/logger';
 
-const APP_VERSION = "1.5.1";
+const APP_VERSION = "2.0.0";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
