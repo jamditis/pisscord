@@ -92,7 +92,7 @@ There are four ways to use Pisscord:
 ## 🌐 Web Browser Quick Start
 
 1.  **Visit**: Go to [pisscord-edbca.web.app](https://pisscord-edbca.web.app)
-2.  **Enter Passphrase**: Get the encryption passphrase from a group member
+2.  **Sign In**: Use Google or email magic link to authenticate
 3.  **Start Chatting**: You're ready to use all features
 
 That's it! The web version works on desktop and mobile browsers.
@@ -132,7 +132,7 @@ That's it! The web version works on desktop and mobile browsers.
 
 5.  **Find the Installer**:
     - Navigate to the `dist` folder
-    - Look for `Pisscord Setup 1.4.4.exe`
+    - Look for `Pisscord Setup 2.0.0.exe`
 
 ### Build Web Version
 
@@ -164,7 +164,7 @@ npm run dev          # Web browser (localhost:5173)
 
 ### Desktop Installation
 
-1.  **Download**: Get the `Pisscord Setup 1.4.4.exe` from [releases](https://github.com/jamditis/pisscord/releases/latest)
+1.  **Download**: Get the `Pisscord Setup 2.0.0.exe` from [releases](https://github.com/jamditis/pisscord/releases/latest)
 2.  **Install**: Double-click the installer
     - Windows may show "Unknown Publisher" warning
     - Click "More Info" → "Run Anyway"
@@ -179,9 +179,7 @@ npm run dev          # Web browser (localhost:5173)
 
 ### First-Time Setup
 
-1.  **Enter Passphrase**: When prompted, enter the encryption passphrase
-    - Get this from an existing group member
-    - This unlocks message encryption for your device
+1.  **Sign In**: Use Google sign-in or email magic link to authenticate
 2.  **Set Your Profile**: Click the gear icon to set your display name and avatar
 
 ### Joining Voice Calls
