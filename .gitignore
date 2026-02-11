@@ -51,5 +51,9 @@ pisscord-edbca-firebase-adminsdk-*.json
 # Screenshots (large, local only)
 screenshots/
 
+# Windows shell metadata
+desktop.ini
+Thumbs.db
+
 # Claude local settings
 .claude/settings.local.json
