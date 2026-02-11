@@ -294,6 +294,113 @@ ipcMain.handle('get-desktop-sources', async () => {
   }));
 });
 
+// IPC handler for Google Sign-In (manual OAuth flow for Electron)
+// signInWithPopup fails in Electron because the popup can't postMessage
+// back to a file:// origin. Instead, we open a BrowserWindow to Google's
+// OAuth consent screen and extract the ID token after the redirect.
+ipcMain.handle('google-sign-in', async () => {
+  const GOOGLE_CLIENT_ID = '582017997210-u9lhvn9rglcch5pae0nis7668hgfhe14.apps.googleusercontent.com';
+  const REDIRECT_URI = 'https://pisscord-edbca.firebaseapp.com/__/auth/handler';
+
+  // Build Google OAuth URL requesting an id_token via implicit grant
+  const nonce = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: REDIRECT_URI,
+    response_type: 'id_token',
+    scope: 'openid email profile',
+    nonce: nonce,
+    prompt: 'select_account',
+  });
+
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+
+  return new Promise((resolve, reject) => {
+    const authWindow = new BrowserWindow({
+      width: 500,
+      height: 700,
+      show: true,
+      autoHideMenuBar: true,
+      parent: mainWindow,
+      modal: true,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+    });
+
+    let resolved = false;
+
+    // Google's implicit flow redirects to: redirect_uri#id_token=...&access_token=...
+    // Electron's navigation events strip the URL fragment, so we can't read it
+    // from will-navigate or will-redirect. Instead, we let the page load and
+    // read window.location.hash via executeJavaScript.
+    //
+    // The Firebase auth handler page (/__/auth/handler) parses the fragment
+    // and tries to postMessage back to the opener. We don't care about that —
+    // we just need the hash before Firebase's JS clears it.
+
+    authWindow.webContents.on('did-finish-load', async () => {
+      if (resolved) return;
+      const url = authWindow.webContents.getURL();
+
+      // Only extract from the Firebase auth handler redirect page
+      if (!url.startsWith(REDIRECT_URI)) return;
+
+      try {
+        // Read the hash fragment — this works because did-finish-load fires
+        // after the HTML is loaded but typically before inline scripts execute.
+        // We also retry a few times in case of timing issues.
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const fragment = await authWindow.webContents.executeJavaScript(
+            'window.location.hash'
+          );
+
+          if (fragment && fragment.length > 1) {
+            const hashParams = new URLSearchParams(fragment.substring(1));
+            const idToken = hashParams.get('id_token');
+            if (idToken) {
+              resolved = true;
+              authWindow.close();
+              resolve({ idToken });
+              return;
+            }
+            const error = hashParams.get('error');
+            if (error) {
+              resolved = true;
+              authWindow.close();
+              reject(new Error(`Google sign-in error: ${error}`));
+              return;
+            }
+          }
+
+          // Wait 200ms before retrying
+          if (attempt < 2) {
+            await new Promise(r => setTimeout(r, 200));
+          }
+        }
+
+        // If we got here, the hash didn't contain tokens. The page might have
+        // processed them already. Try reading from the page's DOM as a last resort.
+        logToFile('Google Sign-In: could not extract token from hash after 3 attempts');
+      } catch (e) {
+        // Window may have been destroyed between attempts
+        if (!resolved) {
+          logToFile(`Google Sign-In: executeJavaScript error: ${e.message}`);
+        }
+      }
+    });
+
+    authWindow.on('closed', () => {
+      if (!resolved) {
+        reject(new Error('Sign-in window was closed'));
+      }
+    });
+
+    authWindow.loadURL(authUrl);
+  });
+});
+
 // IPC handler for clipboard
 ipcMain.on('copy-to-clipboard', (event, text) => {
   clipboard.writeText(text);

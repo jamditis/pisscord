@@ -8,6 +8,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   installUpdate: () => ipcRenderer.send('install-update'),
   showWindow: () => ipcRenderer.send('show-window'),
 
+  // Google Sign-In via main process OAuth window (popup auth doesn't work with file:// origin)
+  googleSignIn: () => ipcRenderer.invoke('google-sign-in'),
+
   // Screen capture for Electron (via main process IPC)
   getDesktopSources: () => ipcRenderer.invoke('get-desktop-sources'),
 

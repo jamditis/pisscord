@@ -144,14 +144,15 @@ export const completeEmailLinkSignIn = async (): Promise<User | null> => {
  *
  * Platform-specific strategy:
  * - **Capacitor (Android/iOS):** Uses native Google Sign-In via
- *   @codetrix-studio/capacitor-google-auth. This opens the OS account picker
- *   (no WebView/popup/redirect), gets an ID token, then passes it to Firebase
- *   via signInWithCredential. Requires google-services.json with SHA-1.
- * - **Web/Electron:** Uses signInWithPopup. signInWithRedirect is broken on
- *   browsers that partition third-party storage (Chrome, Safari, Firefox)
- *   because the auth handler (firebaseapp.com) and the app (web.app) are
- *   different origins, so sessionStorage can't be shared.
- *   Falls back to signInWithRedirect only when the popup is blocked.
+ *   @codetrix-studio/capacitor-google-auth. Opens the OS account picker,
+ *   gets an ID token, then passes it to Firebase via signInWithCredential.
+ * - **Electron:** Opens a BrowserWindow to Google's OAuth consent screen
+ *   via IPC to the main process. The main process intercepts the redirect
+ *   to extract the ID token, then the renderer uses signInWithCredential.
+ *   signInWithPopup doesn't work because the popup can't postMessage back
+ *   to the file:// origin that Electron uses.
+ * - **Web:** Uses signInWithPopup. Falls back to signInWithRedirect only
+ *   when the popup is blocked.
  */
 export const signInWithGoogle = async (): Promise<User> => {
   // Capacitor: use native Google Sign-In → Firebase credential
@@ -188,7 +189,26 @@ export const signInWithGoogle = async (): Promise<User> => {
     }
   }
 
-  // Web/Electron: use popup with redirect fallback
+  // Electron: use main process OAuth window → signInWithCredential
+  // signInWithPopup fails because the popup can't postMessage back to file:// origin
+  if (Platform.isElectron) {
+    logger.info('auth', 'Electron detected, using main process Google Sign-In');
+    try {
+      const { idToken } = await (window as any).electronAPI.googleSignIn();
+      const credential = GoogleAuthProvider.credential(idToken);
+      const result = await signInWithCredential(auth, credential);
+      logger.info('auth', `Electron Google Sign-In successful: ${result.user.email}`);
+      return result.user;
+    } catch (error: any) {
+      if (error.message?.includes('closed') || error.message?.includes('cancelled')) {
+        throw new Error('Sign-in was cancelled.');
+      }
+      logger.error('auth', `Electron Google Sign-In failed: ${error.message}`);
+      throw new Error(getAuthErrorMessage(error));
+    }
+  }
+
+  // Web: use popup with redirect fallback
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
