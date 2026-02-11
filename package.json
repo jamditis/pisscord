@@ -1,6 +1,6 @@
 {
   "name": "pisscord",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "Private P2P Discord Clone",
   "main": "electron.js",
   "author": "P2P User",
@@ -48,8 +48,7 @@
       "createStartMenuShortcut": true,
       "deleteAppDataOnUninstall": false,
       "include": "installer.nsh",
-      "guid": "pisscord-p2p-chat",
-      "allowDowngrades": true
+      "guid": "pisscord-p2p-chat"
     },
     "publish": [
       {
