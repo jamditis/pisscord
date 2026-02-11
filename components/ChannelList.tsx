@@ -153,8 +153,15 @@ export const ChannelList: React.FC<ChannelListProps> = ({
         {/* Text Channels Section */}
         <div className="mb-4">
           <div className="flex items-center px-2 mb-3">
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Text Channels</div>
-            <div className="flex-1 h-px bg-gray-700/50 ml-3" />
+            <div
+              className="w-1.5 h-1.5 rounded-full mr-2 shrink-0"
+              style={{ background: colors.primary, boxShadow: `0 0 6px ${colors.glow}` }}
+            />
+            <div className="text-xs font-bold uppercase tracking-wider" style={{ color: colors.primary, opacity: 0.7 }}>Text Channels</div>
+            <div
+              className="flex-1 h-px ml-3"
+              style={{ background: `linear-gradient(90deg, ${colors.glowLight}, transparent)` }}
+            />
           </div>
           {channels.filter(c => c.type === ChannelType.TEXT || c.type === ChannelType.AI).map(channel => (
             <MobileChannelItem
@@ -170,8 +177,15 @@ export const ChannelList: React.FC<ChannelListProps> = ({
         {/* Voice Channels Section */}
         <div className="mb-4">
           <div className="flex items-center px-2 mb-3">
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Voice Channels</div>
-            <div className="flex-1 h-px bg-gray-700/50 ml-3" />
+            <div
+              className="w-1.5 h-1.5 rounded-full mr-2 shrink-0"
+              style={{ background: colors.primary, boxShadow: `0 0 6px ${colors.glow}` }}
+            />
+            <div className="text-xs font-bold uppercase tracking-wider" style={{ color: colors.primary, opacity: 0.7 }}>Voice Channels</div>
+            <div
+              className="flex-1 h-px ml-3"
+              style={{ background: `linear-gradient(90deg, ${colors.glowLight}, transparent)` }}
+            />
           </div>
           {channels.filter(c => c.type === ChannelType.VOICE).map(channel => (
             <MobileChannelItem

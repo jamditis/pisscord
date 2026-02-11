@@ -24,6 +24,10 @@ export interface AudioProcessor {
   processedStream: MediaStream;
   /** The processed audio track (convenience) */
   processedAudioTrack: MediaStreamTrack;
+  /** Suspend the AudioContext (call when app goes to background) */
+  suspend: () => void;
+  /** Resume the AudioContext (call when app returns to foreground) */
+  resume: () => void;
   /** Clean up all AudioContext resources */
   destroy: () => void;
 }
@@ -136,7 +140,7 @@ export async function createAudioProcessor(rawStream: MediaStream): Promise<Audi
   let gateInterval: ReturnType<typeof setInterval> | null = null;
 
   try {
-    await ctx.audioWorklet.addModule('/audio/noise-gate-processor.js');
+    await ctx.audioWorklet.addModule(new URL('/audio/noise-gate-processor.js', window.location.origin).href);
     noiseGateNode = new AudioWorkletNode(ctx, 'noise-gate-processor');
 
     // Forward VAD probability to the worklet at regular intervals
@@ -190,6 +194,18 @@ export async function createAudioProcessor(rawStream: MediaStream): Promise<Audi
   return {
     processedStream: destination.stream,
     processedAudioTrack: processedTrack,
+    suspend: () => {
+      if (ctx.state === 'running') {
+        ctx.suspend().catch(() => {});
+        logger.info('audio', 'AudioContext suspended (app backgrounded)');
+      }
+    },
+    resume: () => {
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+        logger.info('audio', 'AudioContext resumed (app foregrounded)');
+      }
+    },
     destroy: () => {
       logger.info('audio', 'Destroying audio processing pipeline');
 

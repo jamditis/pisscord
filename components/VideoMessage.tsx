@@ -22,7 +22,7 @@ const getFileExtension = (fileName: string): string => {
 
 export const VideoMessage: React.FC<VideoMessageProps> = ({ url, name, size }) => {
   return (
-    <div className="max-w-lg">
+    <div className="w-full max-w-lg">
       <div className="bg-discord-dark/60 rounded-lg overflow-hidden border border-discord-dark">
         <video
           controls

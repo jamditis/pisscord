@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConnectionState, UserProfile, PresenceUser } from '../types';
 import { useIsMobile } from '../hooks/useIsMobile';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Memoized Mobile Video Tile - defined OUTSIDE VoiceStage to prevent recreation
 const MobileVideoTile = memo(({
@@ -14,7 +15,9 @@ const MobileVideoTile = memo(({
   isSpotlighted,
   isSmall,
   isScreenSharing,
-  onTap
+  onTap,
+  themeGlow,
+  themePrimary,
 }: {
   userId: string;
   stream: MediaStream | null;
@@ -26,6 +29,8 @@ const MobileVideoTile = memo(({
   isSmall?: boolean;
   isScreenSharing?: boolean;
   onTap?: () => void;
+  themeGlow?: string;
+  themePrimary?: string;
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -56,7 +61,7 @@ const MobileVideoTile = memo(({
       style={{
         background: 'linear-gradient(135deg, #2a2a4a 0%, #1a1a2e 100%)',
         boxShadow: isSpeaking
-          ? '0 0 0 3px rgba(168, 85, 247, 0.8), 0 0 20px rgba(168, 85, 247, 0.4)'
+          ? `0 0 0 3px ${themePrimary || 'rgba(168, 85, 247, 0.8)'}, 0 0 20px ${themeGlow || 'rgba(168, 85, 247, 0.4)'}`
           : '0 4px 20px rgba(0, 0, 0, 0.3)'
       }}
     >
@@ -77,7 +82,7 @@ const MobileVideoTile = memo(({
             }`}
             style={{
               backgroundColor: user?.photoURL ? 'transparent' : (user?.color || '#a855f7'),
-              boxShadow: isSpeaking ? '0 0 0 3px rgba(168, 85, 247, 0.8)' : undefined
+              boxShadow: isSpeaking ? `0 0 0 3px ${themePrimary || 'rgba(168, 85, 247, 0.8)'}` : undefined
             }}
           >
             {user?.photoURL ? (
@@ -476,6 +481,7 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
   ];
 
   const isMobile = useIsMobile();
+  const { colors } = useTheme();
 
   // Mobile control button component
   const MobileControlButton: React.FC<{
@@ -588,6 +594,8 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
                         isSpotlighted
                         isScreenSharing={p.isLocal && isScreenSharing}
                         onTap={() => toggleSpotlight(p.id)}
+                        themeGlow={colors.glow}
+                        themePrimary={colors.primary}
                       />
                     );
                   })()}
@@ -610,6 +618,8 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
                           isSmall
                           isScreenSharing={p.isLocal && isScreenSharing}
                           onTap={() => toggleSpotlight(p.id)}
+                          themeGlow={colors.glow}
+                          themePrimary={colors.primary}
                         />
                       );
                     })}
@@ -645,6 +655,8 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
                         hasVideo={p.hasVideo}
                         isScreenSharing={p.isLocal && isScreenSharing}
                         onTap={() => toggleSpotlight(p.id)}
+                        themeGlow={colors.glow}
+                        themePrimary={colors.primary}
                       />
                     </div>
                   );

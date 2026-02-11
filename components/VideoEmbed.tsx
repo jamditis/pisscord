@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { VideoEmbedInfo } from '../services/videoEmbed';
 
 // Platform icons and labels
@@ -80,7 +80,7 @@ export const VideoEmbed: React.FC<VideoEmbedProps> = ({ embed }) => {
         href={embed.originalUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="block max-w-lg mt-2 bg-discord-dark/60 rounded-lg border border-discord-dark hover:border-discord-muted/40 transition-colors overflow-hidden"
+        className="block w-full max-w-lg mt-2 bg-discord-dark/60 rounded-lg border border-discord-dark hover:border-discord-muted/40 transition-colors overflow-hidden"
       >
         <div className="flex items-center p-3 gap-3">
           <div
@@ -106,7 +106,7 @@ export const VideoEmbed: React.FC<VideoEmbedProps> = ({ embed }) => {
   // Twitter: use widget JS
   if (embed.platform === 'twitter') {
     return (
-      <div className="max-w-lg mt-2">
+      <div className="w-full max-w-lg mt-2">
         <div className="flex items-center gap-1.5 mb-1">
           <i className={`${meta.icon} text-xs`} style={{ color: meta.color }} />
           <span className="text-[10px] text-discord-muted font-medium">{meta.label}</span>
@@ -123,8 +123,40 @@ export const VideoEmbed: React.FC<VideoEmbedProps> = ({ embed }) => {
   }
 
   // Standard iframe embed (YouTube, Twitch, Vimeo, Streamable)
+  const [iframeFailed, setIframeFailed] = useState(false);
+
+  if (iframeFailed) {
+    // Fallback link card when iframe fails (e.g. Capacitor WebView restrictions)
+    return (
+      <a
+        href={embed.originalUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block w-full max-w-lg mt-2 bg-discord-dark/60 rounded-lg border border-discord-dark hover:border-discord-muted/40 transition-colors overflow-hidden"
+      >
+        <div className="flex items-center p-3 gap-3">
+          <div
+            className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+            style={{ backgroundColor: `${meta.color}20` }}
+          >
+            <i className={`${meta.icon} text-lg`} style={{ color: meta.color }} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm text-discord-link font-medium truncate">
+              {embed.originalUrl}
+            </div>
+            <div className="text-xs text-discord-muted mt-0.5">
+              Watch on {meta.label}
+            </div>
+          </div>
+          <i className="fas fa-external-link-alt text-discord-muted text-xs shrink-0" />
+        </div>
+      </a>
+    );
+  }
+
   return (
-    <div className="max-w-lg mt-2">
+    <div className="w-full max-w-lg mt-2">
       <div className="flex items-center gap-1.5 mb-1">
         <i className={`${meta.icon} text-xs`} style={{ color: meta.color }} />
         <span className="text-[10px] text-discord-muted font-medium">{meta.label}</span>
@@ -138,6 +170,7 @@ export const VideoEmbed: React.FC<VideoEmbedProps> = ({ embed }) => {
           sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation"
           allowFullScreen
           title={`${meta.label} embed`}
+          onError={() => setIframeFailed(true)}
         />
       </div>
     </div>

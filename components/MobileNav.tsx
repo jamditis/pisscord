@@ -12,6 +12,7 @@ interface MobileNavProps {
   connectionState: ConnectionState;
   unreadCount?: number;
   onOpenSettings: () => void;
+  isSettingsOpen?: boolean;
 }
 
 export const MobileNav: React.FC<MobileNavProps> = ({
@@ -20,6 +21,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   connectionState,
   unreadCount = 0,
   onOpenSettings,
+  isSettingsOpen = false,
 }) => {
   const isConnected = connectionState === ConnectionState.CONNECTED;
   const { colors } = useTheme();
@@ -130,6 +132,20 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                 WebkitTapHighlightColor: 'transparent',
               }}
             >
+              {/* Active tab background glow */}
+              {isActive && (
+                <motion.div
+                  layoutId="activeTabBg"
+                  className="absolute inset-1 rounded-xl"
+                  style={{
+                    background: isLive
+                      ? 'radial-gradient(ellipse at center, rgba(34, 197, 94, 0.08), transparent 70%)'
+                      : `radial-gradient(ellipse at center, ${colors.glowFaint || 'rgba(168, 85, 247, 0.08)'}, transparent 70%)`,
+                  }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                />
+              )}
+
               {/* Active indicator pill */}
               <div
                 className="absolute top-1 w-12 h-1 rounded-full transition-all duration-300 ease-out"
@@ -228,7 +244,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             <svg
               className="w-6 h-6 transition-colors duration-200"
               fill="none"
-              stroke="#6b7280"
+              stroke={isSettingsOpen ? colors.primary : '#6b7280'}
               strokeWidth={1.5}
               viewBox="0 0 24 24"
             >
@@ -236,7 +252,10 @@ export const MobileNav: React.FC<MobileNavProps> = ({
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </div>
-          <span className="mt-1 text-[10px] font-medium tracking-wide text-gray-500">
+          <span
+            className="mt-1 text-[10px] font-medium tracking-wide transition-colors duration-200"
+            style={{ color: isSettingsOpen ? colors.primary : '#6b7280' }}
+          >
             Settings
           </span>
         </motion.button>

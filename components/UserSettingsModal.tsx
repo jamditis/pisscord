@@ -433,7 +433,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                   <div className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-3 border border-white/10">
                     <div className="flex-1 mr-3">
                       <div className="text-white font-medium text-sm">Advanced noise cancellation</div>
-                      <div className="text-white/40 text-xs mt-0.5">ML-powered noise removal. Uses more CPU.</div>
+                      <div className="text-white/40 text-xs mt-0.5">ML-powered noise removal (keyboard, fans, background chatter). Uses more CPU. Requires reconnecting to voice.</div>
                     </div>
                     <button
                       onClick={() => setAdvancedNoiseCancellation(!advancedNoiseCancellation)}
