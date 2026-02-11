@@ -53,10 +53,19 @@ export async function createAudioProcessor(rawStream: MediaStream): Promise<Audi
   const ctx = new AudioContext({ sampleRate: 48000 });
 
   // --- Load RNNoise WASM ---
+  // The @jitsi/rnnoise-wasm module tries to fetch rnnoise.wasm relative to the
+  // bundled JS chunk URL. Vite doesn't copy .wasm files from node_modules to the
+  // build output, so the fetch hits a 404 (returns HTML → "expected magic word"
+  // error). Fix: ship the .wasm in public/ and override locateFile to point there.
   let rnnoiseModule: Awaited<ReturnType<typeof import('@jitsi/rnnoise-wasm')['createRNNWasmModule']>>;
   try {
     const { createRNNWasmModule } = await import('@jitsi/rnnoise-wasm');
-    rnnoiseModule = await createRNNWasmModule();
+    // Emscripten modules accept a config object but @jitsi's types don't declare it
+    const wasmUrl = new URL('/rnnoise.wasm', window.location.origin).href;
+    const moduleFactory = createRNNWasmModule as (config?: Record<string, unknown>) => Promise<typeof rnnoiseModule>;
+    rnnoiseModule = await moduleFactory({
+      locateFile: (path: string) => (path.endsWith('.wasm') ? wasmUrl : path),
+    });
     logger.info('audio', 'RNNoise WASM loaded');
   } catch (err) {
     ctx.close();

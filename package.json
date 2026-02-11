@@ -47,7 +47,9 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "deleteAppDataOnUninstall": false,
-      "include": "installer.nsh"
+      "include": "installer.nsh",
+      "guid": "pisscord-p2p-chat",
+      "allowDowngrades": true
     },
     "publish": [
       {
