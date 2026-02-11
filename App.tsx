@@ -30,7 +30,7 @@ import { VoidBackground } from './components/Visuals';
 import { logger } from './services/logger';
 import { createAudioProcessor, AudioProcessor } from './services/audioProcessor';
 
-const APP_VERSION = "2.0.2";
+const APP_VERSION = "2.0.3";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
