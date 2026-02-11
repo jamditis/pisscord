@@ -20,6 +20,8 @@ export interface DeviceSettings {
   noiseSuppression: boolean;
   echoCancellation: boolean;
   autoGainControl: boolean;
+  // ML noise cancellation (RNNoise WASM)
+  advancedNoiseCancellation: boolean;
 }
 
 export interface PresenceUser extends UserProfile {
@@ -31,7 +33,8 @@ export interface PresenceUser extends UserProfile {
 export type MessageAttachment =
   | { type: 'image'; url: string; name: string; size?: number }
   | { type: 'file'; url: string; name: string; size?: number }
-  | { type: 'audio'; url: string; name: string; size?: number; duration?: number };
+  | { type: 'audio'; url: string; name: string; size?: number; duration?: number }
+  | { type: 'video'; url: string; name: string; size?: number };
 
 export interface Message {
   id: string;

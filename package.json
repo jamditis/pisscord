@@ -1,6 +1,6 @@
 {
   "name": "pisscord",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Private P2P Discord Clone",
   "main": "electron.js",
   "author": "P2P User",
@@ -69,6 +69,7 @@
     "@capacitor/ios": "^7.4.4",
     "@capacitor/status-bar": "^7.0.3",
     "@google/genai": "*",
+    "@jitsi/rnnoise-wasm": "^0.2.1",
     "electron-updater": "^6.6.2",
     "firebase": "^10.8.0",
     "framer-motion": "^12.23.25",

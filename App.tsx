@@ -27,8 +27,9 @@ import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
 import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService, AppLifecycleService } from './services/platform';
 import { VoidBackground } from './components/Visuals';
 import { logger } from './services/logger';
+import { createAudioProcessor, AudioProcessor } from './services/audioProcessor';
 
-const APP_VERSION = "2.0.0";
+const APP_VERSION = "2.0.1";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
@@ -60,7 +61,9 @@ const DEFAULT_DEVICES: DeviceSettings = {
     // Audio processing - all enabled by default
     noiseSuppression: true,
     echoCancellation: true,
-    autoGainControl: true
+    autoGainControl: true,
+    // ML noise cancellation - off by default (conservative rollout)
+    advancedNoiseCancellation: false,
 };
 
 const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -183,6 +186,7 @@ export default function App() {
   const [mobileView, setMobileView] = useState<MobileView>('chat');
   const [showSplash, setShowSplash] = useState(true);
   const [audioUnlockNeeded, setAudioUnlockNeeded] = useState(false);
+  const audioUnlockDismissedRef = useRef(false);
   const isMobile = useIsMobile();
 
   // --- RESIZABLE SIDEBARS ---
@@ -211,6 +215,7 @@ export default function App() {
   const isVideoEnabledRef = useRef(isVideoEnabled);
   const myStreamRef = useRef<MediaStream | null>(null);
   const activeVoiceChannelIdRef = useRef<string | null>(activeVoiceChannelId);
+  const audioProcessorRef = useRef<AudioProcessor | null>(null);
 
   useEffect(() => {
     isAudioEnabledRef.current = isAudioEnabled;
@@ -584,6 +589,32 @@ export default function App() {
         stream.getVideoTracks().forEach(t => t.enabled = isVideoEnabledRef.current);
         log(`Applied initial state: audio=${isAudioEnabledRef.current}, video=${isVideoEnabledRef.current}`, 'webrtc');
 
+        // --- ML noise cancellation pipeline ---
+        if (currentSettings.advancedNoiseCancellation) {
+            try {
+                log('Initializing ML noise cancellation...', 'webrtc');
+                const processor = await createAudioProcessor(stream);
+                audioProcessorRef.current = processor;
+
+                // Build new stream: processed audio + original video track
+                const videoTrack = stream.getVideoTracks()[0];
+                const processedStream = videoTrack
+                    ? new MediaStream([processor.processedAudioTrack, videoTrack])
+                    : new MediaStream([processor.processedAudioTrack]);
+
+                // Apply mute state to processed track
+                processor.processedAudioTrack.enabled = isAudioEnabledRef.current;
+
+                log('ML noise cancellation active', 'webrtc');
+                setMyStream(processedStream);
+                return processedStream;
+            } catch (err: any) {
+                log(`ML noise cancellation failed, using raw stream: ${err.message}`, 'error');
+                toast.warning('Noise cancellation unavailable', 'Falling back to browser-native processing.');
+                // Fall through to raw stream
+            }
+        }
+
         setMyStream(stream);
         return stream;
     } catch (err: any) {
@@ -641,9 +672,15 @@ export default function App() {
   const cleanupCall = () => {
       callsRef.current.forEach(call => call.close());
       callsRef.current.clear();
-      
+
       dataConnectionsRef.current.forEach(conn => conn.close());
       dataConnectionsRef.current.clear();
+
+      // Clean up ML audio processor
+      if (audioProcessorRef.current) {
+          audioProcessorRef.current.destroy();
+          audioProcessorRef.current = null;
+      }
 
       if (myStream) myStream.getTracks().forEach(t => t.stop());
       
@@ -658,6 +695,10 @@ export default function App() {
           updatePresence(myPeerId, userProfile, null);
       }
       
+      // Reset audio unlock state for next call
+      audioUnlockDismissedRef.current = false;
+      setAudioUnlockNeeded(false);
+
       log("Left voice channel.", 'info');
   };
 
@@ -1181,10 +1222,17 @@ export default function App() {
   };
 
   const unlockAudio = useCallback(() => {
-      const audioElements = document.querySelectorAll('audio');
-      audioElements.forEach(el => {
-          el.play().catch(e => console.error("Still failed to play:", e));
+      // Only play voice call audio elements, not chat audio messages
+      const voiceAudioElements = document.querySelectorAll('audio[data-voice-call]');
+      voiceAudioElements.forEach(el => {
+          (el as HTMLAudioElement).play().catch(e => console.error("Still failed to play:", e));
       });
+      audioUnlockDismissedRef.current = true;
+      setAudioUnlockNeeded(false);
+  }, []);
+
+  const dismissAudioBanner = useCallback(() => {
+      audioUnlockDismissedRef.current = true;
       setAudioUnlockNeeded(false);
   }, []);
 
@@ -1198,12 +1246,26 @@ export default function App() {
 
       {/* Audio Unlock Banner */}
       {audioUnlockNeeded && (
-        <div 
-          className="absolute top-0 left-0 right-0 z-[60] bg-discord-red text-white p-3 text-center cursor-pointer font-bold shadow-lg animate-pulse"
-          onClick={unlockAudio}
-        >
-          <i className="fas fa-volume-mute mr-2"></i>
-          Tap here to enable audio!
+        <div className="absolute top-0 left-0 right-0 z-[60] bg-discord-dark/95 border-b border-discord-muted/30 text-white px-4 py-2.5 flex items-center justify-between shadow-lg backdrop-blur-sm">
+          <div className="flex items-center gap-2">
+            <i className="fas fa-volume-mute text-discord-muted"></i>
+            <span className="text-sm">Browser blocked audio playback for this voice call.</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={unlockAudio}
+              className="px-3 py-1 bg-green-600 hover:bg-green-500 text-white text-xs font-medium rounded transition-colors"
+            >
+              Enable audio
+            </button>
+            <button
+              onClick={dismissAudioBanner}
+              className="p-1 text-discord-muted hover:text-white transition-colors"
+              title="Dismiss"
+            >
+              <i className="fas fa-times text-sm"></i>
+            </button>
+          </div>
         </div>
       )}
 
@@ -1216,6 +1278,7 @@ export default function App() {
       {Array.from(remoteStreams.entries()).map(([peerId, stream]) => (
           <audio
             key={peerId}
+            data-voice-call="true"
             ref={el => {
                 if (el) {
                     el.srcObject = stream;
@@ -1232,7 +1295,10 @@ export default function App() {
                     if (playPromise !== undefined) {
                         playPromise.catch((e: any) => {
                             log(`Audio play failed for ${peerId}: ${e.message}. Requesting unlock.`, 'error');
-                            setAudioUnlockNeeded(true);
+                            // Only show banner if user hasn't already dismissed it
+                            if (!audioUnlockDismissedRef.current) {
+                                setAudioUnlockNeeded(true);
+                            }
                         });
                     }
                 }

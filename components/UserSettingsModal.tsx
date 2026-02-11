@@ -44,6 +44,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
   const [noiseSuppression, setNoiseSuppression] = useState(currentDevices.noiseSuppression ?? true);
   const [echoCancellation, setEchoCancellation] = useState(currentDevices.echoCancellation ?? true);
   const [autoGainControl, setAutoGainControl] = useState(currentDevices.autoGainControl ?? true);
+  const [advancedNoiseCancellation, setAdvancedNoiseCancellation] = useState(currentDevices.advancedNoiseCancellation ?? false);
 
   // App Settings State
   const [selectedTheme, setSelectedTheme] = useState<AppTheme>(currentAppSettings.theme);
@@ -66,7 +67,8 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
         videoInputId,
         noiseSuppression,
         echoCancellation,
-        autoGainControl
+        autoGainControl,
+        advancedNoiseCancellation,
     });
     onSaveAppSettings({
         theme: selectedTheme
@@ -423,6 +425,23 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                       </option>
                     ))}
                   </select>
+                </div>
+
+                {/* Advanced noise cancellation */}
+                <div className="border-t border-white/5 pt-4 mt-4">
+                  <label className="block text-xs font-bold text-white/40 uppercase mb-3 tracking-wide">Advanced audio</label>
+                  <div className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-3 border border-white/10">
+                    <div className="flex-1 mr-3">
+                      <div className="text-white font-medium text-sm">Advanced noise cancellation</div>
+                      <div className="text-white/40 text-xs mt-0.5">ML-powered noise removal. Uses more CPU.</div>
+                    </div>
+                    <button
+                      onClick={() => setAdvancedNoiseCancellation(!advancedNoiseCancellation)}
+                      className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${advancedNoiseCancellation ? 'bg-purple-500' : 'bg-white/20'}`}
+                    >
+                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${advancedNoiseCancellation ? 'left-7' : 'left-1'}`} />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 mt-4">
@@ -816,6 +835,23 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                                         <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${autoGainControl ? 'left-7' : 'left-1'}`} />
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* Advanced Noise Cancellation Section */}
+                        <div className="border-t border-discord-muted/20 pt-6">
+                            <h3 className="text-white font-semibold mb-4">Advanced Audio</h3>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <div className="text-white font-medium">Advanced noise cancellation</div>
+                                    <div className="text-discord-muted text-sm">ML-powered noise removal (keyboard, fans, background chatter). Uses more CPU.</div>
+                                </div>
+                                <button
+                                    onClick={() => setAdvancedNoiseCancellation(!advancedNoiseCancellation)}
+                                    className={`w-12 h-6 rounded-full transition-colors relative ${advancedNoiseCancellation ? 'bg-purple-500' : 'bg-discord-muted/40'}`}
+                                >
+                                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${advancedNoiseCancellation ? 'left-7' : 'left-1'}`} />
+                                </button>
                             </div>
                         </div>
 

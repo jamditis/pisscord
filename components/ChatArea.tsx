@@ -6,8 +6,11 @@ import { uploadFile } from '../services/firebase';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { VoiceMessageButton } from './VoiceMessageButton';
 import { AudioMessage } from './AudioMessage';
+import { VideoMessage } from './VideoMessage';
+import { VideoEmbed } from './VideoEmbed';
 import { MarkdownToolbar } from './MarkdownToolbar';
 import { QuickEmojiPicker } from './QuickEmojiPicker';
+import { extractVideoEmbeds, isVideoFileUrl } from '../services/videoEmbed';
 
 // Simple Discord-style Markdown renderer
 const renderMarkdown = (text: string): React.ReactNode[] => {
@@ -179,7 +182,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
   const [showMarkdownToolbar, setShowMarkdownToolbar] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [pendingCaption, setPendingCaption] = useState('');
-  const [pendingFile, setPendingFile] = useState<{ file: File; type: 'image' | 'file' | 'audio' } | null>(null);
+  const [pendingFile, setPendingFile] = useState<{ file: File; type: 'image' | 'file' | 'audio' | 'video' } | null>(null);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -262,10 +265,12 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Determine file type - check for images, audio, or generic file
-    let type: 'image' | 'file' | 'audio' = 'file';
+    // Determine file type - check for images, video, audio, or generic file
+    let type: 'image' | 'file' | 'audio' | 'video' = 'file';
     if (file.type.startsWith('image/')) {
       type = 'image';
+    } else if (file.type.startsWith('video/') || isVideoFileUrl(file.name)) {
+      type = 'video';
     } else if (file.type.startsWith('audio/') ||
                /\.(mp3|wav|aiff|aif|m4a|ogg|flac|wma|aac)$/i.test(file.name)) {
       type = 'audio';
@@ -462,6 +467,12 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                             duration={msg.attachment.duration}
                             fileName={msg.attachment.name}
                           />
+                        ) : msg.attachment.type === 'video' ? (
+                          <VideoMessage
+                            url={msg.attachment.url}
+                            name={msg.attachment.name}
+                            size={msg.attachment.size}
+                          />
                         ) : (
                           <div className="flex items-center bg-white/5 p-3 rounded-xl border border-white/10">
                             <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center mr-3">
@@ -485,6 +496,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                         )}
                       </div>
                     )}
+
+                    {/* URL embeds (video platforms) */}
+                    {msg.content && extractVideoEmbeds(msg.content).map((embed, i) => (
+                      <VideoEmbed key={`embed-${msg.id}-${i}`} embed={embed} />
+                    ))}
                   </div>
                 </motion.div>
               );
@@ -669,6 +685,12 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                       duration={msg.attachment.duration}
                       fileName={msg.attachment.name}
                     />
+                  ) : msg.attachment.type === 'video' ? (
+                    <VideoMessage
+                      url={msg.attachment.url}
+                      name={msg.attachment.name}
+                      size={msg.attachment.size}
+                    />
                   ) : (
                     <div className="flex items-center bg-discord-dark p-3 rounded max-w-sm border border-discord-sidebar">
                       <div className="w-10 h-10 rounded bg-discord-accent/20 flex items-center justify-center mr-3 flex-shrink-0">
@@ -692,6 +714,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                   )}
                 </div>
               )}
+
+              {/* URL embeds (video platforms) */}
+              {msg.content && extractVideoEmbeds(msg.content).map((embed, i) => (
+                <VideoEmbed key={`embed-${msg.id}-${i}`} embed={embed} />
+              ))}
             </div>
           </div>
           );
@@ -723,6 +750,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                       alt="Preview"
                       className="w-12 h-12 object-cover rounded mr-3"
                     />
+                  ) : pendingFile.type === 'video' ? (
+                    <div className="w-12 h-12 bg-purple-500/20 rounded flex items-center justify-center mr-3">
+                      <i className="fas fa-film text-purple-400"></i>
+                    </div>
                   ) : pendingFile.type === 'audio' ? (
                     <div className="w-12 h-12 bg-purple-500/20 rounded flex items-center justify-center mr-3">
                       <i className="fas fa-music text-purple-400"></i>
