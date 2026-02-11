@@ -1371,7 +1371,7 @@
                         <div class="step-content">
                             <h4>You're connected!</h4>
                             <p>
-                                That's it. Pisscord automatically connects you to the presence server. Everyone online appears in the user list on the right. Jump into a voice channel or start chatting - voice/video is P2P encrypted, text is AES-256 encrypted before storage.
+                                That's it. Pisscord automatically connects you to the presence server. Everyone online appears in the user list on the right. Jump into a voice channel or start chatting - voice and video go directly P2P, no relay servers involved.
                             </p>
                         </div>
                     </div>
@@ -1447,15 +1447,15 @@
                         <div class="channel-icon-large text"><i class="fas fa-hashtag"></i></div>
                         <div class="channel-type-content">
                             <h4><code>#general</code> Text Channel</h4>
-                            <p>The main chat room. Messages are encrypted with AES-256-GCM on your device before storage. Supports full markdown formatting, image uploads, and file sharing. Messages are retained for 14 days.</p>
+                            <p>The main chat room. Supports full markdown formatting, image uploads, file sharing, video embeds, and voice messages. Messages are retained for 14 days.</p>
                         </div>
                     </div>
 
                     <div class="channel-type">
                         <div class="channel-icon-large voice"><i class="fas fa-volume-up"></i></div>
                         <div class="channel-type-content">
-                            <h4><code>Voice Lounge</code> Voice Channel</h4>
-                            <p>Open voice/video room for casual hangouts. Click to join, and your mic/camera activate automatically. Multiple people can be in the same voice channel - true mesh networking, not 1:1 calls.</p>
+                            <h4><code>Chillin'</code> Voice Channel</h4>
+                            <p>Open voice/video room for casual hangouts. Click to join — you start muted with camera off by default. Multiple people can be in the same voice channel with true mesh networking.</p>
                         </div>
                     </div>
 
@@ -1463,7 +1463,7 @@
                         <div class="channel-icon-large voice"><i class="fas fa-gamepad"></i></div>
                         <div class="channel-type-content">
                             <h4><code>Gaming</code> Voice Channel (Approval Required)</h4>
-                            <p>Same as Voice Lounge, but requires approval to join when others are already in the channel. A lock icon indicates this. Users inside will see approve/deny buttons when someone requests to join.</p>
+                            <p>Same as Chillin', but requires approval to join when others are already in the channel. A lock icon indicates this. Users inside will see approve/deny buttons when someone requests to join.</p>
                         </div>
                     </div>
 
@@ -1592,6 +1592,11 @@
                         <h4>Browse while talking</h4>
                         <p>Switch to text channels while in a voice call. Audio persists - you won't get disconnected.</p>
                     </div>
+                    <div class="feature-card">
+                        <div class="feature-card-icon"><i class="fas fa-microphone-lines-slash"></i></div>
+                        <h4>ML noise cancellation</h4>
+                        <p>RNNoise WASM-powered pipeline kills keyboard clicks, fans, and background chatter. Enable in Settings > Voice & Video.</p>
+                    </div>
                 </div>
             </section>
 
@@ -1644,7 +1649,7 @@
                     <div class="section-number">06</div>
                     <h2 class="section-title"><i class="fas fa-comment"></i> Text <span>Messaging</span></h2>
                     <p class="section-intro">
-                        End-to-end encrypted chat with full markdown support. Your messages are encrypted before leaving your device.
+                        Full-featured chat with markdown support, video embeds, voice messages, and file sharing.
                     </p>
                 </div>
 
@@ -1710,7 +1715,7 @@
                     <div class="section-number">07</div>
                     <h2 class="section-title"><i class="fas fa-robot"></i> Pissbot <span>AI</span></h2>
                     <p class="section-intro">
-                        Your built-in AI assistant. Powered by Google Gemini 2.5 Flash. Ask anything.
+                        Your built-in AI assistant. Powered by Google Gemini 2.0 Flash. Ask anything — it remembers your last 20 messages per session.
                     </p>
                 </div>
 
@@ -1840,7 +1845,7 @@
                         </div>
                         <div class="accordion-content">
                             <div class="accordion-content-inner">
-                                Select your preferred microphone, speakers, and camera from dropdown menus. <strong>Note:</strong> Changing devices requires disconnecting and reconnecting to apply. Volume preferences reset on app restart (this is intentional).
+                                Select your preferred microphone, speakers, and camera from dropdown menus. Toggle noise suppression, echo cancellation, and auto gain control. Enable <strong>Advanced noise cancellation</strong> for ML-powered noise removal via RNNoise. <strong>Note:</strong> Changing devices requires disconnecting and reconnecting to apply.
                             </div>
                         </div>
                     </div>
