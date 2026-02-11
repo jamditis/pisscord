@@ -2,11 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 🚨 Handoff Note / Status (v2.0.0)
-**Current State:** v2.0.0 production hardening complete.
+## 🚨 Handoff Note / Status (v2.0.5)
+**Current State:** v2.0.5 released. Google sign-in fixed across all platforms.
 **Last Updated:** 2026-02-10
 
-### Recent Work (v2.0.0 - Production Hardening)
+### Recent Work (v2.0.5 - Auth Fix)
+- **Electron Google Sign-In Fixed:** `signInWithPopup` can't work from Electron's `file://` origin. New IPC handler in `electron.js` opens the deployed web app in a modal `BrowserWindow` (https:// origin), runs `signInWithPopup` there via `executeJavaScript`, extracts the ID token, and returns it to the renderer which calls `signInWithCredential`. Same pattern as Capacitor.
+- **Google OAuth Client Fixed:** The OAuth client was missing authorized origins/redirects for `pisscord-edbca.web.app` and `web.pisscord.app`. Only `firebaseapp.com` was registered, but `authDomain` in `firebase.ts` is `web.app`. Added both domains' origins and redirect URIs in Google Cloud Console.
+- **Three-platform auth strategy:** Capacitor = native OS sign-in, Electron = web app BrowserWindow, Web = standard `signInWithPopup`. All converge on `signInWithCredential`.
+- **Files changed:** `electron.js` (IPC handler), `preload.js` (bridge), `services/auth.ts` (Electron code path)
+
+### Previous Work (v2.0.0 - Production Hardening)
 - **Centralized Logging:** `services/logger.ts` replaces scattered console calls with structured `[TIMESTAMP] [LEVEL] [MODULE]` output, in-memory buffer (200 entries), debug log tab integration
 - **React Error Boundary:** `components/ErrorBoundary.tsx` catches render errors with fallback UI + global `window.onerror`/`onunhandledrejection` handlers
 - **Type Safety:** Fixed 13+ `any` types across firebase.ts, App.tsx, types.ts, geminiService.ts — PeerJS refs typed, Message/PresenceUser validated at boundaries
@@ -14,11 +20,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Firebase Operations Hardened:** `sendMessage` awaited, `registerPresence`/`updatePresence` async with error handling, `subscribeToUsers` has error callback, batch cleanup
 - **Memory Leaks Fixed:** Audio cache reuse in sounds.ts, AudioContext cleanup in VoiceStage.tsx, isMountedRef guards in App.tsx async ops
 - **Gemini Service Fixed:** Removed hardcoded API key fallback, added Firebase Remote Config path, AbortController for timeouts
-- **Test Suite:** 111 unit tests across 14 files (Vitest + Testing Library), Playwright E2E smoke tests
+- **Test Suite:** 141 unit tests across 16 files (Vitest + Testing Library), Playwright E2E smoke tests
 - **Auth Error Handling:** Specific error messages per Firebase error code, email link expiry, useAuth throws outside provider
 
 ### Action Items for Next Session
-- Merge `feature/production-hardening` to master after manual smoke test
+- Smoke test Electron sign-in on a clean install
+- Smoke test web sign-in on `web.pisscord.app` (may need a few minutes for Google OAuth propagation)
 - Do not revert the mobile layout fixes or the `services/platform.ts` abstraction
 
 ## 🐛 Known Issues (v1.4.8 Backlog)
@@ -33,11 +40,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Changed `isVideoEnabled` and `isAudioEnabled` initial state to `false` in `App.tsx:132-133`
 - Tracks are disabled immediately after `getLocalStream()` at `App.tsx:516-519`
 
-**Auth & Stability:** ✅ FIXED in v2.0.0
+**Auth & Stability:** ✅ FIXED in v2.0.0 / v2.0.5
 - Auth race condition (infinite login loop) fixed in `contexts/AuthContext.tsx`
 - Firebase operations hardened with async/await and error handling
 - Memory leaks fixed across audio, WebRTC, and async operations
 - Error boundary added to catch render crashes
+- **Electron sign-in fixed (v2.0.5):** `signInWithPopup` can't work from `file://` origin. New IPC flow opens web app in BrowserWindow.
+- **OAuth client config fixed (v2.0.5):** Added `web.app` and `web.pisscord.app` to authorized origins/redirects in Google Cloud Console
 
 **Bug: Battery Saving Feature Interrupts Active Voice Calls:** ✅ FIXED
 - App used to go to sleep/pause when minimized, breaking active voice calls
@@ -75,8 +84,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Pisscord is a private, multi-platform Discord clone built with React, TypeScript, and PeerJS. It enables direct P2P voice/video calling, text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
 
 **Platforms:** Desktop (Electron), Web Browser, Android (Capacitor), Mobile Web
-**Current Version:** 2.0.0
-**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v2.0.0
+**Current Version:** 2.0.5
+**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v2.0.5
 
 ## Key Architecture
 
@@ -363,7 +372,13 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - `noUnusedLocals` and `noUnusedParameters` disabled (intentional)
 - React JSX transform (no need to import React in TSX files)
 
-## Recent Changes (v1.1.0 - v2.0.0)
+## Recent Changes (v1.1.0 - v2.0.5)
+
+### v2.0.5 (2026-02-10) — Auth Fix
+- **Electron Google Sign-In Fixed:** Replaced broken `signInWithPopup` (fails from `file://` origin) with IPC-based flow that opens deployed web app in a `BrowserWindow`, runs popup auth from `https://` origin, extracts ID token via `executeJavaScript`, passes to renderer for `signInWithCredential`
+- **Google OAuth Client Config Fixed:** Added missing authorized JS origins (`pisscord-edbca.web.app`, `web.pisscord.app`) and redirect URIs (`/__/auth/handler` for both) in Google Cloud Console — was only configured for `firebaseapp.com`
+- **Three-Platform Auth:** Capacitor (native OS sign-in), Electron (web app BrowserWindow), Web (`signInWithPopup`) — all converge on `signInWithCredential`
+- **Files:** `electron.js`, `preload.js`, `services/auth.ts`
 
 ### v2.0.0 (2026-02-10) — Production Hardening
 - **Centralized Logging:** `services/logger.ts` with structured output, 200-entry in-memory buffer, debug/info/warn/error levels
