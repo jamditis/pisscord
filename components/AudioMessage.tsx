@@ -220,7 +220,7 @@ export const AudioMessage: React.FC<AudioMessageProps> = ({
   const progress = audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0;
 
   return (
-    <div className="max-w-[480px]">
+    <div className="max-w-full sm:max-w-[480px]">
       <div className="flex items-center bg-discord-dark/60 rounded-lg p-3 border border-discord-dark">
         {/* Hidden audio element */}
         <audio ref={audioRef} src={url} preload="metadata" />

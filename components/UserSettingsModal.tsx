@@ -427,27 +427,73 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                   </select>
                 </div>
 
-                {/* Advanced noise cancellation */}
+                {/* Audio processing toggles */}
                 <div className="border-t border-white/5 pt-4 mt-4">
-                  <label className="block text-xs font-bold text-white/40 uppercase mb-3 tracking-wide">Advanced audio</label>
-                  <div className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-3 border border-white/10">
-                    <div className="flex-1 mr-3">
-                      <div className="text-white font-medium text-sm">Advanced noise cancellation</div>
-                      <div className="text-white/40 text-xs mt-0.5">ML-powered noise removal (keyboard, fans, background chatter). Uses more CPU. Requires reconnecting to voice.</div>
-                    </div>
-                    <button
-                      onClick={() => setAdvancedNoiseCancellation(!advancedNoiseCancellation)}
-                      className={`w-12 h-6 rounded-full transition-colors relative shrink-0 ${advancedNoiseCancellation ? 'bg-purple-500' : 'bg-white/20'}`}
-                    >
-                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${advancedNoiseCancellation ? 'left-7' : 'left-1'}`} />
-                    </button>
+                  <label className="block text-xs font-bold text-white/40 uppercase mb-3 tracking-wide">Audio processing</label>
+                  <div className="space-y-2">
+                    {[
+                      { label: 'Noise suppression', desc: 'Reduce background noise (breathing, typing, fans)', value: noiseSuppression, setter: setNoiseSuppression },
+                      { label: 'Echo cancellation', desc: 'Prevent audio feedback loops', value: echoCancellation, setter: setEchoCancellation },
+                      { label: 'Auto gain control', desc: 'Automatically adjust mic volume', value: autoGainControl, setter: setAutoGainControl },
+                    ].map((item) => (
+                      <button
+                        key={item.label}
+                        onClick={() => item.setter(!item.value)}
+                        className="flex items-center justify-between w-full bg-white/5 rounded-xl px-4 py-3 border border-white/10 text-left"
+                        style={{ WebkitTapHighlightColor: 'transparent' }}
+                      >
+                        <div className="flex-1 mr-4">
+                          <div className="text-white font-medium text-sm">{item.label}</div>
+                          <div className="text-white/40 text-xs mt-0.5">{item.desc}</div>
+                        </div>
+                        <div
+                          className="w-[52px] h-[30px] rounded-full shrink-0 p-[3px] transition-colors duration-200"
+                          style={{
+                            background: item.value
+                              ? 'linear-gradient(135deg, #3ba55c, #2d8049)'
+                              : 'rgba(255, 255, 255, 0.12)',
+                            boxShadow: item.value ? '0 0 12px rgba(59, 165, 92, 0.3)' : 'none',
+                          }}
+                        >
+                          <div
+                            className="w-6 h-6 rounded-full shadow-md transition-transform duration-200"
+                            style={{
+                              background: item.value ? '#fff' : 'rgba(255, 255, 255, 0.5)',
+                              transform: item.value ? 'translateX(22px)' : 'translateX(0)',
+                            }}
+                          />
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 mt-4">
+                {/* Advanced noise cancellation — desktop only */}
+                <div className="border-t border-white/5 pt-4 mt-2">
+                  <label className="block text-xs font-bold text-white/40 uppercase mb-3 tracking-wide">Advanced audio</label>
+                  <div
+                    className="flex items-center justify-between w-full bg-white/5 rounded-xl px-4 py-3.5 border border-white/10 text-left opacity-40"
+                  >
+                    <div className="flex-1 mr-4">
+                      <div className="text-white font-medium text-sm">Advanced noise cancellation</div>
+                      <div className="text-white/40 text-xs mt-0.5 leading-relaxed">ML-powered noise removal. Requires desktop app (WASM + AudioWorklet).</div>
+                    </div>
+                    <div
+                      className="w-[52px] h-[30px] rounded-full shrink-0 p-[3px]"
+                      style={{ background: 'rgba(255, 255, 255, 0.12)' }}
+                    >
+                      <div
+                        className="w-6 h-6 rounded-full shadow-md"
+                        style={{ background: 'rgba(255, 255, 255, 0.3)' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 mt-4">
                   <div className="flex items-start gap-3">
-                    <i className="fas fa-info-circle text-green-400 mt-0.5"></i>
-                    <p className="text-green-400 text-sm">Changes require reconnecting to the call to take effect.</p>
+                    <i className="fas fa-info-circle text-rose-400 mt-0.5"></i>
+                    <p className="text-rose-400 text-sm">Changes require reconnecting to the call to take effect.</p>
                   </div>
                 </div>
               </motion.div>

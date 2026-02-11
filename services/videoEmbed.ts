@@ -163,3 +163,73 @@ export function extractVideoEmbeds(text: string, limit = 5): VideoEmbedInfo[] {
 export function isVideoFileUrl(fileName: string): boolean {
   return VIDEO_EXTENSIONS.test(fileName);
 }
+
+// ============================================================================
+// oEmbed metadata fetching
+// ============================================================================
+
+export interface VideoEmbedMetadata {
+  title?: string;
+  author?: string;
+  thumbnailUrl?: string;
+}
+
+// In-memory cache to avoid refetching for the same URL
+const metadataCache = new Map<string, VideoEmbedMetadata>();
+
+/**
+ * Fetches oEmbed metadata (title, author, thumbnail) for supported platforms.
+ * Results are cached in memory. Returns empty object for unsupported platforms.
+ */
+export async function fetchEmbedMetadata(embed: VideoEmbedInfo): Promise<VideoEmbedMetadata> {
+  const cached = metadataCache.get(embed.originalUrl);
+  if (cached) return cached;
+
+  let oEmbedUrl: string | null = null;
+
+  if (embed.platform === 'youtube') {
+    oEmbedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(embed.originalUrl)}&format=json`;
+  } else if (embed.platform === 'vimeo') {
+    oEmbedUrl = `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(embed.originalUrl)}`;
+  }
+
+  if (!oEmbedUrl) {
+    // Twitch/Streamable/Reddit/Twitter: extract what we can from the URL
+    const fallback = extractMetadataFromUrl(embed);
+    metadataCache.set(embed.originalUrl, fallback);
+    return fallback;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(oEmbedUrl, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (!res.ok) return {};
+
+    const data = await res.json();
+    const metadata: VideoEmbedMetadata = {
+      title: data.title,
+      author: data.author_name,
+      thumbnailUrl: data.thumbnail_url,
+    };
+
+    metadataCache.set(embed.originalUrl, metadata);
+    return metadata;
+  } catch {
+    return {};
+  }
+}
+
+/** Extracts basic metadata from URL patterns when oEmbed isn't available */
+function extractMetadataFromUrl(embed: VideoEmbedInfo): VideoEmbedMetadata {
+  if (embed.platform === 'twitch') {
+    // Extract channel name from twitch.tv/CHANNEL/clip/...
+    const channelMatch = embed.originalUrl.match(/twitch\.tv\/([^/]+)/);
+    if (channelMatch?.[1] && channelMatch[1] !== 'videos') {
+      return { author: channelMatch[1] };
+    }
+  }
+  return {};
+}

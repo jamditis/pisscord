@@ -9,6 +9,7 @@ import {
   isSignInWithEmailLink,
   signInWithPopup,
   signInWithRedirect,
+  signInWithCredential,
   getRedirectResult,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
@@ -17,6 +18,7 @@ import {
 } from 'firebase/auth';
 import { auth } from './firebase';
 import { logger } from './logger';
+import { Platform } from './platform';
 
 const EMAIL_STORAGE_KEY = 'emailForSignIn';
 const EMAIL_EXPIRY_KEY = 'emailForSignIn_expiry';
@@ -140,14 +142,53 @@ export const completeEmailLinkSignIn = async (): Promise<User | null> => {
 /**
  * Sign in with Google
  *
- * Uses signInWithPopup on all platforms. signInWithRedirect is broken on
- * browsers that partition third-party storage (Chrome, Safari, Firefox)
- * because the auth handler (firebaseapp.com) and the app (web.app) are
- * different origins, so sessionStorage can't be shared.
- *
- * Falls back to signInWithRedirect only when the popup is blocked.
+ * Platform-specific strategy:
+ * - **Capacitor (Android/iOS):** Uses native Google Sign-In via
+ *   @codetrix-studio/capacitor-google-auth. This opens the OS account picker
+ *   (no WebView/popup/redirect), gets an ID token, then passes it to Firebase
+ *   via signInWithCredential. Requires google-services.json with SHA-1.
+ * - **Web/Electron:** Uses signInWithPopup. signInWithRedirect is broken on
+ *   browsers that partition third-party storage (Chrome, Safari, Firefox)
+ *   because the auth handler (firebaseapp.com) and the app (web.app) are
+ *   different origins, so sessionStorage can't be shared.
+ *   Falls back to signInWithRedirect only when the popup is blocked.
  */
 export const signInWithGoogle = async (): Promise<User> => {
+  // Capacitor: use native Google Sign-In → Firebase credential
+  if (Platform.isCapacitor) {
+    logger.info('auth', 'Capacitor detected, using native Google Sign-In');
+    try {
+      const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+      await GoogleAuth.initialize({
+        clientId: '582017997210-u9lhvn9rglcch5pae0nis7668hgfhe14.apps.googleusercontent.com',
+        scopes: ['profile', 'email'],
+        grantOfflineAccess: true,
+      });
+      const googleUser = await GoogleAuth.signIn();
+      const idToken = googleUser.authentication.idToken;
+      if (!idToken) {
+        throw new Error('No ID token received from Google Sign-In');
+      }
+      const credential = GoogleAuthProvider.credential(idToken);
+      const result = await signInWithCredential(auth, credential);
+      logger.info('auth', `Native Google Sign-In successful: ${result.user.email}`);
+      return result.user;
+    } catch (error: any) {
+      // Log everything we can about the error for debugging
+      logger.error('auth', `Native Google Sign-In failed: ${JSON.stringify({
+        message: error.message,
+        code: error.code,
+        stack: error.stack?.slice(0, 200),
+        raw: String(error),
+      })}`);
+      if (error.message?.includes('canceled') || error.message?.includes('cancelled')) {
+        throw new Error('Sign-in was cancelled.');
+      }
+      throw new Error(getAuthErrorMessage(error));
+    }
+  }
+
+  // Web/Electron: use popup with redirect fallback
   try {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;

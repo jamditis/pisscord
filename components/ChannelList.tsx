@@ -83,7 +83,9 @@ export const ChannelList: React.FC<ChannelListProps> = ({
             ? theme === 'gold'
               ? 'bg-gradient-to-r from-yellow-400/20 to-yellow-400/10 border border-yellow-400/30'
               : 'bg-gradient-to-r from-purple-500/20 to-purple-500/10 border border-purple-500/30'
-            : 'bg-white/5 border border-transparent active:bg-white/10'
+            : isVoice
+              ? 'bg-green-500/[0.04] border border-green-500/10 active:bg-green-500/10'
+              : 'bg-white/5 border border-transparent active:bg-white/10'
         }`}
         whileTap={{ scale: 0.98 }}
         style={{
@@ -99,7 +101,9 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                 : theme === 'gold'
                   ? 'bg-yellow-400/20 text-yellow-400'
                   : 'bg-purple-500/20 text-purple-400'
-              : 'bg-white/10 text-gray-400'
+              : isVoice
+                ? 'bg-green-500/10 text-green-500/60'
+                : 'bg-white/10 text-gray-400'
           }`}
         >
           {isVoice ? (
@@ -149,9 +153,9 @@ export const ChannelList: React.FC<ChannelListProps> = ({
   // Mobile layout
   if (isMobile) {
     return (
-      <div className="flex-1 flex flex-col min-h-0 px-2">
+      <div className="flex-1 flex flex-col min-h-0 px-2 pt-4">
         {/* Text Channels Section */}
-        <div className="mb-4">
+        <div className="mb-6">
           <div className="flex items-center px-2 mb-3">
             <div
               className="w-1.5 h-1.5 rounded-full mr-2 shrink-0"

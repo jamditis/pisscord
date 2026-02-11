@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ConnectionState, UserProfile, PresenceUser } from '../types';
+import { ConnectionState, UserProfile, PresenceUser, Channel, ChannelType } from '../types';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -134,6 +134,9 @@ interface VoiceStageProps {
   onlineUsers: PresenceUser[];
   userVolumes?: Map<string, number>;
   onUserVolumeChange?: (peerId: string, volume: number) => void;
+  // Voice channel quick-join (mobile empty state)
+  voiceChannels?: Channel[];
+  onJoinVoiceChannel?: (channelId: string) => void;
 }
 
 // Audio activity detection hook
@@ -222,7 +225,9 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
   userProfile,
   onlineUsers,
   userVolumes,
-  onUserVolumeChange
+  onUserVolumeChange,
+  voiceChannels,
+  onJoinVoiceChannel,
 }) => {
   const myVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -519,30 +524,111 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
   if (isMobile) {
     return (
       <div className="flex-1 bg-gradient-to-b from-[#1a1a2e] to-[#0f0f1a] flex flex-col relative overflow-hidden h-full">
-        {/* Disconnected Overlay - prompt to join a voice channel */}
+        {/* Disconnected — voice channel launcher */}
         {connectionState === ConnectionState.DISCONNECTED && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="absolute inset-0 z-50 bg-[#1a1a2e]/95 flex items-center justify-center p-4"
+            className="absolute inset-0 z-50 flex flex-col p-4 overflow-y-auto"
+            style={{ background: 'linear-gradient(to bottom, #1a1a2e, #0f0f1a)' }}
           >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="text-center"
-            >
-              <motion.div
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg"
-              >
-                <i className="fas fa-microphone text-4xl text-white"></i>
-              </motion.div>
-              <h2 className="text-2xl font-bold text-white mb-2">Voice Channels</h2>
-              <p className="text-white/50 text-sm max-w-xs mx-auto">
-                Select a voice channel from the Channels tab to join and start chatting with others.
-              </p>
-            </motion.div>
+            {/* Voice channels section */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ background: `linear-gradient(135deg, ${colors.primary}30, ${colors.primary}10)` }}
+                >
+                  <i className="fas fa-headset text-sm" style={{ color: colors.primary }}></i>
+                </div>
+                <span className="text-xs font-bold uppercase tracking-wider text-white/40">Join a channel</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {(voiceChannels || []).map((ch) => {
+                  const usersInChannel = onlineUsers.filter(u => u.voiceChannelId === ch.id);
+                  return (
+                    <motion.button
+                      key={ch.id}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => onJoinVoiceChannel?.(ch.id)}
+                      className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-colors"
+                      style={{
+                        background: 'rgba(34, 197, 94, 0.04)',
+                        border: '1px solid rgba(34, 197, 94, 0.12)',
+                        WebkitTapHighlightColor: 'transparent',
+                      }}
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
+                        <i className="fas fa-microphone text-green-500/70"></i>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-white/90">{ch.name}</div>
+                        {usersInChannel.length > 0 ? (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                            <span className="text-xs text-green-400/80">
+                              {usersInChannel.map(u => u.displayName).join(', ')}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-white/30">No one here</span>
+                        )}
+                      </div>
+                      <div
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold"
+                        style={{
+                          background: usersInChannel.length > 0
+                            ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.1))'
+                            : 'rgba(255, 255, 255, 0.05)',
+                          color: usersInChannel.length > 0 ? '#22c55e' : 'rgba(255, 255, 255, 0.4)',
+                          border: usersInChannel.length > 0 ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid rgba(255, 255, 255, 0.08)',
+                        }}
+                      >
+                        Join
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Online users section */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                  <i className="fas fa-users text-sm text-white/40"></i>
+                </div>
+                <span className="text-xs font-bold uppercase tracking-wider text-white/40">
+                  Online — {onlineUsers.length}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {onlineUsers.map((user) => (
+                  <div
+                    key={user.peerId}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid rgba(255, 255, 255, 0.06)',
+                    }}
+                  >
+                    <div
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                      style={{ background: user.color || colors.primary }}
+                    >
+                      {(user.displayName || '?')[0].toUpperCase()}
+                    </div>
+                    <span className="text-xs text-white/70 font-medium">{user.displayName}</span>
+                    {user.voiceChannelId && (
+                      <i className="fas fa-headset text-[10px] text-green-500/60"></i>
+                    )}
+                  </div>
+                ))}
+                {onlineUsers.length === 0 && (
+                  <span className="text-xs text-white/30">No one online right now</span>
+                )}
+              </div>
+            </div>
           </motion.div>
         )}
 

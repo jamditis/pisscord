@@ -7,12 +7,18 @@ import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { LoginScreen } from './LoginScreen';
 
+// DEV ONLY: bypass auth on localhost for UI iteration
+const DEV_BYPASS_AUTH = import.meta.env.DEV && window.location.hostname === 'localhost';
+
 interface AuthGateProps {
   children: React.ReactNode;
 }
 
 export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const { user, loading, error } = useAuth();
+
+  // Skip auth gate in local dev mode
+  if (DEV_BYPASS_AUTH) return <>{children}</>;
 
   // Show loading spinner while checking auth
   if (loading) {

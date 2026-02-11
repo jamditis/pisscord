@@ -25,7 +25,7 @@ import { ThemeProvider, themeColors } from './contexts/ThemeContext';
 import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages, cleanupOldMessages, getPissbotConfig, PissbotConfig, checkForMOTD, getReleaseNotes, ReleaseNotesConfig } from './services/firebase';
 import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
-import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService, AppLifecycleService } from './services/platform';
+import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService, AppLifecycleService, OrientationService } from './services/platform';
 import { VoidBackground } from './components/Visuals';
 import { logger } from './services/logger';
 import { createAudioProcessor, AudioProcessor } from './services/audioProcessor';
@@ -185,6 +185,7 @@ export default function App() {
   const [isUserListCollapsed, setIsUserListCollapsed] = useState(false);
   const [isChannelListCollapsed, setIsChannelListCollapsed] = useState(false);
   const [mobileView, setMobileView] = useState<MobileView>('chat');
+  const [showMobileUsers, setShowMobileUsers] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [audioUnlockNeeded, setAudioUnlockNeeded] = useState(false);
   const audioUnlockDismissedRef = useRef(false);
@@ -295,6 +296,11 @@ export default function App() {
     // Preload sound effects
     preloadSounds();
     playSound('app_launch');
+
+    // Lock to portrait on mobile (unlocked when entering voice view with video)
+    if (Platform.isMobile) {
+      OrientationService.lockPortrait();
+    }
 
     // App Lifecycle (Background/Foreground) - handles both Capacitor and Web
     const handleAppStateChange = (isActive: boolean) => {
@@ -704,7 +710,12 @@ export default function App() {
       setConnectionState(ConnectionState.DISCONNECTED);
       setActiveVoiceChannelId(null);
       setIsScreenSharing(false);
-      
+
+      // Re-lock to portrait when leaving voice
+      if (Platform.isMobile) {
+        OrientationService.lockPortrait();
+      }
+
       // Update presence to show not in voice
       if (myPeerId) {
           updatePresence(myPeerId, userProfile, null);
@@ -733,6 +744,11 @@ export default function App() {
       setActiveChannelId(channelId);
       setActiveVoiceChannelId(channelId);
       setConnectionState(ConnectionState.CONNECTING);
+
+      // Unlock orientation for voice/video calls
+      if (Platform.isMobile) {
+        OrientationService.unlockOrientation();
+      }
 
       if (myPeerId) {
           updatePresence(myPeerId, userProfile, channelId);
@@ -1417,13 +1433,31 @@ export default function App() {
                       className="absolute bottom-0 left-0 right-0 h-px"
                       style={{ background: `linear-gradient(90deg, transparent, ${themeColors[appSettings.theme].glowLight}, transparent)` }}
                     />
-                    <h2
-                      className="font-display text-lg tracking-wide uppercase"
-                      style={{ color: themeColors[appSettings.theme].primary }}
-                    >
-                      Channels
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-0.5">{onlineUsers.length} user{onlineUsers.length !== 1 ? 's' : ''} online</p>
+                    <div className="flex items-center justify-between">
+                      <h2
+                        className="font-display text-lg tracking-wide uppercase"
+                        style={{ color: themeColors[appSettings.theme].primary }}
+                      >
+                        Channels
+                      </h2>
+                      <button
+                        onClick={() => setShowMobileUsers(true)}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-all active:scale-95"
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.06)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                        }}
+                      >
+                        <div
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ background: '#22c55e', boxShadow: '0 0 4px rgba(34, 197, 94, 0.5)' }}
+                        />
+                        <span className="text-xs text-gray-400 font-medium">{onlineUsers.length}</span>
+                        <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                   <div className="flex-1 bg-discord-sidebar overflow-y-auto" style={{ paddingBottom: 'calc(64px + env(safe-area-inset-bottom, 0px) + 8px)' }}>
                     <ChannelList
@@ -1474,13 +1508,13 @@ export default function App() {
                   exit={{ opacity: 0, x: 16 }}
                   transition={{ duration: 0.18, ease: 'easeOut' }}
                   className="flex-1 flex flex-col min-h-0"
-                  style={{ paddingBottom: 'calc(64px + env(safe-area-inset-bottom, 0px) + 8px)' }}
+                  style={{ paddingBottom: 'calc(64px + env(safe-area-inset-bottom, 0px) + 20px)' }}
                 >
                   {/* Chat Header — back arrow + channel name with glow */}
                   <div
-                    className="relative flex items-center px-4 py-3"
+                    className="relative flex items-center px-4 pb-1.5"
                     style={{
-                      paddingTop: 'max(env(safe-area-inset-top, 12px), 0.75rem)',
+                      paddingTop: 'env(safe-area-inset-top, 0px)',
                       background: 'linear-gradient(to bottom, rgba(18, 18, 26, 0.98), rgba(18, 18, 26, 0.92))',
                       borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
                     }}
@@ -1613,43 +1647,68 @@ export default function App() {
                       onlineUsers={onlineUsers}
                       userVolumes={userVolumes}
                       onUserVolumeChange={(peerId, volume) => setUserVolumes(prev => new Map(prev).set(peerId, volume))}
+                      voiceChannels={INITIAL_CHANNELS.filter(c => c.type === ChannelType.VOICE)}
+                      onJoinVoiceChannel={(id) => {
+                        joinVoiceChannel(id);
+                      }}
                     />
                   </div>
                 </motion.div>
               )}
 
-              {/* Mobile Users View */}
-              {mobileView === 'users' && (
+
+            </AnimatePresence>
+          </div>
+
+          {/* Mobile Users Bottom Sheet Overlay */}
+          <AnimatePresence>
+            {showMobileUsers && (
+              <motion.div
+                key="users-overlay"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="fixed inset-0 z-[60]"
+              >
+                {/* Backdrop */}
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowMobileUsers(false)} />
+                {/* Sheet */}
                 <motion.div
-                  key="users"
-                  initial={{ opacity: 0, x: -16 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 16 }}
-                  transition={{ duration: 0.18, ease: 'easeOut' }}
-                  className="flex-1 flex flex-col overflow-hidden bg-gradient-to-b from-[#1a1a2e] to-[#16162a]"
+                  initial={{ y: '100%' }}
+                  animate={{ y: 0 }}
+                  exit={{ y: '100%' }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  className="absolute bottom-0 left-0 right-0 bg-[#1a1a2e] rounded-t-3xl overflow-hidden"
+                  style={{
+                    maxHeight: '70vh',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                    paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
+                  }}
                 >
-                  {/* Users Header — glassmorphism to match other views */}
-                  <div
-                    className="relative px-5 py-4"
-                    style={{
-                      paddingTop: 'max(env(safe-area-inset-top, 20px), 1.25rem)',
-                      background: 'linear-gradient(to bottom, rgba(18, 18, 26, 0.98), rgba(18, 18, 26, 0.92))',
-                      borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-                    }}
-                  >
-                    <div
-                      className="absolute bottom-0 left-0 right-0 h-px"
-                      style={{ background: `linear-gradient(90deg, transparent, ${themeColors[appSettings.theme].glowLight}, transparent)` }}
-                    />
-                    <h2
-                      className="font-display text-lg tracking-wide uppercase"
+                  {/* Handle bar */}
+                  <div className="flex justify-center pt-3 pb-2">
+                    <div className="w-10 h-1 rounded-full bg-white/20" />
+                  </div>
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-5 pb-3 border-b border-white/5">
+                    <h3
+                      className="font-display text-base tracking-wide uppercase"
                       style={{ color: themeColors[appSettings.theme].primary }}
                     >
-                      Online
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-0.5">{onlineUsers.length} user{onlineUsers.length !== 1 ? 's' : ''} connected</p>
+                      Online — {onlineUsers.length}
+                    </h3>
+                    <button
+                      onClick={() => setShowMobileUsers(false)}
+                      className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center"
+                    >
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
-                  <div className="flex-1 overflow-y-auto" style={{ paddingBottom: 'calc(64px + env(safe-area-inset-bottom, 0px) + 8px)' }}>
+                  {/* User list */}
+                  <div className="overflow-y-auto" style={{ maxHeight: 'calc(70vh - 80px)' }}>
                     <UserList
                       connectionState={connectionState}
                       onlineUsers={onlineUsers}
@@ -1659,10 +1718,9 @@ export default function App() {
                     />
                   </div>
                 </motion.div>
-              )}
-
-            </AnimatePresence>
-          </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Mobile Bottom Navigation */}
           <MobileNav

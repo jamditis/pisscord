@@ -299,6 +299,41 @@ export const StatusBarService = {
 };
 
 // ============================================================================
+// Screen Orientation (Mobile)
+// ============================================================================
+
+export const OrientationService = {
+  /**
+   * Lock screen to portrait. Uses the Web Screen Orientation API (supported
+   * in Capacitor's WebView and most mobile browsers). Fails silently on
+   * desktop or browsers that don't support orientation locking.
+   */
+  async lockPortrait(): Promise<void> {
+    try {
+      // screen.orientation.lock() is not in all TS lib typings yet
+      const orientation = screen.orientation as any;
+      if (orientation?.lock) {
+        await orientation.lock('portrait');
+      }
+    } catch {
+      // Not supported or not allowed (desktop browsers, fullscreen required, etc.)
+    }
+  },
+
+  /** Unlock orientation — allows any rotation */
+  async unlockOrientation(): Promise<void> {
+    try {
+      const orientation = screen.orientation as any;
+      if (orientation?.unlock) {
+        orientation.unlock();
+      }
+    } catch {
+      // Not supported
+    }
+  },
+};
+
+// ============================================================================
 // App Lifecycle (Mobile)
 // ============================================================================
 

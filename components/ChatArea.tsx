@@ -52,14 +52,14 @@ const renderMarkdown = (text: string): React.ReactNode[] => {
       } else if (innerMatch[6] && innerMatch[7]) {
         // [link](url)
         result.push(
-          <a key={`a-${innerKey++}`} href={innerMatch[7]} target="_blank" rel="noopener noreferrer" className="text-discord-link hover:underline">
+          <a key={`a-${innerKey++}`} href={innerMatch[7]} target="_blank" rel="noopener noreferrer" className="text-discord-link hover:underline underline-offset-2 decoration-discord-link/40 hover:decoration-discord-link font-medium">
             {innerMatch[6]}
           </a>
         );
       } else if (innerMatch[8]) {
         // Plain URL
         result.push(
-          <a key={`u-${innerKey++}`} href={innerMatch[8]} target="_blank" rel="noopener noreferrer" className="text-discord-link hover:underline">
+          <a key={`u-${innerKey++}`} href={innerMatch[8]} target="_blank" rel="noopener noreferrer" className="text-discord-link hover:underline underline-offset-2 decoration-discord-link/40 hover:decoration-discord-link break-all">
             {innerMatch[8]}
           </a>
         );
@@ -184,12 +184,27 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
   const [pendingCaption, setPendingCaption] = useState('');
   const [pendingFile, setPendingFile] = useState<{ file: File; type: 'image' | 'file' | 'audio' | 'video' } | null>(null);
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [showMobileToolbar, setShowMobileToolbar] = useState(false);
+  const [collapsedMedia, setCollapsedMedia] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const markdownToggleRef = useRef<HTMLButtonElement>(null);
   const emojiToggleRef = useRef<HTMLButtonElement>(null);
   const isMobile = useIsMobile();
+
+  const toggleMediaCollapse = (msgId: string) => {
+    setCollapsedMedia(prev => {
+      const next = new Set(prev);
+      if (next.has(msgId)) next.delete(msgId);
+      else next.add(msgId);
+      return next;
+    });
+  };
+
+  const hasMedia = (msg: Message) => {
+    return msg.attachment || (msg.content && extractVideoEmbeds(msg.content).length > 0);
+  };
 
   // Handle voice message sent
   const handleVoiceMessageSent = (audioUrl: string, duration: number, fileName: string, fileSize: number) => {
@@ -358,37 +373,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
   if (isMobile) {
     return (
       <div className="flex-1 flex flex-col bg-gradient-to-b from-[#1a1a2e] to-[#16162a] h-full w-full max-w-full overflow-hidden">
-        {/* Mobile Header - with top padding for status bar */}
-        <div
-          className="px-4 py-3 border-b border-white/5 flex items-center shrink-0 bg-[#1a1a2e]/80 backdrop-blur-sm"
-          style={{ paddingTop: '3.5rem' }}
-        >
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center mr-3 ${
-            channel.type === ChannelType.AI
-              ? 'bg-gradient-to-br from-purple-500 to-indigo-600'
-              : 'bg-white/10'
-          }`}>
-            <i className={`text-white ${channel.type === ChannelType.AI ? 'fas fa-robot' : 'fas fa-hashtag'}`}></i>
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-white truncate">{channel.name}</h3>
-            <p className="text-xs text-white/40">
-              {channel.type === ChannelType.AI ? 'AI Assistant' : `${messages.length} messages`}
-            </p>
-          </div>
-          {channel.id === '5' && (
-            <motion.button
-              onClick={onOpenReportModal}
-              whileTap={{ scale: 0.95 }}
-              className="bg-green-500/20 text-green-400 px-3 py-2 rounded-xl text-sm font-medium flex items-center"
-            >
-              <i className="fas fa-bug mr-2"></i> Report
-            </motion.button>
-          )}
-        </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3">
+        {/* Messages — header is rendered by App.tsx */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 min-w-0 w-full">
           {messages.length === 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -412,7 +398,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.02 }}
-                  className={`flex mb-3 ${msg.isAi ? '' : ''}`}
+                  className={`flex mb-3 min-w-0 ${msg.isAi ? '' : ''}`}
                 >
                   {/* Avatar */}
                   <div className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden ${
@@ -427,8 +413,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                     )}
                   </div>
 
-                  {/* Message bubble */}
-                  <div className="ml-2 flex-1 min-w-0 overflow-hidden">
+                  {/* Message bubble — max-width prevents embed overflow on mobile */}
+                  <div className="ml-2 flex-1 min-w-0 overflow-hidden" style={{ maxWidth: 'calc(100vw - 72px)' }}>
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className={`font-medium text-sm ${msg.isAi ? 'text-purple-400' : 'text-white/90'}`}>
                         {msg.sender}
@@ -450,57 +436,99 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                       {renderMarkdown(msg.content)}
                     </div>
 
-                    {/* Attachment */}
-                    {msg.attachment && (
-                      <div className="mt-2">
-                        {msg.attachment.type === 'image' ? (
-                          <a href={msg.attachment.url} target="_blank" rel="noopener noreferrer" className="block">
-                            <img
-                              src={msg.attachment.url}
-                              alt={msg.attachment.name}
-                              className="rounded-xl max-h-60 border border-white/10"
-                            />
-                          </a>
-                        ) : msg.attachment.type === 'audio' ? (
-                          <AudioMessage
-                            url={msg.attachment.url}
-                            duration={msg.attachment.duration}
-                            fileName={msg.attachment.name}
-                          />
-                        ) : msg.attachment.type === 'video' ? (
-                          <VideoMessage
-                            url={msg.attachment.url}
-                            name={msg.attachment.name}
-                            size={msg.attachment.size}
-                          />
-                        ) : (
-                          <div className="flex items-center bg-white/5 p-3 rounded-xl border border-white/10">
-                            <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center mr-3">
-                              <span className="text-[10px] font-bold text-purple-400">{getFileExtension(msg.attachment.name)}</span>
-                            </div>
-                            <div className="overflow-hidden flex-1">
-                              <div className="text-white/80 text-sm font-medium truncate">{msg.attachment.name}</div>
-                              <div className="text-[10px] text-white/40">
-                                {formatFileSize(msg.attachment.size)}{msg.attachment.size ? ' • ' : ''}{getFileExtension(msg.attachment.name)} file
-                              </div>
-                            </div>
-                            <a
-                              href={msg.attachment.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="ml-2 w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center"
-                            >
-                              <i className="fas fa-download text-white/60 text-sm"></i>
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    {/* Collapsible media (attachments + embeds) */}
+                    {hasMedia(msg) && (
+                      <>
+                        <button
+                          onClick={() => toggleMediaCollapse(msg.id)}
+                          className="flex items-center gap-1 mt-1.5 px-2 py-0.5 text-[10px] text-white/30 hover:text-white/60 transition-colors rounded-full hover:bg-white/5"
+                        >
+                          <i className={`fas fa-chevron-${collapsedMedia.has(msg.id) ? 'right' : 'down'} text-[8px]`} />
+                          {collapsedMedia.has(msg.id) ? 'Show media' : 'Hide media'}
+                        </button>
 
-                    {/* URL embeds (video platforms) */}
-                    {msg.content && extractVideoEmbeds(msg.content).map((embed, i) => (
-                      <VideoEmbed key={`embed-${msg.id}-${i}`} embed={embed} />
-                    ))}
+                        {collapsedMedia.has(msg.id) ? (
+                          <>
+                            {/* Collapsed: show compact title preview */}
+                            {msg.attachment && (
+                              <div className="flex items-center gap-2 mt-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06] overflow-hidden">
+                                <i className={`fas ${
+                                  msg.attachment.type === 'image' ? 'fa-image text-blue-400' :
+                                  msg.attachment.type === 'audio' ? 'fa-microphone text-green-400' :
+                                  msg.attachment.type === 'video' ? 'fa-video text-red-400' :
+                                  'fa-file text-purple-400'
+                                } text-xs shrink-0`} />
+                                <span className="text-xs text-white/70 truncate min-w-0">{msg.attachment.name}</span>
+                                <span className="text-[10px] text-white/30 shrink-0">{formatFileSize(msg.attachment.size)}</span>
+                              </div>
+                            )}
+                            {msg.content && extractVideoEmbeds(msg.content).length > 0 && (
+                              <div className="max-w-full overflow-hidden">
+                                {extractVideoEmbeds(msg.content).map((embed, i) => (
+                                  <VideoEmbed key={`embed-${msg.id}-${i}`} embed={embed} collapsed />
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            {msg.attachment && (
+                              <div className="mt-1.5">
+                                {msg.attachment.type === 'image' ? (
+                                  <a href={msg.attachment.url} target="_blank" rel="noopener noreferrer" className="block">
+                                    <img
+                                      src={msg.attachment.url}
+                                      alt={msg.attachment.name}
+                                      className="rounded-xl max-h-60 border border-white/10"
+                                    />
+                                  </a>
+                                ) : msg.attachment.type === 'audio' ? (
+                                  <AudioMessage
+                                    url={msg.attachment.url}
+                                    duration={msg.attachment.duration}
+                                    fileName={msg.attachment.name}
+                                  />
+                                ) : msg.attachment.type === 'video' ? (
+                                  <VideoMessage
+                                    url={msg.attachment.url}
+                                    name={msg.attachment.name}
+                                    size={msg.attachment.size}
+                                  />
+                                ) : (
+                                  <div className="flex items-center bg-white/5 p-3 rounded-xl border border-white/10">
+                                    <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center mr-3">
+                                      <span className="text-[10px] font-bold text-purple-400">{getFileExtension(msg.attachment.name)}</span>
+                                    </div>
+                                    <div className="overflow-hidden flex-1">
+                                      <div className="text-white/80 text-sm font-medium truncate">{msg.attachment.name}</div>
+                                      <div className="text-[10px] text-white/40">
+                                        {formatFileSize(msg.attachment.size)}{msg.attachment.size ? ' • ' : ''}{getFileExtension(msg.attachment.name)} file
+                                      </div>
+                                    </div>
+                                    <a
+                                      href={msg.attachment.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="ml-2 w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center"
+                                    >
+                                      <i className="fas fa-download text-white/60 text-sm"></i>
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {msg.content && extractVideoEmbeds(msg.content).length > 0 && (
+                              <div className="max-w-full overflow-hidden">
+                                {extractVideoEmbeds(msg.content).map((embed, i) => (
+                                  <VideoEmbed key={`embed-${msg.id}-${i}`} embed={embed} />
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </>
+                    )}
                   </div>
                 </motion.div>
               );
@@ -524,8 +552,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Mobile Input Area - extra bottom padding for nav bar */}
-        <div className="px-3 pb-24 pt-2 shrink-0 border-t border-white/5 bg-[#16162a]">
+        {/* Mobile Input Area */}
+        <div className="px-3 pb-4 pt-2 shrink-0 border-t border-white/5 bg-[#16162a]">
           {channel.id === '5' ? (
             <motion.button
               onClick={onOpenReportModal}
@@ -540,7 +568,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
               <span className="text-white/40 text-sm">Read-only channel</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-0">
               {/* Hidden File Input */}
               <input
                 type="file"
@@ -549,45 +577,137 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                 className="hidden"
               />
 
-              {/* Upload Button */}
-              <motion.button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                whileTap={{ scale: 0.95 }}
-                className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center border border-white/10"
-              >
-                {isUploading ? (
-                  <i className="fas fa-spinner fa-spin text-purple-400"></i>
-                ) : (
-                  <i className="fas fa-plus text-white/50"></i>
+              {/* Expandable toolbar row */}
+              <AnimatePresence>
+                {showMobileToolbar && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.15, ease: 'easeOut' }}
+                    className="overflow-hidden"
+                  >
+                    <div className="flex items-center gap-1.5 pb-2">
+                      {/* Voice Message */}
+                      <VoiceMessageButton
+                        onVoiceMessageSent={handleVoiceMessageSent}
+                        onRecordingStateChange={setIsRecordingVoice}
+                        disabled={channel.type === ChannelType.AI}
+                      />
+
+                      {!isRecordingVoice && (
+                        <>
+                          {/* Upload */}
+                          <motion.button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isUploading}
+                            whileTap={{ scale: 0.9 }}
+                            className="w-8 h-8 rounded-lg bg-white/5 text-white/40 flex items-center justify-center"
+                            style={{ WebkitTapHighlightColor: 'transparent' }}
+                          >
+                            {isUploading ? (
+                              <i className="fas fa-spinner fa-spin text-purple-400 text-xs"></i>
+                            ) : (
+                              <i className="fas fa-paperclip text-xs"></i>
+                            )}
+                          </motion.button>
+
+                          {/* Markdown Formatting */}
+                          <div className="relative">
+                            <motion.button
+                              ref={markdownToggleRef}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => {
+                                setShowEmojiPicker(false);
+                                setShowMarkdownToolbar(prev => !prev);
+                              }}
+                              className="w-8 h-8 rounded-lg bg-white/5 text-white/40 flex items-center justify-center"
+                              style={{ WebkitTapHighlightColor: 'transparent' }}
+                            >
+                              <i className="fas fa-font text-xs"></i>
+                            </motion.button>
+                            <MarkdownToolbar
+                              isOpen={showMarkdownToolbar}
+                              onClose={() => setShowMarkdownToolbar(false)}
+                              onInsert={handleMarkdownInsert}
+                              toggleRef={markdownToggleRef}
+                            />
+                          </div>
+
+                          {/* Emoji Picker */}
+                          <div className="relative">
+                            <motion.button
+                              ref={emojiToggleRef}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => {
+                                setShowMarkdownToolbar(false);
+                                setShowEmojiPicker(prev => !prev);
+                              }}
+                              className="w-8 h-8 rounded-lg bg-white/5 text-white/40 flex items-center justify-center"
+                              style={{ WebkitTapHighlightColor: 'transparent' }}
+                            >
+                              <i className="fas fa-smile text-xs"></i>
+                            </motion.button>
+                            <QuickEmojiPicker
+                              isOpen={showEmojiPicker}
+                              onClose={() => setShowEmojiPicker(false)}
+                              onEmojiSelect={handleEmojiInsert}
+                              toggleRef={emojiToggleRef}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </motion.div>
                 )}
-              </motion.button>
+              </AnimatePresence>
 
-              {/* Text Input */}
-              <div className="flex-1 bg-white/5 rounded-xl border border-white/10 flex items-center overflow-hidden">
-                <input
-                  type="text"
-                  className="flex-1 bg-transparent border-none outline-none text-white px-4 py-3 placeholder-white/30"
-                  placeholder={`Message #${channel.name}`}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                />
+              {/* Main input row */}
+              <div className="flex items-center gap-2">
+                {/* Expand toolbar toggle */}
+                <motion.button
+                  onClick={() => setShowMobileToolbar(prev => !prev)}
+                  whileTap={{ scale: 0.95 }}
+                  className={`w-11 h-11 rounded-xl flex items-center justify-center border shrink-0 transition-colors ${
+                    showMobileToolbar
+                      ? 'bg-white/10 border-white/20'
+                      : 'bg-white/5 border-white/10'
+                  }`}
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
+                >
+                  <motion.i
+                    animate={{ rotate: showMobileToolbar ? 45 : 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="fas fa-plus text-white/50 text-sm"
+                  ></motion.i>
+                </motion.button>
+
+                {/* Text Input */}
+                <div className="flex-1 bg-white/5 rounded-xl border border-white/10 flex items-center overflow-hidden min-w-0">
+                  <input
+                    type="text"
+                    className="flex-1 bg-transparent border-none outline-none text-white px-4 py-3 placeholder-white/30 min-w-0"
+                    placeholder={`Message #${channel.name}`}
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                  />
+                </div>
+
+                {/* Send Button */}
+                <motion.button
+                  onClick={handleSend}
+                  disabled={!inputValue.trim()}
+                  whileTap={{ scale: 0.95 }}
+                  className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all shrink-0 ${
+                    inputValue.trim()
+                      ? 'bg-gradient-to-r from-purple-500 to-indigo-600 shadow-lg'
+                      : 'bg-white/5 border border-white/10'
+                  }`}
+                >
+                  <i className={`fas fa-paper-plane text-sm ${inputValue.trim() ? 'text-white' : 'text-white/30'}`}></i>
+                </motion.button>
               </div>
-
-              {/* Send Button */}
-              <motion.button
-                onClick={handleSend}
-                disabled={!inputValue.trim()}
-                whileTap={{ scale: 0.95 }}
-                className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${
-                  inputValue.trim()
-                    ? 'bg-gradient-to-r from-purple-500 to-indigo-600 shadow-lg'
-                    : 'bg-white/5 border border-white/10'
-                }`}
-              >
-                <i className={`fas fa-paper-plane text-sm ${inputValue.trim() ? 'text-white' : 'text-white/30'}`}></i>
-              </motion.button>
             </div>
           )}
 
@@ -668,57 +788,91 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
               <div className="text-discord-text break-words leading-relaxed">
                 {renderMarkdown(msg.content)}
               </div>
-              {/* Attachment Rendering */}
-              {msg.attachment && (
-                <div className="mt-2">
-                  {msg.attachment.type === 'image' ? (
-                    <a href={msg.attachment.url} target="_blank" rel="noopener noreferrer" className="block max-w-sm">
-                       <img
-                         src={msg.attachment.url}
-                         alt={msg.attachment.name}
-                         className="rounded-lg max-h-80 border border-discord-dark cursor-zoom-in"
-                       />
-                    </a>
-                  ) : msg.attachment.type === 'audio' ? (
-                    <AudioMessage
-                      url={msg.attachment.url}
-                      duration={msg.attachment.duration}
-                      fileName={msg.attachment.name}
-                    />
-                  ) : msg.attachment.type === 'video' ? (
-                    <VideoMessage
-                      url={msg.attachment.url}
-                      name={msg.attachment.name}
-                      size={msg.attachment.size}
-                    />
-                  ) : (
-                    <div className="flex items-center bg-discord-dark p-3 rounded max-w-sm border border-discord-sidebar">
-                      <div className="w-10 h-10 rounded bg-discord-accent/20 flex items-center justify-center mr-3 flex-shrink-0">
-                        <span className="text-[10px] font-bold text-discord-accent">{getFileExtension(msg.attachment.name)}</span>
-                      </div>
-                      <div className="overflow-hidden flex-1 min-w-0">
-                        <div className="text-discord-link font-medium truncate" title={msg.attachment.name}>{msg.attachment.name}</div>
-                        <div className="text-xs text-discord-muted">
-                          {formatFileSize(msg.attachment.size)}{msg.attachment.size ? ' • ' : ''}{getFileExtension(msg.attachment.name)} file
-                        </div>
-                      </div>
-                      <a
-                        href={msg.attachment.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-auto bg-discord-sidebar hover:bg-discord-hover p-2 rounded text-discord-muted hover:text-white transition-colors flex-shrink-0"
-                      >
-                        <i className="fas fa-download"></i>
-                      </a>
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Collapsible media (attachments + embeds) */}
+              {hasMedia(msg) && (
+                <>
+                  <button
+                    onClick={() => toggleMediaCollapse(msg.id)}
+                    className="flex items-center gap-1.5 mt-1 text-xs text-discord-muted hover:text-discord-text transition-colors"
+                  >
+                    <i className={`fas fa-chevron-${collapsedMedia.has(msg.id) ? 'right' : 'down'} text-[9px]`} />
+                    {collapsedMedia.has(msg.id) ? 'Show media' : 'Hide media'}
+                  </button>
 
-              {/* URL embeds (video platforms) */}
-              {msg.content && extractVideoEmbeds(msg.content).map((embed, i) => (
-                <VideoEmbed key={`embed-${msg.id}-${i}`} embed={embed} />
-              ))}
+                  {collapsedMedia.has(msg.id) ? (
+                    <>
+                      {/* Collapsed: compact title preview */}
+                      {msg.attachment && (
+                        <div className="flex items-center gap-2 mt-1.5 px-2.5 py-1.5 rounded bg-discord-dark/60 border border-discord-sidebar max-w-sm overflow-hidden">
+                          <i className={`fas ${
+                            msg.attachment.type === 'image' ? 'fa-image text-blue-400' :
+                            msg.attachment.type === 'audio' ? 'fa-microphone text-green-400' :
+                            msg.attachment.type === 'video' ? 'fa-video text-red-400' :
+                            'fa-file text-purple-400'
+                          } text-xs shrink-0`} />
+                          <span className="text-xs text-discord-text truncate min-w-0">{msg.attachment.name}</span>
+                          <span className="text-[10px] text-discord-muted shrink-0">{formatFileSize(msg.attachment.size)}</span>
+                        </div>
+                      )}
+                      {msg.content && extractVideoEmbeds(msg.content).map((embed, i) => (
+                        <VideoEmbed key={`embed-${msg.id}-${i}`} embed={embed} collapsed />
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      {msg.attachment && (
+                        <div className="mt-2">
+                          {msg.attachment.type === 'image' ? (
+                            <a href={msg.attachment.url} target="_blank" rel="noopener noreferrer" className="block max-w-sm">
+                               <img
+                                 src={msg.attachment.url}
+                                 alt={msg.attachment.name}
+                                 className="rounded-lg max-h-80 border border-discord-dark cursor-zoom-in"
+                               />
+                            </a>
+                          ) : msg.attachment.type === 'audio' ? (
+                            <AudioMessage
+                              url={msg.attachment.url}
+                              duration={msg.attachment.duration}
+                              fileName={msg.attachment.name}
+                            />
+                          ) : msg.attachment.type === 'video' ? (
+                            <VideoMessage
+                              url={msg.attachment.url}
+                              name={msg.attachment.name}
+                              size={msg.attachment.size}
+                            />
+                          ) : (
+                            <div className="flex items-center bg-discord-dark p-3 rounded max-w-sm border border-discord-sidebar">
+                              <div className="w-10 h-10 rounded bg-discord-accent/20 flex items-center justify-center mr-3 flex-shrink-0">
+                                <span className="text-[10px] font-bold text-discord-accent">{getFileExtension(msg.attachment.name)}</span>
+                              </div>
+                              <div className="overflow-hidden flex-1 min-w-0">
+                                <div className="text-discord-link font-medium truncate" title={msg.attachment.name}>{msg.attachment.name}</div>
+                                <div className="text-xs text-discord-muted">
+                                  {formatFileSize(msg.attachment.size)}{msg.attachment.size ? ' • ' : ''}{getFileExtension(msg.attachment.name)} file
+                                </div>
+                              </div>
+                              <a
+                                href={msg.attachment.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="ml-auto bg-discord-sidebar hover:bg-discord-hover p-2 rounded text-discord-muted hover:text-white transition-colors flex-shrink-0"
+                              >
+                                <i className="fas fa-download"></i>
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {msg.content && extractVideoEmbeds(msg.content).map((embed, i) => (
+                        <VideoEmbed key={`embed-${msg.id}-${i}`} embed={embed} />
+                      ))}
+                    </>
+                  )}
+                </>
+              )}
             </div>
           </div>
           );

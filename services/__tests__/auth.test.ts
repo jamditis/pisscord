@@ -112,13 +112,14 @@ describe('auth service', () => {
       expect(result).toEqual(mockUser);
     });
 
-    it('throws friendly error on redirect failure', async () => {
+    it('returns null and logs warning on redirect failure', async () => {
       vi.mocked(getRedirectResult).mockRejectedValue({
         code: 'auth/network-request-failed',
         message: 'network error',
       });
 
-      await expect(handleGoogleRedirectResult()).rejects.toThrow('Network error');
+      const result = await handleGoogleRedirectResult();
+      expect(result).toBeNull();
     });
   });
 
