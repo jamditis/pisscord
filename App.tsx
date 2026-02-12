@@ -30,7 +30,7 @@ import { logger } from './services/logger';
 import { createAudioProcessor, AudioProcessor } from './services/audioProcessor';
 import { buildVideoConstraints, buildAudioConstraints, preferH264 } from './services/webrtcUtils';
 
-const APP_VERSION = "2.1.2";
+const APP_VERSION = "2.1.3";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [

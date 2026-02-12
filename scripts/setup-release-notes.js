@@ -31,32 +31,22 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // UPDATE THESE FOR EACH RELEASE
-const CURRENT_VERSION = "2.1.2";
+const CURRENT_VERSION = "2.1.3";
 const DOWNLOAD_URL = `https://github.com/jamditis/pisscord/releases/download/v${CURRENT_VERSION}/Pisscord.Setup.${CURRENT_VERSION}.exe`;
 
 const RELEASE_NOTES = `## What's new in v${CURRENT_VERSION}
 
-Security hardening, reliability fixes, and full logger migration.
+Electron auth fix and build improvements.
 
-### Security
-- **XSS fix** — markdown link renderer now blocks javascript: and data: protocol URLs
-- **Message validation** — Firebase messages pass through type guards before rendering
-- **Non-ASCII URL fix** — transcript caching no longer crashes on URLs with special characters
+### Fixes
+- **Electron Google Sign-In fixed** — rewrote OAuth flow to parse ID token directly from redirect URL hash instead of injecting Firebase SDK (which was blocked by CSP)
+- **Email link auth fixed** — redirect URL now points to deployed web app instead of file:// on Electron
+- **Build script fix** — build:web now works on Windows (mv → node rename)
+- **Web update notifications** — uses toast instead of blocking alert
 
-### Reliability
-- **Listener cleanup** — Capacitor and Electron event listeners now properly removed on unmount
-- **Voice recording guard** — prevents double-send when timer and stop button fire simultaneously
-- **Stale closure fixes** — handleStartCall and recording timer use refs for current values
-- **Presence update** — accepting a call now correctly updates your voice channel presence
-- **Fetch cancellation** — switching away from #dev-updates cancels pending GitHub API calls
-- **Audio context lifecycle** — remote speaking detection no longer destroys/recreates on every stream change
-
-### Quality
-- **Full logger migration** — all 28 raw console calls replaced with centralized logger (0 remaining)
-- **Dead code removed** — LogService, ConfirmModal, pendingCallRef, unused User interface
-- **Type safety** — platform.ts uses proper ElectronUpdateInfo/DownloadProgress types
-- **313 tests** across 24 files (up from 293 in v2.1.1, 20 new tests)
-- New test coverage: XSS protection, message validation, non-ASCII URLs
+### Infra
+- **Release workflow** — now pushes release notes to Firebase automatically
+- **Website updated** — fixed mobile section heading and stale version refs
 `;
 
 async function setupReleaseNotes() {

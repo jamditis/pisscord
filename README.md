@@ -8,7 +8,7 @@
 [![GitHub last commit](https://img.shields.io/github/last-commit/jamditis/pisscord)](https://github.com/jamditis/pisscord/commits)
 [![Update Firebase Version](https://github.com/jamditis/pisscord/actions/workflows/update-firebase-version.yml/badge.svg)](https://github.com/jamditis/pisscord/actions/workflows/update-firebase-version.yml)
 
-**Current version:** v2.1.2 | [Download latest](https://github.com/jamditis/pisscord/releases/latest) | [Use in browser](https://web.pisscord.app)
+**Current version:** v2.1.3 | [Download latest](https://github.com/jamditis/pisscord/releases/latest) | [Use in browser](https://web.pisscord.app)
 
 A private, peer-to-peer Discord clone for trusted groups with encrypted messaging, voice/video calling, AI assistance, and real-time presence. Available as a desktop app, Android app, or directly in your web browser.
 
@@ -127,7 +127,7 @@ That's it! The web version works on desktop and mobile browsers.
 
 5.  **Find the installer**:
     - Navigate to the `dist` folder
-    - Look for `Pisscord Setup 2.1.2.exe`
+    - Look for `Pisscord Setup 2.1.3.exe`
 
 ### Build web version
 
@@ -159,7 +159,7 @@ npm run dev          # Web browser (localhost:5173)
 
 ### Desktop installation
 
-1.  **Download**: Get the `Pisscord Setup 2.1.2.exe` from [releases](https://github.com/jamditis/pisscord/releases/latest)
+1.  **Download**: Get the `Pisscord Setup 2.1.3.exe` from [releases](https://github.com/jamditis/pisscord/releases/latest)
 2.  **Install**: Double-click the installer
     - Windows may show "Unknown Publisher" warning
     - Click "More Info" then "Run Anyway"

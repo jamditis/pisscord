@@ -2,11 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 🚨 Handoff Note / Status (v2.1.2)
-**Current State:** v2.1.2 on `master`. Security hardening, reliability fixes, full logger migration. 313 tests, 0 TypeScript errors.
+## 🚨 Handoff Note / Status (v2.1.3)
+**Current State:** v2.1.3 on `master`. Electron auth fix, build improvements. 313 tests, 0 TypeScript errors.
 **Last Updated:** 2026-02-11
 
-### Recent Work (v2.1.2 - Security & reliability)
+### Recent Work (v2.1.3 - Auth fix & build improvements)
+- **Electron Google Sign-In fixed:** Rewrote OAuth flow — navigates BrowserWindow directly to Google consent URL with `response_type=id_token`, parses token from redirect URL hash fragment instead of injecting Firebase SDK (which was blocked by CSP on the auth handler page)
+- **Email link auth fixed:** `getActionCodeSettings()` now redirects to `https://pisscord-edbca.web.app` instead of `file://` when on Electron
+- **Build:web script fixed:** Replaced Unix `mv` with `node -e` rename for Windows compatibility
+- **Web update notifications:** Uses toast instead of blocking `alert()` for version update prompts
+- **Release workflow:** GitHub Action now pushes release notes to Firebase RTDB automatically
+- **Website updated:** Fixed mobile section heading, stale version refs
+- **Files changed:** electron.js, services/auth.ts, docs/index.html, README.md, scripts/
+
+### Previous work (v2.1.2 - Security & reliability)
 - **XSS fix:** Markdown link renderer blocks javascript:/data:/vbscript: protocols (ChatArea.tsx)
 - **Message validation:** `isValidMessage` type guard filters raw Firebase data before rendering (firebase.ts)
 - **btoa fix:** Non-ASCII URLs in transcript caching use `btoa(unescape(encodeURIComponent(url)))` (firebase.ts)
@@ -136,8 +145,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Pisscord is a private, multi-platform Discord clone built with React, TypeScript, and PeerJS. It enables direct P2P voice/video calling, text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
 
 **Platforms:** Desktop (Electron), Web Browser, Android (Capacitor), Mobile Web
-**Current Version:** 2.1.2
-**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v2.1.2
+**Current Version:** 2.1.3
+**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v2.1.3
 
 ## Key Architecture
 
@@ -424,7 +433,16 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - `noUnusedLocals` and `noUnusedParameters` disabled (intentional)
 - React JSX transform (no need to import React in TSX files)
 
-## Recent Changes (v1.1.0 - v2.1.2)
+## Recent Changes (v1.1.0 - v2.1.3)
+
+### v2.1.3 (2026-02-11) — Auth fix & build improvements
+- **Electron Google Sign-In fixed:** Rewrote OAuth flow — BrowserWindow navigates directly to Google consent URL with `response_type=id_token`, parses token from redirect URL hash fragment (previous approaches: signInWithPopup blocked by Chromium popup blocker, CDN Firebase imports blocked by CSP)
+- **Email link auth fixed:** `getActionCodeSettings()` redirects to `https://pisscord-edbca.web.app` instead of `file://` on Electron
+- **Build:web script fixed:** Replaced Unix `mv` with `node -e` rename for Windows compatibility
+- **Web update notifications:** Toast instead of blocking `alert()` for version prompts
+- **Release workflow:** GitHub Action pushes release notes to Firebase RTDB automatically
+- **Website:** Fixed mobile section heading and stale version refs
+- **Files:** electron.js, services/auth.ts, docs/index.html, README.md, scripts/
 
 ### v2.1.2 (2026-02-11) — Security & reliability
 - **XSS fix:** Markdown link renderer blocks javascript:/data:/vbscript: protocols in ChatArea.tsx
