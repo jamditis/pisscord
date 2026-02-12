@@ -22,3 +22,26 @@ jobs:
             "https://pisscord-edbca-default-rtdb.firebaseio.com/system/latestVersion.json?auth=${{ secrets.FIREBASE_DATABASE_SECRET }}" \
             -d "\"${{ steps.version.outputs.version }}\""
           echo "Firebase latestVersion updated to ${{ steps.version.outputs.version }}"
+
+      - name: Update Firebase release notes
+        env:
+          FIREBASE_SECRET: ${{ secrets.FIREBASE_DATABASE_SECRET }}
+          VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+        run: |
+          DOWNLOAD_URL="https://github.com/jamditis/pisscord/releases/download/v${VERSION}/Pisscord.Setup.${VERSION}.exe"
+          TIMESTAMP=$(date +%s000)
+
+          # Build JSON payload with jq for safe escaping
+          PAYLOAD=$(jq -n \
+            --arg version "$VERSION" \
+            --arg notes "$RELEASE_BODY" \
+            --arg url "$DOWNLOAD_URL" \
+            --argjson ts "$TIMESTAMP" \
+            '{version: $version, releaseNotes: $notes, downloadUrl: $url, lastUpdated: $ts}')
+
+          curl -X PUT \
+            "https://pisscord-edbca-default-rtdb.firebaseio.com/system/releaseNotes.json?auth=${FIREBASE_SECRET}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
+          echo "Firebase release notes updated for v${VERSION}"
