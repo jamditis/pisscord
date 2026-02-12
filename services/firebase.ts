@@ -50,6 +50,33 @@ export const auth = getAuth(app);
 // Re-export type to avoid conflict
 export type { PresenceUser as OnlineUser };
 
+/**
+ * Retry wrapper with exponential backoff for transient Firebase errors.
+ * Delays: baseDelay * 2^attempt (e.g. 1s → 2s → 4s for 3 retries).
+ */
+export async function withRetry<T>(
+  operation: () => Promise<T>,
+  name: string,
+  maxRetries = 3,
+  baseDelay = 1000
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxRetries) {
+        const delay = baseDelay * Math.pow(2, attempt);
+        logger.warn('firebase', `${name} failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  logger.error('firebase', `${name} failed after ${maxRetries + 1} attempts`);
+  throw lastError;
+}
+
 // File Upload Service
 export const uploadFile = async (file: File): Promise<string> => {
   const filename = `${Date.now()}-${file.name}`;
@@ -135,19 +162,25 @@ export const registerPresence = async (peerId: string, profile: UserProfile): Pr
   const userRef = ref(db, `users/${peerId}`);
 
   try {
-    await set(userRef, {
-      peerId,
-      displayName: profile.displayName,
-      statusMessage: profile.statusMessage,
-      color: profile.color,
-      photoURL: profile.photoURL || null,
-      lastSeen: Date.now(),
-      voiceChannelId: null
-    });
+    await withRetry(async () => {
+      // Set up cleanup handler FIRST so the user entry can never outlive the connection.
+      // If onDisconnect fails, we bail out before writing — no ghost users.
+      await onDisconnect(userRef).remove();
 
-    await onDisconnect(userRef).remove();
+      await set(userRef, {
+        peerId,
+        displayName: profile.displayName,
+        statusMessage: profile.statusMessage,
+        color: profile.color,
+        photoURL: profile.photoURL || null,
+        lastSeen: Date.now(),
+        voiceChannelId: null
+      });
+    }, 'registerPresence');
     return true;
   } catch (error) {
+    // If set() failed after onDisconnect succeeded, cancel the handler
+    try { await onDisconnect(userRef).cancel(); } catch (_) { /* best-effort */ }
     logger.error('firebase', `Failed to register presence for ${peerId}: ${error}`);
     return false;
   }
@@ -156,6 +189,8 @@ export const registerPresence = async (peerId: string, profile: UserProfile): Pr
 export const updatePresence = async (peerId: string, profile: UserProfile, voiceChannelId: string | null = null): Promise<void> => {
     const userRef = ref(db, `users/${peerId}`);
     try {
+      // Re-establish cleanup handler before writing, same as registerPresence
+      await onDisconnect(userRef).remove();
       await set(userRef, {
         peerId,
         displayName: profile.displayName,
@@ -165,7 +200,6 @@ export const updatePresence = async (peerId: string, profile: UserProfile, voice
         lastSeen: Date.now(),
         voiceChannelId
       });
-      await onDisconnect(userRef).remove();
     } catch (error) {
       logger.error('firebase', `Failed to update presence for ${peerId}: ${error}`);
     }
@@ -313,12 +347,12 @@ export const getReleaseNotes = async (): Promise<ReleaseNotesConfig | null> => {
 export const sendMessage = async (channelId: string, message: Message): Promise<void> => {
   const messagesRef = ref(db, `messages/${channelId}`);
   const newMessageRef = push(messagesRef);
-  try {
-    await set(newMessageRef, message);
-  } catch (error) {
-    logger.error('firebase', `Failed to send message to ${channelId}: ${error}`);
-    throw error;
-  }
+  await withRetry(
+    () => set(newMessageRef, message),
+    `sendMessage(${channelId})`,
+    2, // fewer retries for messages — user can resend manually
+    500
+  );
 };
 
 /**

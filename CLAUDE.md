@@ -2,15 +2,33 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 🚨 Handoff Note / Status (v2.0.5)
-**Current State:** v2.0.5 released. Google sign-in fixed across all platforms.
-**Last Updated:** 2026-02-10
+## 🚨 Handoff Note / Status (v2.1.0)
+**Current State:** v2.1.0 on `feature/hardening-v2.1.0` branch. Stabilization and hardening across all subsystems.
+**Last Updated:** 2026-02-11
 
-### Recent Work (v2.0.5 - Auth Fix)
-- **Electron Google Sign-In Fixed:** `signInWithPopup` can't work from Electron's `file://` origin. New IPC handler in `electron.js` opens the deployed web app in a modal `BrowserWindow` (https:// origin), runs `signInWithPopup` there via `executeJavaScript`, extracts the ID token, and returns it to the renderer which calls `signInWithCredential`. Same pattern as Capacitor.
-- **Google OAuth Client Fixed:** The OAuth client was missing authorized origins/redirects for `pisscord-edbca.web.app` and `web.pisscord.app`. Only `firebaseapp.com` was registered, but `authDomain` in `firebase.ts` is `web.app`. Added both domains' origins and redirect URIs in Google Cloud Console.
-- **Three-platform auth strategy:** Capacitor = native OS sign-in, Electron = web app BrowserWindow, Web = standard `signInWithPopup`. All converge on `signInWithCredential`.
-- **Files changed:** `electron.js` (IPC handler), `preload.js` (bridge), `services/auth.ts` (Electron code path)
+### Recent Work (v2.1.0 - Stabilization & Hardening)
+- **sendMessage crash prevention:** `addMessage` is now async with try/catch. Failed Firebase writes show an error toast instead of crashing.
+- **Electron auth timeout:** `google-sign-in` IPC handler has 120s global timeout + 60s `executeJavaScript` timeout via `Promise.race`. Closes window and rejects cleanly on timeout.
+- **Ghost user prevention:** `registerPresence` and `updatePresence` now call `onDisconnect().remove()` BEFORE `set()`. If `set()` fails, the `onDisconnect` handler is cancelled. No more ghost users.
+- **Firebase connection monitoring:** `subscribeToConnectionState` is now wired up in App.tsx. Shows "Database offline" banner when Firebase disconnects, "Reconnected" toast when back.
+- **Screen share anti-flicker:** `startScreenShareWithStream` and `stopScreenShare` now swap tracks in-place on the existing `MediaStream` using `removeTrack()/addTrack()` instead of creating new streams. No `setMyStream()` call = no React re-render = zero flicker.
+- **Camera track recovery:** If `myVideoTrack.current` is null when stopping screen share, the app recovers by calling `getUserMedia({ video: true })` and replacing across all peer connections.
+- **Track cleanup by ID:** Screen track cleanup uses `track.id` comparison (stored in `screenTrackIdRef`) instead of `track.label`, which can be ambiguous.
+- **setSinkId guard:** Only calls `setSinkId()` when the device actually changes (checks `el.sinkId` first). Prevents audio pops on re-renders.
+- **srcObject guard:** Only reassigns `<audio>.srcObject` when the stream reference changes.
+- **PeerJS error recovery:** `network` and `server-error` types now trigger `peer.reconnect()` after 2s delay.
+- **Firebase retry utility:** `withRetry<T>()` with exponential backoff (1s → 2s → 4s). Applied to `registerPresence` and `sendMessage`.
+- **Logging standardization:** App.tsx `log()` now routes through centralized `logger` module. Debug tab state fed from logger's subscriber pattern.
+- **Z-index scale:** Named tiers in Tailwind config: `splash(9999)`, `context(300)`, `toast(200)`, `modal(30)`, `alert(60)`, `navigation(50)`, `overlay(20)`, `content(10)`. All 14 component files updated.
+- **Safe-area CSS:** `.safe-top` and `.safe-bottom` now use `max()` with fallback minimums.
+- **Font preloading:** `<link rel="preload" as="style">` with `onload` swap for FOUT prevention.
+- **Volume slider cap:** Per-user volume slider maxed at 100% (was 200% but clamped to 100% at the audio element).
+- **Test suite:** 153 tests across 18 files — new tests for retry utility, connection state, ghost user prevention.
+- **Files changed:** `App.tsx`, `services/firebase.ts`, `services/logger.ts`, `electron.js`, `index.html`, `index.css`, `components/VoiceStage.tsx`, 12 component files (z-index updates), 3 new/expanded test files.
+
+### Previous Work (v2.0.5 - Auth Fix)
+- **Electron Google Sign-In Fixed:** IPC handler opens web app in BrowserWindow for OAuth from https:// origin.
+- **Three-platform auth:** Capacitor (native), Electron (BrowserWindow), Web (`signInWithPopup`) — all converge on `signInWithCredential`.
 
 ### Previous Work (v2.0.0 - Production Hardening)
 - **Centralized Logging:** `services/logger.ts` replaces scattered console calls with structured `[TIMESTAMP] [LEVEL] [MODULE]` output, in-memory buffer (200 entries), debug log tab integration
@@ -20,7 +38,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Firebase Operations Hardened:** `sendMessage` awaited, `registerPresence`/`updatePresence` async with error handling, `subscribeToUsers` has error callback, batch cleanup
 - **Memory Leaks Fixed:** Audio cache reuse in sounds.ts, AudioContext cleanup in VoiceStage.tsx, isMountedRef guards in App.tsx async ops
 - **Gemini Service Fixed:** Removed hardcoded API key fallback, added Firebase Remote Config path, AbortController for timeouts
-- **Test Suite:** 141 unit tests across 16 files (Vitest + Testing Library), Playwright E2E smoke tests
+- **Test Suite:** 141 unit tests across 16 files (Vitest + Testing Library), expanded to 153 in v2.1.0. Playwright E2E smoke tests
 - **Auth Error Handling:** Specific error messages per Firebase error code, email link expiry, useAuth throws outside provider
 
 ### Action Items for Next Session
@@ -84,8 +102,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Pisscord is a private, multi-platform Discord clone built with React, TypeScript, and PeerJS. It enables direct P2P voice/video calling, text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
 
 **Platforms:** Desktop (Electron), Web Browser, Android (Capacitor), Mobile Web
-**Current Version:** 2.0.5
-**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v2.0.5
+**Current Version:** 2.1.0
+**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v2.1.0
 
 ## Key Architecture
 
@@ -372,7 +390,25 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - `noUnusedLocals` and `noUnusedParameters` disabled (intentional)
 - React JSX transform (no need to import React in TSX files)
 
-## Recent Changes (v1.1.0 - v2.0.5)
+## Recent Changes (v1.1.0 - v2.1.0)
+
+### v2.1.0 (2026-02-11) — Stabilization & Hardening
+- **Crash Prevention:** `sendMessage` wrapped in async try/catch with error toast, Electron auth IPC has 120s timeout
+- **Ghost User Prevention:** `onDisconnect().remove()` called before `set()` in registerPresence/updatePresence
+- **Firebase Connection Monitoring:** Offline indicator banner, reconnection toast
+- **Screen Share Anti-Flicker:** In-place track swap on existing MediaStream (no new stream = no re-render)
+- **Camera Track Recovery:** Falls back to `getUserMedia()` if camera track ref is lost during screen share
+- **Track Cleanup by ID:** Uses `track.id` instead of `track.label` for reliable screen track identification
+- **Audio Output Guard:** `setSinkId()` only fires when device actually changes; `srcObject` guard on audio elements
+- **PeerJS Error Recovery:** `network`/`server-error` types trigger automatic `peer.reconnect()` after 2s
+- **Firebase Retry Utility:** `withRetry<T>()` with exponential backoff applied to `registerPresence` and `sendMessage`
+- **Logging Standardization:** App.tsx `log()` routes through centralized `logger` module with subscriber pattern
+- **Z-Index Scale:** Named tiers in Tailwind config across 14 components (splash, context, toast, modal, alert, navigation, overlay, content)
+- **Safe-Area CSS:** `.safe-top`/`.safe-bottom` with `max()` fallback minimums
+- **Font Preloading:** `<link rel="preload" as="style">` with onload swap
+- **Volume Slider Cap:** Per-user slider maxed at 100% (was 200% but clamped)
+- **Test Suite:** 153 tests across 18 files (12 new tests for retry, connection state, ghost prevention)
+- **Files:** App.tsx, services/firebase.ts, electron.js, index.html, index.css, VoiceStage.tsx, 12 components, 3 test files
 
 ### v2.0.5 (2026-02-10) — Auth Fix
 - **Electron Google Sign-In Fixed:** Replaced broken `signInWithPopup` (fails from `file://` origin) with IPC-based flow that opens deployed web app in a `BrowserWindow`, runs popup auth from `https://` origin, extracts ID token via `executeJavaScript`, passes to renderer for `signInWithCredential`

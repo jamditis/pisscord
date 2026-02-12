@@ -299,6 +299,9 @@ ipcMain.handle('get-desktop-sources', async () => {
 // back to a file:// origin. Instead, we load the deployed web app in a
 // BrowserWindow (https:// origin) and run signInWithPopup there.
 ipcMain.handle('google-sign-in', async () => {
+  const AUTH_TIMEOUT_MS = 120000; // 2 minutes for the entire auth flow
+  const EXEC_TIMEOUT_MS = 60000; // 60s for executeJavaScript specifically
+
   return new Promise((resolve, reject) => {
     const authWindow = new BrowserWindow({
       width: 500,
@@ -315,6 +318,16 @@ ipcMain.handle('google-sign-in', async () => {
 
     let resolved = false;
 
+    // Global timeout — close window and reject if auth takes too long
+    const authTimer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        logToFile('Google Sign-In: timed out after ' + AUTH_TIMEOUT_MS + 'ms');
+        try { authWindow.close(); } catch (_) { /* already closed */ }
+        reject(new Error('Sign-in timed out. Please try again.'));
+      }
+    }, AUTH_TIMEOUT_MS);
+
     // Load the deployed web app — this gives us an https:// origin where
     // Firebase's signInWithPopup works correctly. Once loaded, we inject
     // a script that runs signInWithPopup and stores the result.
@@ -326,9 +339,8 @@ ipcMain.handle('google-sign-in', async () => {
       if (!url.includes('pisscord-edbca.web.app')) return;
 
       try {
-        // Run signInWithPopup from the web app's https:// origin.
-        // The Firebase SDK is already loaded on this page, so we can use it.
-        const result = await authWindow.webContents.executeJavaScript(`
+        // Race executeJavaScript against its own timeout
+        const execPromise = authWindow.webContents.executeJavaScript(`
           (async () => {
             try {
               // Firebase is already initialized on this page
@@ -347,7 +359,15 @@ ipcMain.handle('google-sign-in', async () => {
           })()
         `);
 
+        const timeoutPromise = new Promise((_, timeoutReject) => {
+          setTimeout(() => timeoutReject(new Error('executeJavaScript timed out')), EXEC_TIMEOUT_MS);
+        });
+
+        const result = await Promise.race([execPromise, timeoutPromise]);
+
+        if (resolved) return;
         resolved = true;
+        clearTimeout(authTimer);
         authWindow.close();
 
         if (result.success) {
@@ -357,7 +377,11 @@ ipcMain.handle('google-sign-in', async () => {
         }
       } catch (e) {
         if (!resolved) {
+          resolved = true;
+          clearTimeout(authTimer);
           logToFile('Google Sign-In: executeJavaScript error: ' + e.message);
+          try { authWindow.close(); } catch (_) { /* already closed */ }
+          reject(new Error(e.message || 'Sign-in failed'));
         }
       }
     });
@@ -371,7 +395,9 @@ ipcMain.handle('google-sign-in', async () => {
     });
 
     authWindow.on('closed', () => {
+      clearTimeout(authTimer);
       if (!resolved) {
+        resolved = true;
         reject(new Error('Sign-in window was closed'));
       }
     });

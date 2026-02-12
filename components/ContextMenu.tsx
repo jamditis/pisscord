@@ -30,7 +30,7 @@ const MobileActionSheet: React.FC<{ items: ContextMenuItem[]; onClose: () => voi
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm flex items-end justify-center"
+      className="fixed inset-0 z-context bg-black/60 backdrop-blur-sm flex items-end justify-center"
       onClick={onClose}
     >
       <motion.div
@@ -146,7 +146,7 @@ const DesktopContextMenu: React.FC<ContextMenuProps> = ({ items, x, y, onClose }
   return (
     <div
       ref={menuRef}
-      className="fixed bg-discord-dark border border-discord-sidebar rounded-lg shadow-xl py-1 min-w-[180px] z-[300] animate-in fade-in zoom-in-95 duration-100"
+      className="fixed bg-discord-dark border border-discord-sidebar rounded-lg shadow-xl py-1 min-w-[180px] z-context animate-in fade-in zoom-in-95 duration-100"
       style={{ left: position.x, top: position.y }}
     >
       {items.map((item, index) => {

@@ -82,9 +82,19 @@ describe('firebase service', () => {
       expect(mockSet).toHaveBeenCalled();
     });
 
-    it('throws when set fails', async () => {
-      mockSet.mockRejectedValueOnce(new Error('Write denied'));
-      await expect(sendMessage('general', {} as any)).rejects.toThrow('Write denied');
+    it('throws when set fails after retries', async () => {
+      // sendMessage uses withRetry (2 retries + initial = 3 attempts)
+      mockSet.mockRejectedValue(new Error('Write denied'));
+      vi.useFakeTimers();
+      const promise = sendMessage('general', {} as any).catch(e => e);
+      // Advance through retry delays (500ms, then 1000ms)
+      await vi.advanceTimersByTimeAsync(500);
+      await vi.advanceTimersByTimeAsync(1000);
+      const result = await promise;
+      expect(result).toBeInstanceOf(Error);
+      expect(result.message).toBe('Write denied');
+      vi.useRealTimers();
+      mockSet.mockResolvedValue(undefined); // reset for other tests
     });
   });
 
@@ -112,14 +122,76 @@ describe('firebase service', () => {
       expect(result).toBe(true);
     });
 
-    it('returns false when set fails', async () => {
-      mockSet.mockRejectedValueOnce(new Error('Permission denied'));
-      const result = await registerPresence('peer-123', {
+    it('returns false when set fails after retries', async () => {
+      // registerPresence uses withRetry (3 retries + initial = 4 attempts)
+      mockSet.mockRejectedValue(new Error('Permission denied'));
+      vi.useFakeTimers();
+      const promise = registerPresence('peer-123', {
         displayName: 'Test',
         statusMessage: '',
         avatarColor: '#ff0000',
       } as any);
+      // Advance through retry delays (1s, 2s, 4s)
+      await vi.advanceTimersByTimeAsync(1000);
+      await vi.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(4000);
+      const result = await promise;
       expect(result).toBe(false);
+      vi.useRealTimers();
+      mockSet.mockResolvedValue(undefined); // reset
+    });
+
+    it('calls onDisconnect BEFORE set (ghost user prevention)', async () => {
+      const callOrder: string[] = [];
+      mockOnDisconnect.mockReturnValue({
+        remove: vi.fn().mockImplementation(() => {
+          callOrder.push('onDisconnect');
+          return Promise.resolve();
+        }),
+        cancel: vi.fn().mockResolvedValue(undefined),
+      });
+      mockSet.mockImplementation(() => {
+        callOrder.push('set');
+        return Promise.resolve();
+      });
+
+      await registerPresence('peer-456', {
+        displayName: 'Ghost Test',
+        statusMessage: '',
+        color: '#ff0000',
+      } as any);
+
+      expect(callOrder[0]).toBe('onDisconnect');
+      expect(callOrder[1]).toBe('set');
+    });
+
+    it('cancels onDisconnect if set fails', async () => {
+      const mockCancel = vi.fn().mockResolvedValue(undefined);
+      mockOnDisconnect.mockReturnValue({
+        remove: vi.fn().mockResolvedValue(undefined),
+        cancel: mockCancel,
+      });
+      // Make set fail on all attempts (withRetry will retry)
+      mockSet.mockRejectedValue(new Error('Write denied'));
+      vi.useFakeTimers();
+
+      const promise = registerPresence('peer-789', {
+        displayName: 'Cancel Test',
+        statusMessage: '',
+        color: '#ff0000',
+      } as any);
+
+      // Advance through all retry delays
+      await vi.advanceTimersByTimeAsync(1000);
+      await vi.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(4000);
+
+      const result = await promise;
+      expect(result).toBe(false);
+      // onDisconnect.cancel should have been called to clean up
+      expect(mockCancel).toHaveBeenCalled();
+      vi.useRealTimers();
+      mockSet.mockResolvedValue(undefined); // reset
     });
   });
 

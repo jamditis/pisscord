@@ -44,7 +44,7 @@ export const ReportIssueModal: React.FC<ReportIssueModalProps> = ({ onClose, onS
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] bg-gradient-to-b from-[#1a1a2e] to-[#0f0f1a] flex flex-col"
+        className="fixed inset-0 z-modal bg-gradient-to-b from-[#1a1a2e] to-[#0f0f1a] flex flex-col"
       >
         {/* Header - with top padding for status bar */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-white/5" style={{ paddingTop: '3.5rem' }}>
@@ -177,7 +177,7 @@ export const ReportIssueModal: React.FC<ReportIssueModalProps> = ({ onClose, onS
 
   // Desktop layout
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="bg-discord-main w-full max-w-md rounded-lg shadow-2xl overflow-hidden border border-discord-dark">
         <div className="p-4 border-b border-discord-dark flex justify-between items-center">
           <h3 className="text-white font-bold text-lg">Submit Issue / Request</h3>

@@ -22,7 +22,7 @@ export const ScreenPickerModal: React.FC<ScreenPickerModalProps> = ({
   const windows = sources.filter(s => s.id.startsWith('window:'));
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="bg-discord-main w-full max-w-2xl max-h-[80vh] rounded-lg shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="p-4 border-b border-discord-dark flex items-center justify-between">

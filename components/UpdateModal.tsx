@@ -52,7 +52,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
     return null;
   }
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="bg-discord-sidebar w-full max-w-md rounded-lg shadow-2xl border border-discord-green relative overflow-hidden">
         {/* Header */}
         <div className="bg-discord-green p-4 flex items-center justify-between">

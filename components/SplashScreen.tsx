@@ -75,7 +75,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   if (!isReady) {
     return (
       <div
-        className="fixed inset-0 z-[9999]"
+        className="fixed inset-0 z-splash"
         style={{ backgroundColor: '#0a0a0f' }}
       />
     );
@@ -83,7 +83,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center cursor-pointer"
+      className="fixed inset-0 z-splash flex items-center justify-center cursor-pointer"
       style={{
         backgroundColor: '#0a0a0f',
         opacity: isVisible ? 1 : 0,

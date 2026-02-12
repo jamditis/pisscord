@@ -103,7 +103,7 @@ export const ServerDropdown: React.FC<ServerDropdownProps> = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 z-[100]"
+              className="fixed inset-0 bg-black/60 z-modal"
               onClick={onClose}
             />
 
@@ -114,7 +114,7 @@ export const ServerDropdown: React.FC<ServerDropdownProps> = ({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-[101] rounded-t-3xl overflow-hidden"
+              className="fixed bottom-0 left-0 right-0 z-[31] rounded-t-3xl overflow-hidden"
               style={{
                 background: 'linear-gradient(180deg, rgba(26, 26, 38, 0.98), rgba(18, 18, 26, 0.99))',
                 paddingBottom: 'env(safe-area-inset-bottom, 20px)',
@@ -183,7 +183,7 @@ export const ServerDropdown: React.FC<ServerDropdownProps> = ({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -8, scale: 0.95 }}
           transition={{ duration: 0.15 }}
-          className="absolute top-full left-0 right-0 mt-1 mx-2 z-[100] rounded-lg overflow-hidden shadow-xl"
+          className="absolute top-full left-0 right-0 mt-1 mx-2 z-modal rounded-lg overflow-hidden shadow-xl"
           style={{
             background: 'linear-gradient(180deg, rgba(30, 30, 42, 0.98), rgba(22, 22, 30, 0.99))',
             border: '1px solid rgba(255, 255, 255, 0.1)',

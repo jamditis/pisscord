@@ -22,15 +22,15 @@ import { ResizeHandle } from './components/ResizeHandle';
 import { markChannelAsRead, updateNewestFromMessages, getUnreadChannels } from './services/unread';
 import { Channel, ChannelType, ConnectionState, Message, PresenceUser, UserProfile, DeviceSettings, AppLogs, AppSettings, AppTheme } from './types';
 import { ThemeProvider, themeColors } from './contexts/ThemeContext';
-import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages, cleanupOldMessages, getPissbotConfig, PissbotConfig, checkForMOTD, getReleaseNotes, ReleaseNotesConfig } from './services/firebase';
+import { registerPresence, subscribeToUsers, removePresence, checkForUpdates, updatePresence, sendMessage, subscribeToMessages, cleanupOldMessages, getPissbotConfig, PissbotConfig, checkForMOTD, getReleaseNotes, ReleaseNotesConfig, subscribeToConnectionState } from './services/firebase';
 import { playSound, preloadSounds, stopLoopingSound } from './services/sounds';
 import { fetchGitHubReleases, fetchGitHubEvents } from './services/github';
-import { Platform, LogService, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService, AppLifecycleService, OrientationService } from './services/platform';
+import { Platform, ClipboardService, UpdateService, ScreenShareService, WindowService, HapticsService, AppLifecycleService, OrientationService } from './services/platform';
 import { VoidBackground } from './components/Visuals';
 import { logger } from './services/logger';
 import { createAudioProcessor, AudioProcessor } from './services/audioProcessor';
 
-const APP_VERSION = "2.0.5";
+const APP_VERSION = "2.1.0";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
@@ -181,6 +181,10 @@ export default function App() {
   // --- UNREAD MESSAGES ---
   const [unreadChannels, setUnreadChannels] = useState<string[]>([]);
 
+  // --- STATE: Firebase connection ---
+  const [firebaseConnected, setFirebaseConnected] = useState(true); // optimistic default
+  const firebaseConnectedPrevRef = useRef(true);
+
   // --- UI STATE ---
   const [isUserListCollapsed, setIsUserListCollapsed] = useState(false);
   const [isChannelListCollapsed, setIsChannelListCollapsed] = useState(false);
@@ -212,6 +216,7 @@ export default function App() {
   const callsRef = useRef<Map<string, MediaConnection>>(new Map());
   const dataConnectionsRef = useRef<Map<string, DataConnection>>(new Map());
   const myVideoTrack = useRef<MediaStreamTrack | null>(null); // Keep original camera track for when screenshare ends
+  const screenTrackIdRef = useRef<string | null>(null); // Track ID of active screen share for cleanup
   const isMountedRef = useRef(true);
   const isAudioEnabledRef = useRef(isAudioEnabled);
   const isVideoEnabledRef = useRef(isVideoEnabled);
@@ -282,11 +287,27 @@ export default function App() {
 
 
   // --- HELPERS ---
+  // Subscribe to centralized logger for the debug tab display
+  useEffect(() => {
+    const unsubscribe = logger.subscribe((entry) => {
+      // Map logger levels to the AppLogs type format
+      const typeMap: Record<string, 'info' | 'error' | 'webrtc'> = {
+        debug: 'info', info: 'info', warn: 'error', error: 'error'
+      };
+      const appEntry: AppLogs = {
+        timestamp: entry.timestamp,
+        type: entry.module === 'webrtc' ? 'webrtc' : (typeMap[entry.level] || 'info'),
+        message: `[${entry.module}] ${entry.message}`
+      };
+      setLogs(prev => [appEntry, ...prev].slice(0, 50));
+    });
+    return unsubscribe;
+  }, []);
+
   const log = (message: string, type: 'info' | 'error' | 'webrtc' = 'info') => {
-      const entry: AppLogs = { timestamp: Date.now(), type, message };
-      setLogs(prev => [entry, ...prev].slice(0, 50));
-      // Use platform-agnostic logging (handles console + file logging on Electron)
-      LogService.log(type, message);
+      const module = type === 'webrtc' ? 'webrtc' : 'app';
+      const level = type === 'error' ? 'error' : 'info';
+      logger[level](module, message);
   };
 
   // --- LIFECYCLE: Updates & Peer Init ---
@@ -501,9 +522,16 @@ export default function App() {
         if (err.type === 'peer-unavailable') {
             toast.error("Connection Failed", "Peer unavailable. They may have disconnected.");
             cleanupCall();
-        } else if (err.type === 'network') {
-            toast.error("Network Error", "Could not connect to signaling server.");
-        } else if (err.type === 'disconnected' || err.type === 'server-error') {
+        } else if (err.type === 'network' || err.type === 'server-error') {
+            toast.error("Network Error", "Connection to signaling server lost. Reconnecting...");
+            // Attempt automatic reconnect after a short delay
+            setTimeout(() => {
+                if (peer && !peer.destroyed && peer.disconnected) {
+                    log('Attempting PeerJS reconnect...', 'webrtc');
+                    peer.reconnect();
+                }
+            }, 2000);
+        } else if (err.type === 'disconnected') {
             toast.error("Connection Lost", "Lost connection to server. Reconnecting...");
         }
     });
@@ -533,6 +561,16 @@ export default function App() {
         if (isMountedRef.current) setOnlineUsers(users);
     });
 
+    // Firebase connection state monitoring
+    const unsubscribeConnection = subscribeToConnectionState((connected) => {
+        if (!isMountedRef.current) return;
+        setFirebaseConnected(connected);
+        if (connected && !firebaseConnectedPrevRef.current) {
+            toast.success("Reconnected", "Database connection restored.");
+        }
+        firebaseConnectedPrevRef.current = connected;
+    });
+
     return () => {
       isMountedRef.current = false;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -541,6 +579,7 @@ export default function App() {
           peerInstance.current.destroy();
       }
       unsubscribeUsers();
+      unsubscribeConnection();
       // Cleanup message subscriptions for unread tracking
       unsubscribes.forEach(unsub => unsub());
     };
@@ -1017,10 +1056,11 @@ export default function App() {
       }
 
       log(`Screen track: ${screenTrack.id}, label: ${screenTrack.label}`, 'webrtc');
-      
+      screenTrackIdRef.current = screenTrack.id;
+
       // Iterate over all active calls and replace the track
       let replacedCount = 0;
-      
+
       for (const [peerId, call] of callsRef.current.entries()) {
           if (!call.peerConnection) {
               log(`WARN: No peerConnection for ${peerId}`, 'error');
@@ -1044,17 +1084,21 @@ export default function App() {
           log("ERROR: Could not replace tracks for any peer", 'error');
           toast.error("Screen Share Failed", "Could not share screen with peers.");
           screenTrack.stop();
+          screenTrackIdRef.current = null;
           return;
       }
 
       log(`✅ Replaced tracks for ${replacedCount} peers`, 'webrtc');
 
-      setIsScreenSharing(true);
+      // Swap tracks in-place on the existing stream to prevent React re-render flicker.
+      // The stream reference stays the same, so <video>.srcObject isn't reassigned.
+      if (myStream) {
+          const oldVideoTrack = myStream.getVideoTracks()[0];
+          if (oldVideoTrack) myStream.removeTrack(oldVideoTrack);
+          myStream.addTrack(screenTrack);
+      }
 
-      // Update local preview
-      const audioTracks = myStream!.getAudioTracks();
-      const newStream = new MediaStream([screenTrack, ...audioTracks]);
-      setMyStream(newStream);
+      setIsScreenSharing(true);
 
       // Handle Stop Sharing via Browser UI
       screenTrack.onended = async () => {
@@ -1067,15 +1111,28 @@ export default function App() {
       try {
           log("Stopping screen share...", 'webrtc');
 
+          // Camera track recovery: if the ref was lost, recreate it
           if (!myVideoTrack.current) {
-              log("ERROR: No camera track to revert to!", 'error');
-              toast.error("Camera Error", "Lost reference to camera. Try reconnecting.");
-              setIsScreenSharing(false);
-              return;
+              log("Camera track ref lost — attempting recovery via getLocalStream", 'error');
+              try {
+                  const recoveredStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                  const newCamTrack = recoveredStream.getVideoTracks()[0];
+                  if (newCamTrack) {
+                      myVideoTrack.current = newCamTrack;
+                      log(`Camera recovered: ${newCamTrack.id}`, 'webrtc');
+                      toast.info("Camera recovered", "Camera track was restored.");
+                  }
+              } catch (recoverErr: any) {
+                  log(`Camera recovery failed: ${recoverErr.message}`, 'error');
+                  toast.error("Camera Error", "Could not restore camera. Try reconnecting.");
+                  setIsScreenSharing(false);
+                  screenTrackIdRef.current = null;
+                  return;
+              }
           }
 
           log("Swapping Screen -> Camera", 'webrtc');
-          
+
           // Revert tracks for all peers
           for (const [peerId, call] of callsRef.current.entries()) {
               if (!call.peerConnection) continue;
@@ -1084,32 +1141,35 @@ export default function App() {
               const videoSender = senders.find((s: RTCRtpSender) => s.track?.kind === 'video');
 
               if (videoSender) {
-                   // Stop the screen track (but strictly speaking we should only stop it once, effectively handled by the fact it's the same track object)
-                   // Actually we should stop the screen track *after* replacing?
                    await videoSender.replaceTrack(myVideoTrack.current);
               }
           }
-          
-          // Stop the screen track in the current stream if it exists
+
+          // Stop the screen track — use stored ID for reliable identification
           const currentVideoTrack = myStream?.getVideoTracks()[0];
-          if (currentVideoTrack && currentVideoTrack.label !== myVideoTrack.current.label) {
+          if (currentVideoTrack && currentVideoTrack.id === screenTrackIdRef.current) {
               currentVideoTrack.stop();
           }
+          screenTrackIdRef.current = null;
 
-          const audioTracks = myStream?.getAudioTracks() || [];
-          const revertedStream = new MediaStream([myVideoTrack.current, ...audioTracks]);
-          setMyStream(revertedStream);
+          // Swap track in-place on the existing stream (no new MediaStream = no flicker)
+          if (myStream && myVideoTrack.current) {
+              const screenTrack = myStream.getVideoTracks()[0];
+              if (screenTrack) myStream.removeTrack(screenTrack);
+              myStream.addTrack(myVideoTrack.current);
+          }
+
           setIsScreenSharing(false);
-
           log("✅ Stopped screen share successfully", 'webrtc');
       } catch (err: any) {
           log(`ERROR stopping screen share: ${err.message}`, 'error');
           setIsScreenSharing(false);
+          screenTrackIdRef.current = null;
       }
   };
 
   // --- UI ACTIONS ---
-  const addMessage = (channelId: string, text: string, sender: string, isAi: boolean = false, attachment?: Message['attachment']) => {
+  const addMessage = async (channelId: string, text: string, sender: string, isAi: boolean = false, attachment?: Message['attachment']) => {
       // Prevent posting in read-only dev channel
       if (channelId === '4') {
           toast.error("Read Only", "Only system updates are posted here.");
@@ -1131,7 +1191,12 @@ export default function App() {
           newMessage.attachment = attachment;
       }
 
-      sendMessage(channelId, newMessage);
+      try {
+          await sendMessage(channelId, newMessage);
+      } catch (err: any) {
+          logger.error('app', `Failed to send message: ${err.message}`);
+          toast.error("Send failed", "Message could not be sent. Check your connection.");
+      }
   };
 
   const handleSaveProfile = (newProfile: UserProfile) => {
@@ -1277,7 +1342,7 @@ export default function App() {
 
       {/* Audio Unlock Banner */}
       {audioUnlockNeeded && (
-        <div className="absolute top-0 left-0 right-0 z-[60] bg-discord-dark/95 border-b border-discord-muted/30 text-white px-4 py-2.5 flex items-center justify-between shadow-lg backdrop-blur-sm" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+        <div className="absolute top-0 left-0 right-0 z-alert bg-discord-dark/95 border-b border-discord-muted/30 text-white px-4 py-2.5 flex items-center justify-between shadow-lg backdrop-blur-sm" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
           <div className="flex items-center gap-2">
             <i className="fas fa-volume-mute text-discord-muted"></i>
             <span className="text-sm">Browser blocked audio playback for this voice call.</span>
@@ -1300,6 +1365,14 @@ export default function App() {
         </div>
       )}
 
+      {/* Firebase offline indicator */}
+      {!firebaseConnected && (
+        <div className="absolute top-0 left-0 right-0 z-navigation bg-yellow-600/90 text-white px-4 py-1.5 flex items-center justify-center gap-2 text-xs font-medium backdrop-blur-sm" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+          <i className="fas fa-wifi-slash text-white/80"></i>
+          Database offline — messages may not sync
+        </div>
+      )}
+
       {/* Splash Screen */}
       {showSplash && (
         <SplashScreen theme={appSettings.theme} onComplete={() => setShowSplash(false)} />
@@ -1312,14 +1385,17 @@ export default function App() {
             data-voice-call="true"
             ref={el => {
                 if (el) {
-                    el.srcObject = stream;
+                    // Guard: only reassign srcObject when stream reference changes
+                    if (el.srcObject !== stream) {
+                        el.srcObject = stream;
+                    }
                     // Use per-user volume if set, otherwise use master volume
                     const userVol = userVolumes.get(peerId) ?? remoteVolume;
                     el.volume = Math.min(userVol / 100, 1.0);
-                    // If we have a specific output device, set it
-                    if ((el as any).setSinkId && deviceSettings.audioOutputId) {
+                    // Guard: only call setSinkId when device actually changed
+                    if ((el as any).setSinkId && deviceSettings.audioOutputId && (el as any).sinkId !== deviceSettings.audioOutputId) {
                         (el as any).setSinkId(deviceSettings.audioOutputId)
-                            .catch((e: any) => console.error("Failed to set audio output", e));
+                            .catch((e: any) => logger.error('audio', `Failed to set audio output: ${e.message}`));
                     }
                     // Mobile browsers require explicit play() call
                     const playPromise = el.play();
@@ -1669,7 +1745,7 @@ export default function App() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="fixed inset-0 z-[60]"
+                className="fixed inset-0 z-alert"
               >
                 {/* Backdrop */}
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowMobileUsers(false)} />

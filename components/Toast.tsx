@@ -151,7 +151,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismis
   // Mobile layout - top of screen, full width
   if (isMobile) {
     return (
-      <div className="fixed top-0 left-0 right-0 z-[200] pt-[env(safe-area-inset-top)] pointer-events-none">
+      <div className="fixed top-0 left-0 right-0 z-toast pt-[env(safe-area-inset-top)] pointer-events-none">
         <div className="pt-2 flex flex-col gap-2">
           <AnimatePresence mode="popLayout">
             {toasts.map((toast) => (
@@ -167,7 +167,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismis
 
   // Desktop layout
   return (
-    <div className="fixed bottom-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
+    <div className="fixed bottom-4 right-4 z-toast flex flex-col gap-2 pointer-events-none">
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => (
           <motion.div

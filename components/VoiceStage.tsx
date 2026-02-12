@@ -449,15 +449,14 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
               <input
                 type="range"
                 min="0"
-                max="200"
-                value={userVolumes?.get(userId) ?? 100}
+                max="100"
+                value={Math.min(userVolumes?.get(userId) ?? 100, 100)}
                 onChange={(e) => onUserVolumeChange(userId, parseInt(e.target.value))}
                 className="w-full h-2 bg-discord-sidebar rounded-lg appearance-none cursor-pointer accent-discord-accent"
               />
               <div className="flex justify-between text-[10px] text-discord-muted mt-1">
                 <span>0%</span>
                 <span>100%</span>
-                <span>200%</span>
               </div>
             </div>
           )}
