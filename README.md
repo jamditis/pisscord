@@ -8,7 +8,7 @@
 [![GitHub last commit](https://img.shields.io/github/last-commit/jamditis/pisscord)](https://github.com/jamditis/pisscord/commits)
 [![Update Firebase Version](https://github.com/jamditis/pisscord/actions/workflows/update-firebase-version.yml/badge.svg)](https://github.com/jamditis/pisscord/actions/workflows/update-firebase-version.yml)
 
-**Current version:** v2.0.2 | [Download latest](https://github.com/jamditis/pisscord/releases/latest) | [Use in browser](https://web.pisscord.app)
+**Current version:** v2.1.2 | [Download latest](https://github.com/jamditis/pisscord/releases/latest) | [Use in browser](https://web.pisscord.app)
 
 A private, peer-to-peer Discord clone for trusted groups with encrypted messaging, voice/video calling, AI assistance, and real-time presence. Available as a desktop app, Android app, or directly in your web browser.
 
@@ -21,9 +21,9 @@ A private, peer-to-peer Discord clone for trusted groups with encrypted messagin
 - **Mobile web**: Works on mobile browsers with optimized touch UI
 
 ### Security and privacy
-- **End-to-end encryption**: AES-256-GCM encryption for all text messages
+- **XSS-hardened markdown**: Link protocol validation blocks javascript: and data: URIs
+- **Message boundary validation**: Firebase messages filtered through type guards before rendering
 - **P2P encrypted calls**: Direct peer-to-peer WebRTC connections — no relay servers
-- **Shared passphrase**: Simple passphrase system for group encryption
 
 ### Communication
 - **HD video and voice**: Crystal clear communication with advanced media controls
@@ -42,7 +42,7 @@ A private, peer-to-peer Discord clone for trusted groups with encrypted messagin
 - **Dev updates**: Live GitHub commit feed in #dev-updates
 - **Bug reporting**: In-app issue submission to #issues
 - **Custom profiles**: Personalize with names, statuses, and colors
-- **Advanced controls**: Device selection, per-user volume (0-200%), audio processing toggles
+- **Advanced controls**: Device selection, per-user volume, audio processing toggles
 - **Noise suppression**: Built-in noise suppression, echo cancellation, and auto gain control
 - **ML noise cancellation**: RNNoise WASM-powered pipeline for keyboard, fan, and background chatter removal
 - **System tray**: Minimize to tray — stay connected while multitasking (desktop only)
@@ -56,12 +56,6 @@ A private, peer-to-peer Discord clone for trusted groups with encrypted messagin
 - **Mobile web**: Responsive design with mobile-optimized controls
 - **Shared codebase**: Platform abstraction layer handles differences
 
-### End-to-end encryption
-- **AES-256-GCM**: Military-grade encryption for all text messages
-- **PBKDF2 key derivation**: 100,000 iterations for secure key generation
-- **Shared salt**: Stored in Firebase so users only need the passphrase
-- **Client-side only**: Messages encrypted before leaving your device
-
 ### Persistent voice state
 - **Separated view from connection**: Chat in text channels while remaining in a voice call
 - **Persistent voice control panel**: Always-visible controls in sidebar when connected
@@ -69,7 +63,7 @@ A private, peer-to-peer Discord clone for trusted groups with encrypted messagin
 
 ### Advanced media pipeline
 - **Device hot-swapping**: Change mic, speakers, or camera without reconnecting
-- **Volume control**: 0-200% adjustable per-user volume with individual sliders
+- **Volume control**: Per-user volume with individual sliders
 - **Audio processing**: Noise suppression, echo cancellation, auto gain control toggles
 - **Track replacement**: Screen sharing uses `RTCRtpSender.replaceTrack()` for seamless transitions
 
@@ -83,7 +77,7 @@ A private, peer-to-peer Discord clone for trusted groups with encrypted messagin
 ## Read this first
 
 There are four ways to use Pisscord:
-1.  **Web browser**: Just visit [pisscord-edbca.web.app](https://pisscord-edbca.web.app) — no installation needed
+1.  **Web browser**: Just visit [web.pisscord.app](https://web.pisscord.app) — no installation needed
 2.  **Desktop app**: Download and install the Windows application
 3.  **Android app**: Install the APK on your Android device
 4.  **Build from source**: Compile the code yourself
@@ -92,7 +86,7 @@ There are four ways to use Pisscord:
 
 ## Web browser quick start
 
-1.  **Visit**: Go to [pisscord-edbca.web.app](https://pisscord-edbca.web.app)
+1.  **Visit**: Go to [web.pisscord.app](https://web.pisscord.app)
 2.  **Sign in**: Use Google or email magic link to authenticate
 3.  **Start chatting**: You're ready to use all features
 
@@ -133,7 +127,7 @@ That's it! The web version works on desktop and mobile browsers.
 
 5.  **Find the installer**:
     - Navigate to the `dist` folder
-    - Look for `Pisscord Setup 2.0.2.exe`
+    - Look for `Pisscord Setup 2.1.2.exe`
 
 ### Build web version
 
@@ -165,7 +159,7 @@ npm run dev          # Web browser (localhost:5173)
 
 ### Desktop installation
 
-1.  **Download**: Get the `Pisscord Setup 2.0.2.exe` from [releases](https://github.com/jamditis/pisscord/releases/latest)
+1.  **Download**: Get the `Pisscord Setup 2.1.2.exe` from [releases](https://github.com/jamditis/pisscord/releases/latest)
 2.  **Install**: Double-click the installer
     - Windows may show "Unknown Publisher" warning
     - Click "More Info" then "Run Anyway"
@@ -195,7 +189,7 @@ npm run dev          # Web browser (localhost:5173)
 When connected, you'll see a green **Voice Connected** panel at the bottom of the sidebar with:
 - **Mute/Unmute**: Toggle your microphone
 - **Video On/Off**: Toggle your camera
-- **Volume**: Click volume icon on any user's video tile to adjust their volume (0-200%)
+- **Volume**: Click volume icon on any user's video tile to adjust their volume
 - **Disconnect**: Red phone icon to end call
 
 #### Multitasking while connected
@@ -247,7 +241,7 @@ While in a call:
 
 - **System tray**: Closing the window minimizes to tray — right-click tray icon to quit
 - **Copy peer ID fast**: Click your shortened ID (e.g., `#a3f5...`) in bottom left
-- **Volume boost**: Click volume icon on a user's tile and set above 100% for quieter friends
+- **Per-user volume**: Click volume icon on a user's tile to adjust their level
 - **Reduce background noise**: Enable noise suppression in Settings > Voice & Video
 - **Reconnect for devices**: After changing audio/video devices, disconnect and reconnect
 - **Debug connection issues**: Check Debug Log in settings for error details
@@ -256,11 +250,10 @@ While in a call:
 
 ## Privacy and security
 
-### Message encryption
-- **AES-256-GCM**: All text messages are encrypted client-side before sending
-- **PBKDF2 key derivation**: Passphrase converted to encryption key with 100,000 iterations
-- **Shared passphrase**: One passphrase for the whole group — get it from an existing member
-- **Can't read without passphrase**: Messages appear as `[Encrypted message]` without correct passphrase
+### Text messages
+- **Private server**: Pisscord runs on a private Firebase instance for trusted groups only
+- **14-day retention**: Messages automatically deleted after 14 days
+- **XSS protection**: Markdown renderer validates link protocols to block script injection
 
 ### Voice/video privacy
 - **P2P connections**: All voice/video data goes directly between users via WebRTC

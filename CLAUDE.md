@@ -2,11 +2,26 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 🚨 Handoff Note / Status (v2.1.1)
-**Current State:** v2.1.1 on `master`. Clean release — repo consolidated, all branches merged/deleted, tests expanded to 293.
+## 🚨 Handoff Note / Status (v2.1.2)
+**Current State:** v2.1.2 on `master`. Security hardening, reliability fixes, full logger migration. 313 tests, 0 TypeScript errors.
 **Last Updated:** 2026-02-11
 
-### Recent Work (v2.1.1 - Consolidated release)
+### Recent Work (v2.1.2 - Security & reliability)
+- **XSS fix:** Markdown link renderer blocks javascript:/data:/vbscript: protocols (ChatArea.tsx)
+- **Message validation:** `isValidMessage` type guard filters raw Firebase data before rendering (firebase.ts)
+- **btoa fix:** Non-ASCII URLs in transcript caching use `btoa(unescape(encodeURIComponent(url)))` (firebase.ts)
+- **Listener cleanup:** Capacitor AppLifecycleService and Electron UpdateService listeners now return unsubscribe functions and are cleaned up in App.tsx useEffect
+- **VoiceMessageButton hardened:** Ref-based mutex guard prevents double-execution, stopRecordingRef fixes stale closure, timer auto-stop moved out of setState updater
+- **Stale closure fixes:** handleStartCall uses connectionStateRef, handleAcceptCall updates presence
+- **Dev-updates cancellation:** Channel switch cancels pending GitHub API calls
+- **Remote audio lifecycle:** VoiceStage remote speaking detection split into incremental tracking effect + unmount-only cleanup effect
+- **Full logger migration:** All 28 raw console.error/warn/log calls replaced across 9 files (0 remaining in source)
+- **Dead code removed:** LogService (platform.ts), ConfirmModal + pendingCallRef (App.tsx), User interface (types.ts)
+- **Type safety:** platform.ts uses ElectronUpdateInfo/ElectronDownloadProgress types, removed (window as any) casts
+- **Test suite:** 313 tests across 24 files. New: ChatArea XSS tests (12), firebase message validation (4), non-ASCII URL (4)
+- **Files changed:** 24 files, 600 insertions, 305 deletions
+
+### Previous work (v2.1.1 - Consolidated release)
 - **Repo consolidation:** Cleaned up 8 stale local branches, 5 stale remote tracking refs, 9 corrupted `desktop.ini` refs in `.git/`
 - **Website updated:** All download links point to v2.1.1, URLs switched from `pisscord-edbca.web.app` to `web.pisscord.app`
 - **Test suite expanded:** 293 tests across 23 files. New: AuthGate, SplashScreen, ThemeContext, github service. Expanded: firebase, logger, platform, unread, videoEmbed.
@@ -121,8 +136,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Pisscord is a private, multi-platform Discord clone built with React, TypeScript, and PeerJS. It enables direct P2P voice/video calling, text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
 
 **Platforms:** Desktop (Electron), Web Browser, Android (Capacitor), Mobile Web
-**Current Version:** 2.1.1
-**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v2.1.1
+**Current Version:** 2.1.2
+**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v2.1.2
 
 ## Key Architecture
 
@@ -409,7 +424,22 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - `noUnusedLocals` and `noUnusedParameters` disabled (intentional)
 - React JSX transform (no need to import React in TSX files)
 
-## Recent Changes (v1.1.0 - v2.1.1)
+## Recent Changes (v1.1.0 - v2.1.2)
+
+### v2.1.2 (2026-02-11) — Security & reliability
+- **XSS fix:** Markdown link renderer blocks javascript:/data:/vbscript: protocols in ChatArea.tsx
+- **Message validation:** `isValidMessage` type guard filters raw Firebase data at boundary (firebase.ts)
+- **btoa fix:** Non-ASCII URLs use `btoa(unescape(encodeURIComponent(url)))` for transcript caching
+- **Listener cleanup:** Capacitor AppLifecycleService and Electron UpdateService listeners return unsubscribe functions, cleaned up in App.tsx
+- **VoiceMessageButton hardened:** Ref-based mutex guard, stopRecordingRef for stale closure, timer logic moved out of setState updater
+- **Stale closure fixes:** handleStartCall uses connectionStateRef, handleAcceptCall updates presence
+- **Dev-updates cancellation:** Channel switch cancels pending GitHub API calls with cancelled flag
+- **Remote audio lifecycle:** VoiceStage split into incremental tracking + unmount-only cleanup effects
+- **Full logger migration:** All 28 raw console calls replaced across 9 files (0 remaining)
+- **Dead code removed:** LogService, ConfirmModal, pendingCallRef, User interface
+- **Type safety:** platform.ts uses ElectronUpdateInfo/DownloadProgress, removed `(window as any)` casts
+- **Test suite:** 313 tests across 24 files (20 new: ChatArea XSS, message validation, non-ASCII URL)
+- **Files:** 24 changed, 600 insertions, 305 deletions
 
 ### v2.1.1 (2026-02-11) — Consolidated release
 - **Repo consolidation:** 8 stale branches deleted, 9 corrupted desktop.ini refs cleaned, remote tracking pruned
