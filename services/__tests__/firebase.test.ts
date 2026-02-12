@@ -59,6 +59,14 @@ import {
   checkForUpdates,
   subscribeToConnectionState,
   clearPissbotCache,
+  removePresence,
+  updatePresence,
+  checkForMOTD,
+  getResizedImageUrl,
+  cleanupOldMessages,
+  saveTranscript,
+  getTranscript,
+  subscribeToUsers,
 } from '../firebase';
 
 describe('firebase service', () => {
@@ -278,6 +286,285 @@ describe('firebase service', () => {
     it('returns an unsubscribe function', () => {
       const unsub = subscribeToConnectionState(vi.fn());
       expect(typeof unsub).toBe('function');
+    });
+  });
+
+  describe('removePresence', () => {
+    it('removes the user ref from Firebase', async () => {
+      await removePresence('peer-123');
+      expect(mockRef).toHaveBeenCalled();
+      expect(mockRemove).toHaveBeenCalled();
+    });
+
+    it('does not throw when remove fails', async () => {
+      mockRemove.mockRejectedValueOnce(new Error('Permission denied'));
+      await expect(removePresence('peer-123')).resolves.toBeUndefined();
+    });
+  });
+
+  describe('updatePresence', () => {
+    it('updates user presence with voice channel', async () => {
+      await updatePresence('peer-123', {
+        displayName: 'Test',
+        statusMessage: 'Online',
+        color: '#ff0000',
+      } as any, 'voice-1');
+      expect(mockSet).toHaveBeenCalled();
+      // Verify the data includes voiceChannelId
+      const setCall = mockSet.mock.calls[0][1];
+      expect(setCall.voiceChannelId).toBe('voice-1');
+      expect(setCall.displayName).toBe('Test');
+    });
+
+    it('sets voiceChannelId to null by default', async () => {
+      await updatePresence('peer-123', {
+        displayName: 'Test',
+        statusMessage: '',
+        color: '#ff0000',
+      } as any);
+      const setCall = mockSet.mock.calls[0][1];
+      expect(setCall.voiceChannelId).toBeNull();
+    });
+
+    it('calls onDisconnect before set', async () => {
+      const callOrder: string[] = [];
+      mockOnDisconnect.mockReturnValue({
+        remove: vi.fn().mockImplementation(() => {
+          callOrder.push('onDisconnect');
+          return Promise.resolve();
+        }),
+      });
+      mockSet.mockImplementation(() => {
+        callOrder.push('set');
+        return Promise.resolve();
+      });
+
+      await updatePresence('peer-123', {
+        displayName: 'Test',
+        statusMessage: '',
+        color: '#ff0000',
+      } as any);
+
+      expect(callOrder[0]).toBe('onDisconnect');
+      expect(callOrder[1]).toBe('set');
+    });
+
+    it('does not throw when set fails', async () => {
+      mockSet.mockRejectedValueOnce(new Error('Write denied'));
+      await expect(updatePresence('peer-123', {
+        displayName: 'Test',
+        statusMessage: '',
+        color: '#ff0000',
+      } as any)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('checkForMOTD', () => {
+    it('returns MOTD string when it exists', async () => {
+      mockGet.mockResolvedValueOnce({
+        exists: () => true,
+        val: () => 'Welcome to Pisscord!',
+      });
+      const motd = await checkForMOTD();
+      expect(motd).toBe('Welcome to Pisscord!');
+    });
+
+    it('returns null when MOTD does not exist', async () => {
+      mockGet.mockResolvedValueOnce({
+        exists: () => false,
+        val: () => null,
+      });
+      const motd = await checkForMOTD();
+      expect(motd).toBeNull();
+    });
+
+    it('returns null on error', async () => {
+      mockGet.mockRejectedValueOnce(new Error('Network error'));
+      const motd = await checkForMOTD();
+      expect(motd).toBeNull();
+    });
+  });
+
+  describe('getResizedImageUrl', () => {
+    it('inserts size suffix before file extension', () => {
+      const original = 'https://firebasestorage.googleapis.com/v0/b/bucket/o/uploads%2Fimage.jpg?alt=media&token=abc';
+      const resized = getResizedImageUrl(original, '200x200');
+      expect(resized).toContain('_200x200');
+      expect(resized).toContain('.jpg');
+    });
+
+    it('supports 400x400 size', () => {
+      const original = 'https://firebasestorage.googleapis.com/v0/b/bucket/o/uploads%2Fphoto.png?alt=media';
+      const resized = getResizedImageUrl(original, '400x400');
+      expect(resized).toContain('_400x400');
+    });
+
+    it('returns original URL for non-Firebase URLs', () => {
+      const original = 'https://example.com/image.jpg';
+      const result = getResizedImageUrl(original);
+      expect(result).toBe(original);
+    });
+
+    it('returns original URL for URLs without extension', () => {
+      const original = 'https://firebasestorage.googleapis.com/v0/b/bucket/o/uploads%2Fnoext?alt=media';
+      const result = getResizedImageUrl(original);
+      expect(result).toBe(original);
+    });
+
+    it('defaults to 200x200 when size not specified', () => {
+      const original = 'https://firebasestorage.googleapis.com/v0/b/bucket/o/uploads%2Fimage.jpg?alt=media';
+      const resized = getResizedImageUrl(original);
+      expect(resized).toContain('_200x200');
+    });
+
+    it('returns original URL for invalid URLs', () => {
+      const result = getResizedImageUrl('not-a-url');
+      expect(result).toBe('not-a-url');
+    });
+  });
+
+  describe('cleanupOldMessages', () => {
+    it('removes messages older than 14 days', async () => {
+      const mockChildRef = { ref: {} };
+      const mockSnapshot = {
+        exists: () => true,
+        size: 2,
+        forEach: (cb: (child: any) => void) => {
+          cb({ key: 'msg-old-1', ref: mockChildRef.ref });
+          cb({ key: 'msg-old-2', ref: mockChildRef.ref });
+        },
+      };
+      mockGet.mockResolvedValueOnce(mockSnapshot);
+
+      await cleanupOldMessages(['general']);
+      expect(mockRemove).toHaveBeenCalledTimes(2);
+    });
+
+    it('does nothing when no old messages exist', async () => {
+      mockGet.mockResolvedValueOnce({
+        exists: () => false,
+      });
+
+      await cleanupOldMessages(['general']);
+      expect(mockRemove).not.toHaveBeenCalled();
+    });
+
+    it('processes multiple channels', async () => {
+      mockGet.mockResolvedValue({ exists: () => false });
+
+      await cleanupOldMessages(['general', 'pissbot', 'dev-updates']);
+      expect(mockGet).toHaveBeenCalledTimes(3);
+    });
+
+    it('continues processing other channels if one fails', async () => {
+      mockGet
+        .mockRejectedValueOnce(new Error('Failed'))
+        .mockResolvedValueOnce({ exists: () => false });
+
+      await cleanupOldMessages(['failing-channel', 'good-channel']);
+      expect(mockGet).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('saveTranscript', () => {
+    it('saves transcript to Firebase', async () => {
+      await saveTranscript('https://example.com/audio.mp3', 'Hello world');
+      expect(mockSet).toHaveBeenCalled();
+      const savedData = mockSet.mock.calls[0][1];
+      expect(savedData.transcript).toBe('Hello world');
+      expect(savedData.audioUrl).toBe('https://example.com/audio.mp3');
+      expect(savedData.createdAt).toBeTypeOf('number');
+    });
+
+    it('does not throw when save fails', async () => {
+      mockSet.mockRejectedValueOnce(new Error('Write denied'));
+      await expect(saveTranscript('url', 'text')).resolves.toBeUndefined();
+    });
+  });
+
+  describe('getTranscript', () => {
+    it('returns cached transcript when it exists', async () => {
+      mockGet.mockResolvedValueOnce({
+        exists: () => true,
+        val: () => ({ transcript: 'Cached transcript', audioUrl: 'url', createdAt: 123 }),
+      });
+
+      const result = await getTranscript('https://example.com/audio.mp3');
+      expect(result).toBe('Cached transcript');
+    });
+
+    it('returns null when transcript not found', async () => {
+      mockGet.mockResolvedValueOnce({
+        exists: () => false,
+        val: () => null,
+      });
+
+      const result = await getTranscript('https://example.com/missing.mp3');
+      expect(result).toBeNull();
+    });
+
+    it('returns null on error', async () => {
+      mockGet.mockRejectedValueOnce(new Error('Network error'));
+      const result = await getTranscript('url');
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('subscribeToUsers', () => {
+    it('sets up an onValue listener on users ref', () => {
+      subscribeToUsers(vi.fn());
+      expect(mockOnValue).toHaveBeenCalled();
+    });
+
+    it('filters out invalid presence entries', () => {
+      let capturedCallback: any;
+      mockOnValue.mockImplementation((ref: any, onSuccess: any) => {
+        capturedCallback = onSuccess;
+        return vi.fn();
+      });
+
+      const onUpdate = vi.fn();
+      subscribeToUsers(onUpdate);
+
+      // Simulate snapshot with mix of valid and invalid entries
+      capturedCallback({
+        val: () => ({
+          'peer-1': { peerId: 'peer-1', displayName: 'User 1', lastSeen: 1000, color: '#fff', statusMessage: '' },
+          'peer-2': { peerId: 'peer-2' }, // invalid — missing displayName and lastSeen
+          'peer-3': null, // invalid
+        }),
+      });
+
+      const users = onUpdate.mock.calls[0][0];
+      expect(users).toHaveLength(1);
+      expect(users[0].peerId).toBe('peer-1');
+    });
+
+    it('calls callback with empty array when no users', () => {
+      let capturedCallback: any;
+      mockOnValue.mockImplementation((ref: any, onSuccess: any) => {
+        capturedCallback = onSuccess;
+        return vi.fn();
+      });
+
+      const onUpdate = vi.fn();
+      subscribeToUsers(onUpdate);
+
+      capturedCallback({ val: () => null });
+      expect(onUpdate).toHaveBeenCalledWith([]);
+    });
+
+    it('calls error callback on subscription error', () => {
+      mockOnValue.mockImplementation((ref: any, onSuccess: any, onError: any) => {
+        onError(new Error('Subscription failed'));
+        return vi.fn();
+      });
+
+      const onUpdate = vi.fn();
+      const onError = vi.fn();
+      subscribeToUsers(onUpdate, onError);
+
+      expect(onError).toHaveBeenCalledWith(expect.any(Error));
     });
   });
 });
