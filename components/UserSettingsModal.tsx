@@ -237,10 +237,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 {/* Form Fields */}
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-white/40 uppercase mb-2 tracking-wide">Display Name</label>
+                    <label className="block text-xs font-bold text-discord-muted uppercase mb-2 tracking-wide">Display Name</label>
                     <input
                       type="text"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500/50 placeholder-white/30"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500/50 placeholder-discord-faint"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                       maxLength={32}
@@ -248,10 +248,10 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-white/40 uppercase mb-2 tracking-wide">Status Message</label>
+                    <label className="block text-xs font-bold text-discord-muted uppercase mb-2 tracking-wide">Status Message</label>
                     <input
                       type="text"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500/50 placeholder-white/30"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500/50 placeholder-discord-faint"
                       value={statusMessage}
                       onChange={(e) => setStatusMessage(e.target.value)}
                       maxLength={64}
@@ -259,7 +259,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-white/40 uppercase mb-2 tracking-wide">Avatar Color</label>
+                    <label className="block text-xs font-bold text-discord-muted uppercase mb-2 tracking-wide">Avatar Color</label>
                     <div className="flex gap-3 flex-wrap">
                       {COLORS.map(color => (
                         <motion.button
@@ -299,7 +299,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 className="space-y-6"
               >
                 <div>
-                  <label className="block text-xs font-bold text-white/40 uppercase mb-3 tracking-wide">App Theme</label>
+                  <label className="block text-xs font-bold text-discord-muted uppercase mb-3 tracking-wide">App Theme</label>
                   <p className="text-white/50 text-sm mb-4">Choose your app theme. This changes the splash screen and accent colors.</p>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -328,7 +328,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                         <span className="text-2xl">💧</span>
                       </div>
                       <span className="block text-white font-medium text-sm">Gold</span>
-                      <span className="block text-white/40 text-xs mt-1">Classic Pisscord</span>
+                      <span className="block text-discord-muted text-xs mt-1">Classic Pisscord</span>
                     </motion.button>
 
                     {/* Purple Theme */}
@@ -356,7 +356,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                         <span className="text-2xl">💧</span>
                       </div>
                       <span className="block text-white font-medium text-sm">Purple</span>
-                      <span className="block text-white/40 text-xs mt-1">Night Mode</span>
+                      <span className="block text-discord-muted text-xs mt-1">Night Mode</span>
                     </motion.button>
                   </div>
                 </div>
@@ -380,7 +380,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 className="space-y-4"
               >
                 <div>
-                  <label className="block text-xs font-bold text-white/40 uppercase mb-2 tracking-wide">Microphone</label>
+                  <label className="block text-xs font-bold text-discord-muted uppercase mb-2 tracking-wide">Microphone</label>
                   <select
                     value={audioInputId}
                     onChange={(e) => setAudioInputId(e.target.value)}
@@ -396,7 +396,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-white/40 uppercase mb-2 tracking-wide">Speakers</label>
+                  <label className="block text-xs font-bold text-discord-muted uppercase mb-2 tracking-wide">Speakers</label>
                   <select
                     value={audioOutputId}
                     onChange={(e) => setAudioOutputId(e.target.value)}
@@ -412,7 +412,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-white/40 uppercase mb-2 tracking-wide">Camera</label>
+                  <label className="block text-xs font-bold text-discord-muted uppercase mb-2 tracking-wide">Camera</label>
                   <select
                     value={videoInputId}
                     onChange={(e) => setVideoInputId(e.target.value)}
@@ -429,7 +429,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
 
                 {/* Audio processing toggles */}
                 <div className="border-t border-white/5 pt-4 mt-4">
-                  <label className="block text-xs font-bold text-white/40 uppercase mb-3 tracking-wide">Audio processing</label>
+                  <label className="block text-xs font-bold text-discord-muted uppercase mb-3 tracking-wide">Audio processing</label>
                   <div className="space-y-2">
                     {[
                       { label: 'Noise suppression', desc: 'Reduce background noise (breathing, typing, fans)', value: noiseSuppression, setter: setNoiseSuppression },
@@ -444,7 +444,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                       >
                         <div className="flex-1 mr-4">
                           <div className="text-white font-medium text-sm">{item.label}</div>
-                          <div className="text-white/40 text-xs mt-0.5">{item.desc}</div>
+                          <div className="text-discord-muted text-xs mt-0.5">{item.desc}</div>
                         </div>
                         <div
                           className="w-[52px] h-[30px] rounded-full shrink-0 p-[3px] transition-colors duration-200"
@@ -468,26 +468,36 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                   </div>
                 </div>
 
-                {/* Advanced noise cancellation — desktop only */}
+                {/* Advanced noise cancellation */}
                 <div className="border-t border-white/5 pt-4 mt-2">
-                  <label className="block text-xs font-bold text-white/40 uppercase mb-3 tracking-wide">Advanced audio</label>
-                  <div
-                    className="flex items-center justify-between w-full bg-white/5 rounded-xl px-4 py-3.5 border border-white/10 text-left opacity-40"
+                  <label className="block text-xs font-bold text-discord-muted uppercase mb-3 tracking-wide">Advanced audio</label>
+                  <button
+                    onClick={() => setAdvancedNoiseCancellation(!advancedNoiseCancellation)}
+                    className="flex items-center justify-between w-full bg-white/5 rounded-xl px-4 py-3.5 border border-white/10 text-left"
+                    style={{ WebkitTapHighlightColor: 'transparent' }}
                   >
                     <div className="flex-1 mr-4">
-                      <div className="text-white font-medium text-sm">Advanced noise cancellation</div>
-                      <div className="text-white/40 text-xs mt-0.5 leading-relaxed">ML-powered noise removal. Requires desktop app (WASM + AudioWorklet).</div>
+                      <div className="text-white font-medium text-sm">ML noise cancellation</div>
+                      <div className="text-discord-muted text-xs mt-0.5 leading-relaxed">RNNoise ML pipeline — removes keyboard, fans, background chatter. Uses more CPU.</div>
                     </div>
                     <div
-                      className="w-[52px] h-[30px] rounded-full shrink-0 p-[3px]"
-                      style={{ background: 'rgba(255, 255, 255, 0.12)' }}
+                      className="w-[52px] h-[30px] rounded-full shrink-0 p-[3px] transition-colors duration-200"
+                      style={{
+                        background: advancedNoiseCancellation
+                          ? 'linear-gradient(135deg, #a855f7, #7c3aed)'
+                          : 'rgba(255, 255, 255, 0.12)',
+                        boxShadow: advancedNoiseCancellation ? '0 0 12px rgba(168, 85, 247, 0.3)' : 'none',
+                      }}
                     >
                       <div
-                        className="w-6 h-6 rounded-full shadow-md"
-                        style={{ background: 'rgba(255, 255, 255, 0.3)' }}
+                        className="w-6 h-6 rounded-full shadow-md transition-transform duration-200"
+                        style={{
+                          background: advancedNoiseCancellation ? '#fff' : 'rgba(255, 255, 255, 0.5)',
+                          transform: advancedNoiseCancellation ? 'translateX(22px)' : 'translateX(0)',
+                        }}
                       />
                     </div>
-                  </div>
+                  </button>
                 </div>
 
                 <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 mt-4">
@@ -510,7 +520,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
               >
                 <div className="bg-black/50 rounded-2xl p-4 font-mono text-xs overflow-y-auto max-h-[60vh] border border-white/10">
                   {logs.length === 0 ? (
-                    <div className="text-white/30 text-center py-8">No logs yet...</div>
+                    <div className="text-discord-faint text-center py-8">No logs yet...</div>
                   ) : (
                     logs.map((l, i) => (
                       <div
@@ -519,7 +529,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                           l.type === 'error' ? 'text-red-400' : l.type === 'webrtc' ? 'text-blue-400' : 'text-green-400'
                         }`}
                       >
-                        <span className="text-white/30">[{new Date(l.timestamp).toLocaleTimeString()}]</span> {l.message}
+                        <span className="text-discord-faint">[{new Date(l.timestamp).toLocaleTimeString()}]</span> {l.message}
                       </div>
                     ))
                   )}
@@ -621,7 +631,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                       <span className="block text-white font-medium text-xs">Purple</span>
                     </motion.button>
                   </div>
-                  <p className="text-white/40 text-xs mt-3 text-center">Theme applies on next app launch</p>
+                  <p className="text-discord-muted text-xs mt-3 text-center">Theme applies on next app launch</p>
                 </div>
 
                 <motion.button
@@ -633,7 +643,7 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                   Check for Updates
                 </motion.button>
 
-                <div className="text-center text-white/30 text-xs space-y-1">
+                <div className="text-center text-discord-faint text-xs space-y-1">
                   <p>Made with 💜 by JawnPiece Productions</p>
                   <a
                     href="https://github.com/jamditis/pisscord"
@@ -761,9 +771,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-xs font-bold text-discord-muted uppercase mb-2">Display Name</label>
-                                <input 
-                                    type="text" 
-                                    className="w-full bg-discord-dark border-none rounded p-2 text-white outline-none focus:ring-2 ring-discord-accent"
+                                <input
+                                    type="text"
+                                    className="w-full bg-discord-dark border border-white/10 rounded p-2 text-white outline-none focus:border-purple-500/50 focus:ring-1 ring-purple-500/30"
                                     value={displayName}
                                     onChange={(e) => setDisplayName(e.target.value)}
                                     maxLength={32}
@@ -771,9 +781,9 @@ export const UserSettingsModal: React.FC<UserSettingsModalProps> = ({
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-discord-muted uppercase mb-2">Status</label>
-                                <input 
-                                    type="text" 
-                                    className="w-full bg-discord-dark border-none rounded p-2 text-white outline-none focus:ring-2 ring-discord-accent"
+                                <input
+                                    type="text"
+                                    className="w-full bg-discord-dark border border-white/10 rounded p-2 text-white outline-none focus:border-purple-500/50 focus:ring-1 ring-purple-500/30"
                                     value={statusMessage}
                                     onChange={(e) => setStatusMessage(e.target.value)}
                                     maxLength={64}

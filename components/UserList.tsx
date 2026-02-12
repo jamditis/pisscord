@@ -117,7 +117,7 @@ export const UserList: React.FC<UserListProps> = ({
           {/* Current user */}
           {me && (
             <div className="mb-4">
-              <div className="text-xs font-bold text-white/40 uppercase tracking-wider mb-2 px-1">
+              <div className="text-xs font-bold text-discord-muted uppercase tracking-wider mb-2 px-1">
                 Your Profile
               </div>
               <MobileUserCard user={me} isMe themeColors={colors} />
@@ -126,7 +126,7 @@ export const UserList: React.FC<UserListProps> = ({
 
           {/* Other users */}
           <div>
-            <div className="text-xs font-bold text-white/40 uppercase tracking-wider mb-2 px-1">
+            <div className="text-xs font-bold text-discord-muted uppercase tracking-wider mb-2 px-1">
               Other Users — {others.length}
             </div>
 
@@ -137,10 +137,10 @@ export const UserList: React.FC<UserListProps> = ({
                 className="text-center py-8"
               >
                 <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3">
-                  <i className="fas fa-user-friends text-2xl text-white/20"></i>
+                  <i className="fas fa-user-friends text-2xl text-discord-faint"></i>
                 </div>
-                <p className="text-white/40 text-sm">No one else is online</p>
-                <p className="text-white/25 text-xs mt-1">Invite friends to join!</p>
+                <p className="text-discord-muted text-sm">No one else is online</p>
+                <p className="text-discord-faint text-xs mt-1">Invite friends to join!</p>
               </motion.div>
             ) : (
               <AnimatePresence mode="popLayout">

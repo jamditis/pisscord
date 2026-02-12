@@ -26,6 +26,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Test suite:** 153 tests across 18 files — new tests for retry utility, connection state, ghost user prevention.
 - **Files changed:** `App.tsx`, `services/firebase.ts`, `services/logger.ts`, `electron.js`, `index.html`, `index.css`, `components/VoiceStage.tsx`, 12 component files (z-index updates), 3 new/expanded test files.
 
+### Recent Work (Accessibility & Contrast Pass)
+- **Color token overhaul:** `--text-dim` bumped `#9898a8` → `#b0b0c0` (~7.5:1 contrast). New `--text-faint: #8888a0` (~5.5:1) for tertiary text. Both defined in `index.css` and `index.html` Tailwind config.
+- **14 component files updated:** Replaced all `text-white/30` (~1.9:1, fails AA), `text-white/40` (~2.5:1, fails AA), `text-gray-400/500` (~3.6:1, borderline) with semantic `text-discord-muted` and `text-discord-faint` tokens.
+- **Desktop settings inputs:** Display Name and Status fields changed from `border-none` to `border border-white/10` with `focus:border-purple-500/50` — they were invisible as inputs before.
+- **Files changed:** `index.css`, `index.html`, `ChatArea.tsx`, `ChannelList.tsx`, `UserList.tsx`, `App.tsx`, `UserSettingsModal.tsx`, `VoiceStage.tsx`, `ReportIssueModal.tsx`, `ContextMenu.tsx`, `ServerDropdown.tsx`, `QuickEmojiPicker.tsx`, `AuthGate.tsx`, `LoginScreen.tsx`, `SplashScreen.tsx`.
+- **Verification:** Zero remaining `text-white/(20|25|30|40)` or `text-gray-[345]00` in any .tsx file. TypeScript clean. 153 tests pass.
+
+### Action Items for Next Session
+- **Mobile viewport review with Playwright:** Open app at 390x844 viewport and audit all mobile views (chat, channels, settings, voice) for remaining contrast/accessibility issues. Desktop pass is complete.
+- Smoke test Electron sign-in on a clean install
+- Smoke test web sign-in on `web.pisscord.app`
+- Remaining v2.1.0 plan items: `npm run build:web && firebase deploy`, `npm run dist` for Electron, manual mobile test on Android via Capacitor
+- Consider merging `feature/hardening-v2.1.0` to `master` after mobile review passes
+
 ### Previous Work (v2.0.5 - Auth Fix)
 - **Electron Google Sign-In Fixed:** IPC handler opens web app in BrowserWindow for OAuth from https:// origin.
 - **Three-platform auth:** Capacitor (native), Electron (BrowserWindow), Web (`signInWithPopup`) — all converge on `signInWithCredential`.

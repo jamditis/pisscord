@@ -94,7 +94,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ error: authError }) =>
           <h1 className="text-4xl font-bold text-white mb-2 tracking-wider">
             PISSCORD
           </h1>
-          <p className="text-gray-400 text-sm">
+          <p className="text-discord-muted text-sm">
             Private P2P Communication
           </p>
         </div>
@@ -119,10 +119,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ error: authError }) =>
                 <i className="fas fa-check text-green-400 text-2xl"></i>
               </div>
               <h2 className="text-xl font-semibold text-white mb-2">Check your email</h2>
-              <p className="text-gray-400 text-sm mb-4">
+              <p className="text-discord-muted text-sm mb-4">
                 We sent a magic link to <span className="text-purple-400">{email}</span>
               </p>
-              <p className="text-gray-500 text-xs">
+              <p className="text-discord-muted text-xs">
                 Click the link in the email to sign in. The link expires in 1 hour.
               </p>
               <button
@@ -153,14 +153,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ error: authError }) =>
               {/* Divider */}
               <div className="flex items-center gap-4 mb-6">
                 <div className="flex-1 h-px bg-gray-700"></div>
-                <span className="text-gray-500 text-sm">or</span>
+                <span className="text-discord-muted text-sm">or</span>
                 <div className="flex-1 h-px bg-gray-700"></div>
               </div>
 
               {/* Email form */}
               <form onSubmit={handleEmailSubmit}>
                 <div className="mb-4">
-                  <label htmlFor="email" className="block text-gray-400 text-sm mb-2">
+                  <label htmlFor="email" className="block text-discord-muted text-sm mb-2">
                     Email address
                   </label>
                   <input

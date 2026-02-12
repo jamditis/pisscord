@@ -26,7 +26,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400 text-sm">Loading...</p>
+          <p className="text-discord-muted text-sm">Loading...</p>
         </div>
       </div>
     );

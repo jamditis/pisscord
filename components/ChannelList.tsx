@@ -103,7 +103,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                   : 'bg-purple-500/20 text-purple-400'
               : isVoice
                 ? 'bg-green-500/10 text-green-500/60'
-                : 'bg-white/10 text-gray-400'
+                : 'bg-white/10 text-discord-muted'
           }`}
         >
           {isVoice ? (
@@ -122,11 +122,11 @@ export const ChannelList: React.FC<ChannelListProps> = ({
 
         {/* Channel Info */}
         <div className="flex-1 text-left">
-          <div className={`font-semibold ${isActive ? 'text-white' : 'text-gray-300'}`}>
+          <div className={`font-semibold ${isActive ? 'text-white' : 'text-discord-text'}`}>
             {channel.name}
           </div>
           {isVoice && usersInChannel.length > 0 && (
-            <div className="text-xs text-gray-500 mt-0.5">
+            <div className="text-xs text-discord-muted mt-0.5">
               {usersInChannel.length} {usersInChannel.length === 1 ? 'user' : 'users'} connected
             </div>
           )}
@@ -295,7 +295,7 @@ export const ChannelList: React.FC<ChannelListProps> = ({
           onClick={onToggleCollapse}
           title="Expand Sidebar"
         >
-          <i className="fas fa-chevron-right text-gray-500 hover:text-white transition-colors"></i>
+          <i className="fas fa-chevron-right text-discord-muted hover:text-white transition-colors"></i>
           <div
             className="absolute bottom-0 left-0 right-0 h-px"
             style={{ background: `linear-gradient(90deg, transparent, ${colors.glowLight}, transparent)` }}
@@ -437,12 +437,12 @@ export const ChannelList: React.FC<ChannelListProps> = ({
               e.stopPropagation();
               onToggleCollapse?.();
             }}
-            className="ml-2 p-1 text-gray-500 hover:text-white transition-colors"
+            className="ml-2 p-1 text-discord-muted hover:text-white transition-colors"
             title="Collapse Sidebar"
           >
             <i className="fas fa-chevron-left text-xs"></i>
           </button>
-          <i className={`fas fa-chevron-${showServerDropdown ? 'up' : 'down'} ml-auto text-xs text-gray-500 transition-transform`}></i>
+          <i className={`fas fa-chevron-${showServerDropdown ? 'up' : 'down'} ml-auto text-xs text-discord-muted transition-transform`}></i>
           {/* Gradient glow line */}
           <div
             className="absolute bottom-0 left-0 right-0 h-px"

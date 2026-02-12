@@ -62,7 +62,7 @@ export const ReportIssueModal: React.FC<ReportIssueModalProps> = ({ onClose, onS
             whileTap={{ scale: 0.95 }}
             className={`px-4 py-2 rounded-xl text-sm font-medium ${
               isSubmitting || !title.trim() || !description.trim()
-                ? 'bg-white/5 text-white/30'
+                ? 'bg-white/5 text-discord-faint'
                 : 'bg-purple-500 text-white'
             }`}
           >
@@ -113,7 +113,7 @@ export const ReportIssueModal: React.FC<ReportIssueModalProps> = ({ onClose, onS
 
             {/* Title */}
             <div>
-              <label className="block text-xs font-bold text-white/40 uppercase mb-2 tracking-wide">Title</label>
+              <label className="block text-xs font-bold text-discord-muted uppercase mb-2 tracking-wide">Title</label>
               <input
                 type="text"
                 value={title}
@@ -127,7 +127,7 @@ export const ReportIssueModal: React.FC<ReportIssueModalProps> = ({ onClose, onS
 
             {/* Description */}
             <div>
-              <label className="block text-xs font-bold text-white/40 uppercase mb-2 tracking-wide">Description</label>
+              <label className="block text-xs font-bold text-discord-muted uppercase mb-2 tracking-wide">Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -139,7 +139,7 @@ export const ReportIssueModal: React.FC<ReportIssueModalProps> = ({ onClose, onS
 
             {/* Screenshot */}
             <div>
-              <label className="block text-xs font-bold text-white/40 uppercase mb-2 tracking-wide">Screenshot (Optional)</label>
+              <label className="block text-xs font-bold text-discord-muted uppercase mb-2 tracking-wide">Screenshot (Optional)</label>
               <input
                 type="file"
                 ref={fileInputRef}
@@ -162,7 +162,7 @@ export const ReportIssueModal: React.FC<ReportIssueModalProps> = ({ onClose, onS
                     <span className="truncate max-w-[200px]">{screenshot.name}</span>
                   </div>
                 ) : (
-                  <div className="text-white/40">
+                  <div className="text-discord-muted">
                     <i className="fas fa-camera text-2xl mb-2"></i>
                     <p className="text-sm">Tap to add screenshot</p>
                   </div>

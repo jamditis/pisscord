@@ -29,6 +29,7 @@ import { Platform, ClipboardService, UpdateService, ScreenShareService, WindowSe
 import { VoidBackground } from './components/Visuals';
 import { logger } from './services/logger';
 import { createAudioProcessor, AudioProcessor } from './services/audioProcessor';
+import { buildVideoConstraints, buildAudioConstraints, preferH264 } from './services/webrtcUtils';
 
 const APP_VERSION = "2.1.0";
 
@@ -598,19 +599,20 @@ export default function App() {
     log("=== Getting Local Media Stream ===", 'webrtc');
     const currentSettings = deviceSettingsRef.current;
 
-    // Build audio constraints with noise suppression and other processing
-    const audioConstraints: MediaTrackConstraints = {
-        noiseSuppression: currentSettings.noiseSuppression ?? true,
-        echoCancellation: currentSettings.echoCancellation ?? true,
-        autoGainControl: currentSettings.autoGainControl ?? true,
-    };
-    if (currentSettings.audioInputId) {
-        audioConstraints.deviceId = { exact: currentSettings.audioInputId };
-    }
+    // Build audio constraints (48kHz mono, noise/echo/gain processing)
+    const audioConstraints = buildAudioConstraints({
+        noiseSuppression: currentSettings.noiseSuppression,
+        echoCancellation: currentSettings.echoCancellation,
+        autoGainControl: currentSettings.autoGainControl,
+        audioInputId: currentSettings.audioInputId,
+    });
+
+    // Platform-aware video constraints: 720p30 desktop, 480p24 mobile (saves battery)
+    const videoConstraints = buildVideoConstraints(isMobile, currentSettings.videoInputId);
 
     const constraints = {
         audio: audioConstraints,
-        video: currentSettings.videoInputId ? { deviceId: { exact: currentSettings.videoInputId } } : true,
+        video: videoConstraints,
     };
     log(`Media constraints: ${JSON.stringify(constraints)}`, 'webrtc');
 
@@ -828,7 +830,7 @@ export default function App() {
 
       try {
           const stream = await getLocalStream();
-          call.answer(stream);
+          call.answer(stream, { sdpTransform: preferH264 });
           setupCallEvents(call);
       } catch (err) {
           log("Failed to get stream for answer", 'error');
@@ -853,7 +855,7 @@ export default function App() {
 
           try {
               const stream = await getLocalStream();
-              const call = peerInstance.current!.call(remoteId, stream);
+              const call = peerInstance.current!.call(remoteId, stream, { sdpTransform: preferH264 });
               setupCallEvents(call);
 
               // Also establish data connection
@@ -993,7 +995,7 @@ export default function App() {
               try {
                   log("Using standard getDisplayMedia", 'webrtc');
                   const displayStream = await navigator.mediaDevices.getDisplayMedia({
-                      video: true,
+                      video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 15, max: 30 } },
                       audio: false
                   });
                   await startScreenShareWithStream(displayStream);
@@ -1115,7 +1117,7 @@ export default function App() {
           if (!myVideoTrack.current) {
               log("Camera track ref lost — attempting recovery via getLocalStream", 'error');
               try {
-                  const recoveredStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                  const recoveredStream = await navigator.mediaDevices.getUserMedia({ video: buildVideoConstraints(isMobile), audio: false });
                   const newCamTrack = recoveredStream.getVideoTracks()[0];
                   if (newCamTrack) {
                       myVideoTrack.current = newCamTrack;
@@ -1528,8 +1530,8 @@ export default function App() {
                           className="w-1.5 h-1.5 rounded-full"
                           style={{ background: '#22c55e', boxShadow: '0 0 4px rgba(34, 197, 94, 0.5)' }}
                         />
-                        <span className="text-xs text-gray-400 font-medium">{onlineUsers.length}</span>
-                        <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <span className="text-xs text-discord-muted font-medium">{onlineUsers.length}</span>
+                        <svg className="w-3.5 h-3.5 text-discord-muted" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
                         </svg>
                       </button>
@@ -1604,7 +1606,7 @@ export default function App() {
                       className="mr-3 p-2.5 -ml-2 rounded-xl transition-all duration-200 active:scale-95"
                       style={{ background: 'rgba(255, 255, 255, 0.06)' }}
                     >
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-discord-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                       </svg>
                     </button>
@@ -1682,7 +1684,7 @@ export default function App() {
                             {connectionState === ConnectionState.CONNECTED ? voiceChannelName : 'Voice channels'}
                           </span>
                           {connectionState === ConnectionState.CONNECTED && (
-                            <p className="text-xs text-gray-500">{remoteStreams.size + 1} in call</p>
+                            <p className="text-xs text-discord-muted">{remoteStreams.size + 1} in call</p>
                           )}
                         </div>
                       </motion.div>
@@ -1778,7 +1780,7 @@ export default function App() {
                       onClick={() => setShowMobileUsers(false)}
                       className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center"
                     >
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-discord-muted" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>

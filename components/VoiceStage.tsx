@@ -540,7 +540,7 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
                 >
                   <i className="fas fa-headset text-sm" style={{ color: colors.primary }}></i>
                 </div>
-                <span className="text-xs font-bold uppercase tracking-wider text-white/40">Join a channel</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-discord-muted">Join a channel</span>
               </div>
               <div className="flex flex-col gap-2">
                 {(voiceChannels || []).map((ch) => {
@@ -570,7 +570,7 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
                             </span>
                           </div>
                         ) : (
-                          <span className="text-xs text-white/30">No one here</span>
+                          <span className="text-xs text-discord-faint">No one here</span>
                         )}
                       </div>
                       <div
@@ -579,7 +579,7 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
                           background: usersInChannel.length > 0
                             ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.1))'
                             : 'rgba(255, 255, 255, 0.05)',
-                          color: usersInChannel.length > 0 ? '#22c55e' : 'rgba(255, 255, 255, 0.4)',
+                          color: usersInChannel.length > 0 ? '#22c55e' : '#b0b0c0',
                           border: usersInChannel.length > 0 ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid rgba(255, 255, 255, 0.08)',
                         }}
                       >
@@ -595,9 +595,9 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
-                  <i className="fas fa-users text-sm text-white/40"></i>
+                  <i className="fas fa-users text-sm text-discord-muted"></i>
                 </div>
-                <span className="text-xs font-bold uppercase tracking-wider text-white/40">
+                <span className="text-xs font-bold uppercase tracking-wider text-discord-muted">
                   Online — {onlineUsers.length}
                 </span>
               </div>
@@ -624,7 +624,7 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
                   </div>
                 ))}
                 {onlineUsers.length === 0 && (
-                  <span className="text-xs text-white/30">No one online right now</span>
+                  <span className="text-xs text-discord-faint">No one online right now</span>
                 )}
               </div>
             </div>

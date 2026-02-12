@@ -151,7 +151,7 @@ export const QuickEmojiPicker: React.FC<QuickEmojiPickerProps> = ({
               {/* Search */}
               <div className="px-4 pb-3">
                 <div className="bg-white/5 rounded-xl flex items-center px-3">
-                  <i className="fas fa-search text-white/30"></i>
+                  <i className="fas fa-search text-discord-faint"></i>
                   <input
                     type="text"
                     placeholder="Search emojis..."

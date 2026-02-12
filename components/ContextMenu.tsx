@@ -66,7 +66,7 @@ const MobileActionSheet: React.FC<{ items: ContextMenuItem[]; onClose: () => voi
                 whileTap={{ scale: 0.98 }}
                 className={`w-full px-4 py-3.5 rounded-xl mb-1 text-left flex items-center gap-3 transition-all ${
                   item.disabled
-                    ? 'text-white/30 cursor-not-allowed'
+                    ? 'text-discord-faint cursor-not-allowed'
                     : item.danger
                       ? 'text-red-400 bg-red-500/10 active:bg-red-500/20'
                       : 'text-white bg-white/5 active:bg-white/10'

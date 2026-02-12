@@ -150,7 +150,7 @@ export const ServerDropdown: React.FC<ServerDropdownProps> = ({
                       </div>
                       <span className="text-white font-medium">{item.label}</span>
                       {item.external && (
-                        <i className="fas fa-external-link-alt ml-auto text-white/30 text-xs"></i>
+                        <i className="fas fa-external-link-alt ml-auto text-discord-faint text-xs"></i>
                       )}
                     </button>
                   )

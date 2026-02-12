@@ -124,7 +124,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         </h1>
 
         <p
-          className="mt-2 text-xs tracking-[0.3em] uppercase text-gray-500"
+          className="mt-2 text-xs tracking-[0.3em] uppercase text-discord-muted"
           style={{
             animation: 'fadeInUp 0.5s ease-out 0.5s both',
           }}

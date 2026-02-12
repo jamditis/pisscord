@@ -382,10 +382,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
               className="flex flex-col items-center justify-center h-full text-center px-4"
             >
               <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
-                <i className={`text-3xl text-white/20 ${channel.type === ChannelType.AI ? 'fas fa-robot' : 'fas fa-hashtag'}`}></i>
+                <i className={`text-3xl text-discord-faint ${channel.type === ChannelType.AI ? 'fas fa-robot' : 'fas fa-hashtag'}`}></i>
               </div>
               <h3 className="text-lg font-bold text-white/70 mb-1">Welcome to #{channel.name}!</h3>
-              <p className="text-white/40 text-sm">This is the start of the conversation.</p>
+              <p className="text-discord-muted text-sm">This is the start of the conversation.</p>
             </motion.div>
           )}
 
@@ -409,7 +409,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                     ) : avatarUrl ? (
                       <img src={avatarUrl} alt={msg.sender} className="w-full h-full object-cover" />
                     ) : (
-                      <i className="fas fa-user text-white/50 text-sm"></i>
+                      <i className="fas fa-user text-discord-muted text-sm"></i>
                     )}
                   </div>
 
@@ -424,7 +424,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                           Bot
                         </span>
                       )}
-                      <span className="text-[10px] text-white/30">
+                      <span className="text-[10px] text-discord-faint">
                         {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
@@ -441,7 +441,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                       <>
                         <button
                           onClick={() => toggleMediaCollapse(msg.id)}
-                          className="flex items-center gap-1 mt-1.5 px-2 py-0.5 text-[10px] text-white/30 hover:text-white/60 transition-colors rounded-full hover:bg-white/5"
+                          className="flex items-center gap-1 mt-1.5 px-2 py-0.5 text-[10px] text-discord-faint hover:text-discord-text transition-colors rounded-full hover:bg-white/5"
                         >
                           <i className={`fas fa-chevron-${collapsedMedia.has(msg.id) ? 'right' : 'down'} text-[8px]`} />
                           {collapsedMedia.has(msg.id) ? 'Show media' : 'Hide media'}
@@ -459,7 +459,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                                   'fa-file text-purple-400'
                                 } text-xs shrink-0`} />
                                 <span className="text-xs text-white/70 truncate min-w-0">{msg.attachment.name}</span>
-                                <span className="text-[10px] text-white/30 shrink-0">{formatFileSize(msg.attachment.size)}</span>
+                                <span className="text-[10px] text-discord-faint shrink-0">{formatFileSize(msg.attachment.size)}</span>
                               </div>
                             )}
                             {msg.content && extractVideoEmbeds(msg.content).length > 0 && (
@@ -501,7 +501,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                                     </div>
                                     <div className="overflow-hidden flex-1">
                                       <div className="text-white/80 text-sm font-medium truncate">{msg.attachment.name}</div>
-                                      <div className="text-[10px] text-white/40">
+                                      <div className="text-[10px] text-discord-faint">
                                         {formatFileSize(msg.attachment.size)}{msg.attachment.size ? ' • ' : ''}{getFileExtension(msg.attachment.name)} file
                                       </div>
                                     </div>
@@ -564,8 +564,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
             </motion.button>
           ) : channel.id === '4' ? (
             <div className="bg-white/5 rounded-xl px-4 py-3 flex items-center justify-center border border-white/5">
-              <i className="fas fa-lock mr-2 text-white/30"></i>
-              <span className="text-white/40 text-sm">Read-only channel</span>
+              <i className="fas fa-lock mr-2 text-discord-faint"></i>
+              <span className="text-discord-muted text-sm">Read-only channel</span>
             </div>
           ) : (
             <div className="flex flex-col gap-0">
@@ -602,7 +602,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                             onClick={() => fileInputRef.current?.click()}
                             disabled={isUploading}
                             whileTap={{ scale: 0.9 }}
-                            className="w-8 h-8 rounded-lg bg-white/5 text-white/40 flex items-center justify-center"
+                            className="w-8 h-8 rounded-lg bg-white/5 text-discord-muted flex items-center justify-center"
                             style={{ WebkitTapHighlightColor: 'transparent' }}
                           >
                             {isUploading ? (
@@ -621,7 +621,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                                 setShowEmojiPicker(false);
                                 setShowMarkdownToolbar(prev => !prev);
                               }}
-                              className="w-8 h-8 rounded-lg bg-white/5 text-white/40 flex items-center justify-center"
+                              className="w-8 h-8 rounded-lg bg-white/5 text-discord-muted flex items-center justify-center"
                               style={{ WebkitTapHighlightColor: 'transparent' }}
                             >
                               <i className="fas fa-font text-xs"></i>
@@ -643,7 +643,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                                 setShowMarkdownToolbar(false);
                                 setShowEmojiPicker(prev => !prev);
                               }}
-                              className="w-8 h-8 rounded-lg bg-white/5 text-white/40 flex items-center justify-center"
+                              className="w-8 h-8 rounded-lg bg-white/5 text-discord-muted flex items-center justify-center"
                               style={{ WebkitTapHighlightColor: 'transparent' }}
                             >
                               <i className="fas fa-smile text-xs"></i>
@@ -678,7 +678,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                   <motion.i
                     animate={{ rotate: showMobileToolbar ? 45 : 0 }}
                     transition={{ duration: 0.15 }}
-                    className="fas fa-plus text-white/50 text-sm"
+                    className="fas fa-plus text-discord-muted text-sm"
                   ></motion.i>
                 </motion.button>
 
@@ -705,14 +705,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
                       : 'bg-white/5 border border-white/10'
                   }`}
                 >
-                  <i className={`fas fa-paper-plane text-sm ${inputValue.trim() ? 'text-white' : 'text-white/30'}`}></i>
+                  <i className={`fas fa-paper-plane text-sm ${inputValue.trim() ? 'text-white' : 'text-discord-faint'}`}></i>
                 </motion.button>
               </div>
             </div>
           )}
 
           {channel.type === ChannelType.AI && (
-            <div className="text-[10px] text-white/30 mt-2 text-center">
+            <div className="text-[10px] text-discord-faint mt-2 text-center">
               Powered by Pissbot AI
             </div>
           )}
@@ -753,7 +753,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
-            <div className="flex flex-col items-center justify-center h-full text-discord-muted opacity-50">
+            <div className="flex flex-col items-center justify-center h-full text-discord-muted">
                 <div className="w-16 h-16 bg-discord-sidebar rounded-full flex items-center justify-center mb-4">
                     <i className="fas fa-hashtag text-3xl"></i>
                 </div>
