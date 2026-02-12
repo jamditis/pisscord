@@ -295,12 +295,19 @@ ipcMain.handle('get-desktop-sources', async () => {
 });
 
 // IPC handler for Google Sign-In (manual OAuth flow for Electron)
-// signInWithPopup fails in Electron because the popup can't postMessage
-// back to a file:// origin. Instead, we load the deployed web app in a
-// BrowserWindow (https:// origin) and run signInWithPopup there.
+//
+// Strategy: Navigate a BrowserWindow directly to Google's OAuth consent
+// screen. Using response_type=id_token (implicit flow), Google redirects
+// back to the redirect URI with the ID token in the URL hash fragment.
+// We intercept the redirect URL and parse the token directly — no need
+// for Firebase SDK on the callback page.
+//
+// Previous approaches that failed:
+// - signInWithPopup in executeJavaScript: blocked by Chromium popup blocker
+// - CDN Firebase imports on /__/auth/handler: blocked by CSP
+// - executeJavaScript with initializeApp: separate module scope
 ipcMain.handle('google-sign-in', async () => {
-  const AUTH_TIMEOUT_MS = 120000; // 2 minutes for the entire auth flow
-  const EXEC_TIMEOUT_MS = 60000; // 60s for executeJavaScript specifically
+  const AUTH_TIMEOUT_MS = 120000; // 2 minutes
 
   return new Promise((resolve, reject) => {
     const authWindow = new BrowserWindow({
@@ -318,80 +325,81 @@ ipcMain.handle('google-sign-in', async () => {
 
     let resolved = false;
 
-    // Global timeout — close window and reject if auth takes too long
+    const cleanup = () => {
+      clearTimeout(authTimer);
+      try { authWindow.close(); } catch (_) { /* already closed */ }
+    };
+
     const authTimer = setTimeout(() => {
       if (!resolved) {
         resolved = true;
         logToFile('Google Sign-In: timed out after ' + AUTH_TIMEOUT_MS + 'ms');
-        try { authWindow.close(); } catch (_) { /* already closed */ }
+        cleanup();
         reject(new Error('Sign-in timed out. Please try again.'));
       }
     }, AUTH_TIMEOUT_MS);
 
-    // Load the deployed web app — this gives us an https:// origin where
-    // Firebase's signInWithPopup works correctly. Once loaded, we inject
-    // a script that runs signInWithPopup and stores the result.
-    authWindow.webContents.on('did-finish-load', async () => {
+    // Parse id_token from a URL hash fragment.
+    // Google implicit flow redirects to: redirect_uri#id_token=TOKEN&token_type=Bearer&...
+    const extractIdToken = (url) => {
+      const hashIndex = url.indexOf('#');
+      if (hashIndex === -1) return null;
+      const hash = url.substring(hashIndex + 1);
+      const params = new URLSearchParams(hash);
+      return params.get('id_token');
+    };
+
+    // Intercept navigations to catch the redirect URL with the hash fragment.
+    // We use will-redirect and will-navigate because by the time did-finish-load
+    // fires, the page's JS may have consumed/cleared the hash fragment.
+    const handleNavigation = (url) => {
       if (resolved) return;
-      const url = authWindow.webContents.getURL();
+      logToFile('Google Sign-In: navigation to ' + url.substring(0, 120));
 
-      // Only inject on the Pisscord web app page
-      if (!url.includes('pisscord-edbca.web.app')) return;
-
-      try {
-        // Race executeJavaScript against its own timeout
-        const execPromise = authWindow.webContents.executeJavaScript(`
-          (async () => {
-            try {
-              // Firebase is already initialized on this page
-              const { getAuth, signInWithPopup, GoogleAuthProvider } = await import('https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js');
-              const auth = getAuth();
-              const provider = new GoogleAuthProvider();
-              provider.addScope('profile');
-              provider.addScope('email');
-              const result = await signInWithPopup(auth, provider);
-              // Get the ID token to pass back to the Electron renderer
-              const idToken = await result.user.getIdToken();
-              return { success: true, idToken: idToken };
-            } catch (error) {
-              return { success: false, error: error.message || 'Sign-in failed' };
-            }
-          })()
-        `);
-
-        const timeoutPromise = new Promise((_, timeoutReject) => {
-          setTimeout(() => timeoutReject(new Error('executeJavaScript timed out')), EXEC_TIMEOUT_MS);
-        });
-
-        const result = await Promise.race([execPromise, timeoutPromise]);
-
-        if (resolved) return;
-        resolved = true;
-        clearTimeout(authTimer);
-        authWindow.close();
-
-        if (result.success) {
-          resolve({ idToken: result.idToken });
-        } else {
-          reject(new Error(result.error));
-        }
-      } catch (e) {
-        if (!resolved) {
+      // Check if this is the OAuth callback with a token in the hash
+      if (url.includes('pisscord-edbca.web.app/__/auth/handler') ||
+          url.includes('pisscord-edbca.firebaseapp.com/__/auth/handler')) {
+        const idToken = extractIdToken(url);
+        if (idToken) {
           resolved = true;
-          clearTimeout(authTimer);
-          logToFile('Google Sign-In: executeJavaScript error: ' + e.message);
-          try { authWindow.close(); } catch (_) { /* already closed */ }
-          reject(new Error(e.message || 'Sign-in failed'));
+          logToFile('Google Sign-In: extracted id_token from URL (' + idToken.length + ' chars)');
+          cleanup();
+          resolve({ idToken });
+        } else {
+          logToFile('Google Sign-In: auth handler URL but no id_token in hash');
+          // Don't reject yet — the token might come in a subsequent redirect
         }
       }
+    };
+
+    // will-redirect fires when the server responds with a 3xx redirect,
+    // before the new page starts loading. This is the earliest we can see
+    // the redirect URL with the hash fragment intact.
+    authWindow.webContents.on('will-redirect', (event, url) => {
+      handleNavigation(url);
     });
 
-    // Allow the Firebase auth popup to open inside this window
-    authWindow.webContents.setWindowOpenHandler(({ url }) => {
-      if (url.includes('accounts.google.com') || url.includes('firebaseapp.com/__/auth')) {
-        return { action: 'allow' };
-      }
-      return { action: 'deny' };
+    // will-navigate fires for client-side navigations (e.g., window.location).
+    // Some OAuth flows use JS redirects rather than HTTP 3xx.
+    authWindow.webContents.on('will-navigate', (event, url) => {
+      handleNavigation(url);
+    });
+
+    // Fallback: if the above events didn't catch the token (e.g., the hash
+    // wasn't in the redirect URL but was set by JS on the page), try parsing
+    // it from the page's location after load.
+    authWindow.webContents.on('did-finish-load', async () => {
+      if (resolved) return;
+      try {
+        const url = await authWindow.webContents.executeJavaScript('window.location.href');
+        logToFile('Google Sign-In: did-finish-load URL: ' + url.substring(0, 120));
+        handleNavigation(url);
+      } catch (_) { /* window may have been closed */ }
+    });
+
+    // Also check did-navigate (fires after navigation commits but before load)
+    authWindow.webContents.on('did-navigate', (event, url) => {
+      handleNavigation(url);
     });
 
     authWindow.on('closed', () => {
@@ -402,8 +410,16 @@ ipcMain.handle('google-sign-in', async () => {
       }
     });
 
-    // Load the deployed Pisscord web app
-    authWindow.loadURL('https://pisscord-edbca.web.app');
+    // Navigate directly to Google OAuth consent screen.
+    // Using response_type=id_token (implicit flow): Google puts the token
+    // directly in the redirect URL's hash fragment, no server exchange needed.
+    const clientId = '582017997210-u9lhvn9rglcch5pae0nis7668hgfhe14.apps.googleusercontent.com';
+    const redirectUri = encodeURIComponent('https://pisscord-edbca.web.app/__/auth/handler');
+    const scope = encodeURIComponent('openid email profile');
+    const nonce = Math.random().toString(36).substring(2);
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=id_token&scope=${scope}&nonce=${nonce}&prompt=select_account`;
+
+    authWindow.loadURL(googleAuthUrl);
   });
 });
 

@@ -78,7 +78,10 @@ export const handleGoogleRedirectResult = async (): Promise<User | null> => {
  * Get action code settings for email link sign-in
  */
 const getActionCodeSettings = () => ({
-  url: window.location.origin,
+  // Electron runs from file:// which Firebase rejects for email links.
+  // Always redirect to the deployed web app — the user will land there
+  // and complete sign-in, then open the desktop app again.
+  url: Platform.isElectron ? 'https://pisscord-edbca.web.app' : window.location.origin,
   handleCodeInApp: true,
 });
 
