@@ -30,7 +30,7 @@ import { logger } from './services/logger';
 import { createAudioProcessor, AudioProcessor } from './services/audioProcessor';
 import { buildVideoConstraints, buildAudioConstraints, preferH264 } from './services/webrtcUtils';
 
-const APP_VERSION = "2.1.1";
+const APP_VERSION = "2.1.2";
 
 // Initial Channels
 const INITIAL_CHANNELS: Channel[] = [
@@ -401,8 +401,15 @@ export default function App() {
         if (!isMountedRef.current) return;
         if (update?.hasUpdate) {
             setUpdateInfo({ url: update.url, latest: update.latest });
-            setShowUpdateModal(true);
-            playSound('update_available');
+            if (Platform.isWeb || Platform.isMobileWeb) {
+              // On web, show a non-blocking toast instead of a modal overlay.
+              // The web build can only be updated by redeploying, so a blocking
+              // modal just locks users out of the app.
+              toast.info('Update Available', `v${update.latest} is out — refresh to update`);
+            } else {
+              setShowUpdateModal(true);
+              playSound('update_available');
+            }
         }
     });
 

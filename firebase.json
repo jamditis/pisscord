@@ -1,7 +1,4 @@
 {
-  "database": {
-    "rules": "firebase-rules.json"
-  },
   "hosting": {
     "public": "dist-web",
     "ignore": [
@@ -13,48 +10,6 @@
       {
         "source": "**",
         "destination": "/index.html"
-      }
-    ],
-    "headers": [
-      {
-        "source": "**",
-        "headers": [
-          {
-            "key": "Cross-Origin-Opener-Policy",
-            "value": "same-origin-allow-popups"
-          }
-        ]
-      },
-      {
-        "source": "**/*.wasm",
-        "headers": [
-          {
-            "key": "Content-Type",
-            "value": "application/wasm"
-          },
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=31536000, immutable"
-          }
-        ]
-      },
-      {
-        "source": "**/*.@(js|css)",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=31536000, immutable"
-          }
-        ]
-      },
-      {
-        "source": "**/*.@(png|jpg|jpeg|gif|svg|ico)",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=86400"
-          }
-        ]
       }
     ]
   }
