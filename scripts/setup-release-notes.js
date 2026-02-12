@@ -7,6 +7,7 @@
  * Usage: node scripts/setup-release-notes.js
  */
 
+require('dotenv').config({ path: '.env.local' });
 require('dotenv').config();
 const { initializeApp } = require('firebase/app');
 const { getDatabase, ref, set } = require('firebase/database');
@@ -30,28 +31,37 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // UPDATE THESE FOR EACH RELEASE
-const CURRENT_VERSION = "2.0.0";
+const CURRENT_VERSION = "2.1.0";
 const DOWNLOAD_URL = `https://github.com/jamditis/pisscord/releases/download/v${CURRENT_VERSION}/Pisscord.Setup.${CURRENT_VERSION}.exe`;
 
 const RELEASE_NOTES = `## What's New in v${CURRENT_VERSION}
 
-### Production hardening
-- **Centralized logging** - Structured logger replaces scattered console calls
-- **Error boundary** - App no longer white-screens on uncaught errors
-- **Type safety** - Fixed 13 critical type issues at data boundaries
-- **Auth fixed** - Login loop from redirect/auth state race condition resolved
-- **Google sign-in fixed** - Popup flow avoids browser storage partitioning
+### HD video & audio
+- **720p video on desktop, 480p on mobile** — sharper picture with battery-aware defaults
+- **48kHz audio** — studio-quality voice at half the bandwidth (mono for voice calls)
+- **1080p screen share** — optimized for text clarity at 15fps
+- **H.264 preferred** — hardware-accelerated codec for smoother video on all devices
+- **ML noise cancellation** — now available on mobile settings too
 
-### Stability fixes
-- **Firebase operations** - All writes are now awaited with error handling
-- **Memory leaks fixed** - Audio contexts and sound objects properly cleaned up
-- **Gemini API key** - Moved from hardcoded fallback to Firebase config
+### Crash prevention & stability
+- **Messages won't crash the app** — failed sends show an error toast instead of breaking the UI
+- **Desktop login won't hang** — sign-in window has a 2-minute timeout with clean fallback
+- **Ghost users gone** — closing the app removes you from the online list immediately
+- **Network recovery** — offline banner when disconnected, reconnection toast when back
+- **Automatic retry** — messages and presence retry up to 3 times with backoff
 
-### Test suite
-- **111 tests** across 14 test files
-- Vitest + Testing Library infrastructure
-- Playwright E2E smoke test setup
-- Services, components, hooks, and contexts covered
+### Screen sharing
+- **No more flicker** — track swapped in-place instead of creating a new stream
+- **Camera recovery** — grabs a fresh camera track if the original gets lost
+
+### Accessibility
+- **Higher contrast text** — all muted text bumped to WCAG AA ratios across 14 components
+- **Visible input fields** — settings inputs now have borders so you can tell they're editable
+
+### Under the hood
+- **181 tests** across 19 test files (up from 111 in v2.0.0)
+- Extracted webrtcUtils module for AV constraint building and codec preference
+- Z-index system standardized, safe-area CSS updated, font preloading added
 `;
 
 async function setupReleaseNotes() {
