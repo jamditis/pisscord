@@ -8,7 +8,7 @@
     "dev": "vite",
     "dev:web": "vite --config vite.config.web.ts",
     "build": "tsc && vite build",
-    "build:web": "tsc && vite build --config vite.config.web.ts && mv dist-web/index.web.html dist-web/index.html",
+    "build:web": "tsc && vite build --config vite.config.web.ts && node -e \"require('fs').renameSync('dist-web/index.web.html','dist-web/index.html')\"",
     "preview": "vite preview",
     "preview:web": "vite preview --config vite.config.web.ts",
     "electron:dev": "concurrently \"cross-env BROWSER=none npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
