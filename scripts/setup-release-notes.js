@@ -31,37 +31,41 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 // UPDATE THESE FOR EACH RELEASE
-const CURRENT_VERSION = "2.1.0";
+const CURRENT_VERSION = "2.1.1";
 const DOWNLOAD_URL = `https://github.com/jamditis/pisscord/releases/download/v${CURRENT_VERSION}/Pisscord.Setup.${CURRENT_VERSION}.exe`;
 
-const RELEASE_NOTES = `## What's New in v${CURRENT_VERSION}
+const RELEASE_NOTES = `## What's new in v${CURRENT_VERSION}
+
+This is the consolidated release that v2.1.0 was supposed to be — all features, all fixes, repo cleaned up and verified.
 
 ### HD video & audio
-- **720p video on desktop, 480p on mobile** — sharper picture with battery-aware defaults
-- **48kHz audio** — studio-quality voice at half the bandwidth (mono for voice calls)
-- **1080p screen share** — optimized for text clarity at 15fps
-- **H.264 preferred** — hardware-accelerated codec for smoother video on all devices
-- **ML noise cancellation** — now available on mobile settings too
+- **720p video on desktop, 480p on mobile** — battery-aware resolution defaults
+- **48kHz mono audio** — studio-quality voice at half the bandwidth
+- **1080p screen share** at 15fps, optimized for text clarity
+- **H.264 preferred** — hardware-accelerated codec on all devices
+- **ML noise cancellation on mobile** — toggle now works in mobile settings
 
-### Crash prevention & stability
-- **Messages won't crash the app** — failed sends show an error toast instead of breaking the UI
-- **Desktop login won't hang** — sign-in window has a 2-minute timeout with clean fallback
-- **Ghost users gone** — closing the app removes you from the online list immediately
-- **Network recovery** — offline banner when disconnected, reconnection toast when back
-- **Automatic retry** — messages and presence retry up to 3 times with backoff
+### Stability
+- **Failed messages show a toast** instead of crashing the app
+- **Desktop login has a 2-minute timeout** — no more infinite spinners
+- **Ghost users eliminated** — onDisconnect fires before presence set
+- **Offline banner + reconnection toast** for network state changes
+- **Automatic retry with backoff** for messages and presence (3 attempts)
+- **PeerJS auto-reconnect** on network/server errors after 2s delay
 
 ### Screen sharing
-- **No more flicker** — track swapped in-place instead of creating a new stream
-- **Camera recovery** — grabs a fresh camera track if the original gets lost
+- **Zero-flicker track swap** — replaces video track in-place, no new stream
+- **Camera track recovery** — falls back to getUserMedia if ref is lost
 
 ### Accessibility
-- **Higher contrast text** — all muted text bumped to WCAG AA ratios across 14 components
-- **Visible input fields** — settings inputs now have borders so you can tell they're editable
+- **WCAG AA contrast** on all muted text across 14 components
+- **Visible input borders** in settings fields
+- **New color tokens** — \`--text-dim\` at 7.5:1, \`--text-faint\` at 5.5:1
 
-### Under the hood
-- **181 tests** across 19 test files (up from 111 in v2.0.0)
-- Extracted webrtcUtils module for AV constraint building and codec preference
-- Z-index system standardized, safe-area CSS updated, font preloading added
+### Test suite
+- **293 tests** across 23 files (up from 111 in v2.0.0)
+- New coverage: AuthGate, SplashScreen, ThemeContext, GitHub service
+- Expanded: firebase, logger, platform, unread, videoEmbed
 `;
 
 async function setupReleaseNotes() {

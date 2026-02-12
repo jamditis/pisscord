@@ -2,11 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 🚨 Handoff Note / Status (v2.1.0)
-**Current State:** v2.1.0 on `feature/hardening-v2.1.0` branch. Stabilization and hardening across all subsystems.
+## 🚨 Handoff Note / Status (v2.1.1)
+**Current State:** v2.1.1 on `master`. Clean release — repo consolidated, all branches merged/deleted, tests expanded to 293.
 **Last Updated:** 2026-02-11
 
-### Recent Work (v2.1.0 - Stabilization & Hardening)
+### Recent Work (v2.1.1 - Consolidated release)
+- **Repo consolidation:** Cleaned up 8 stale local branches, 5 stale remote tracking refs, 9 corrupted `desktop.ini` refs in `.git/`
+- **Website updated:** All download links point to v2.1.1, URLs switched from `pisscord-edbca.web.app` to `web.pisscord.app`
+- **Test suite expanded:** 293 tests across 23 files. New: AuthGate, SplashScreen, ThemeContext, github service. Expanded: firebase, logger, platform, unread, videoEmbed.
+- **50 loose screenshots** moved from repo root to gitignored `screenshots/` folder
+
+### Previous work (v2.1.0 - Stabilization & hardening)
 - **sendMessage crash prevention:** `addMessage` is now async with try/catch. Failed Firebase writes show an error toast instead of crashing.
 - **Electron auth timeout:** `google-sign-in` IPC handler has 120s global timeout + 60s `executeJavaScript` timeout via `Promise.race`. Closes window and rejects cleanly on timeout.
 - **Ghost user prevention:** `registerPresence` and `updatePresence` now call `onDisconnect().remove()` BEFORE `set()`. If `set()` fails, the `onDisconnect` handler is cancelled. No more ghost users.
@@ -33,12 +39,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Files changed:** `index.css`, `index.html`, `ChatArea.tsx`, `ChannelList.tsx`, `UserList.tsx`, `App.tsx`, `UserSettingsModal.tsx`, `VoiceStage.tsx`, `ReportIssueModal.tsx`, `ContextMenu.tsx`, `ServerDropdown.tsx`, `QuickEmojiPicker.tsx`, `AuthGate.tsx`, `LoginScreen.tsx`, `SplashScreen.tsx`.
 - **Verification:** Zero remaining `text-white/(20|25|30|40)` or `text-gray-[345]00` in any .tsx file. TypeScript clean. 153 tests pass.
 
-### Action Items for Next Session
-- **Mobile viewport review with Playwright:** Open app at 390x844 viewport and audit all mobile views (chat, channels, settings, voice) for remaining contrast/accessibility issues. Desktop pass is complete.
+### Action items for next session
 - Smoke test Electron sign-in on a clean install
 - Smoke test web sign-in on `web.pisscord.app`
-- Remaining v2.1.0 plan items: `npm run build:web && firebase deploy`, `npm run dist` for Electron, manual mobile test on Android via Capacitor
-- Consider merging `feature/hardening-v2.1.0` to `master` after mobile review passes
+- Mobile viewport review with Playwright at 390x844
+- Android build via `npx cap sync android` and manual test
 
 ### Previous Work (v2.0.5 - Auth Fix)
 - **Electron Google Sign-In Fixed:** IPC handler opens web app in BrowserWindow for OAuth from https:// origin.
@@ -52,7 +57,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Firebase Operations Hardened:** `sendMessage` awaited, `registerPresence`/`updatePresence` async with error handling, `subscribeToUsers` has error callback, batch cleanup
 - **Memory Leaks Fixed:** Audio cache reuse in sounds.ts, AudioContext cleanup in VoiceStage.tsx, isMountedRef guards in App.tsx async ops
 - **Gemini Service Fixed:** Removed hardcoded API key fallback, added Firebase Remote Config path, AbortController for timeouts
-- **Test Suite:** 141 unit tests across 16 files (Vitest + Testing Library), expanded to 153 in v2.1.0. Playwright E2E smoke tests
+- **Test Suite:** 141 unit tests across 16 files (Vitest + Testing Library), expanded to 293 in v2.1.1. Playwright E2E smoke tests
 - **Auth Error Handling:** Specific error messages per Firebase error code, email link expiry, useAuth throws outside provider
 
 ### Action Items for Next Session
@@ -116,8 +121,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Pisscord is a private, multi-platform Discord clone built with React, TypeScript, and PeerJS. It enables direct P2P voice/video calling, text chat, screen sharing, and AI assistance via Pissbot (powered by Google's Gemini 2.5 Flash), with presence tracking through Firebase Realtime Database.
 
 **Platforms:** Desktop (Electron), Web Browser, Android (Capacitor), Mobile Web
-**Current Version:** 2.1.0
-**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v2.1.0
+**Current Version:** 2.1.1
+**Latest Release:** https://github.com/jamditis/pisscord/releases/tag/v2.1.1
 
 ## Key Architecture
 
@@ -404,9 +409,16 @@ Hardcoded in `services/firebase.ts` - production config already included.
 - `noUnusedLocals` and `noUnusedParameters` disabled (intentional)
 - React JSX transform (no need to import React in TSX files)
 
-## Recent Changes (v1.1.0 - v2.1.0)
+## Recent Changes (v1.1.0 - v2.1.1)
 
-### v2.1.0 (2026-02-11) — Stabilization & Hardening
+### v2.1.1 (2026-02-11) — Consolidated release
+- **Repo consolidation:** 8 stale branches deleted, 9 corrupted desktop.ini refs cleaned, remote tracking pruned
+- **Website updated:** Download links to v2.1.1, URLs to web.pisscord.app
+- **Test suite:** 293 tests across 23 files (new: AuthGate, SplashScreen, ThemeContext, github; expanded: firebase, logger, platform, unread, videoEmbed)
+- **Release notes script:** Updated for v2.1.1 with full changelog
+- **Screenshots organized:** 50 loose PNGs moved to gitignored `screenshots/`
+
+### v2.1.0 (2026-02-11) — Stabilization & hardening
 - **Crash Prevention:** `sendMessage` wrapped in async try/catch with error toast, Electron auth IPC has 120s timeout
 - **Ghost User Prevention:** `onDisconnect().remove()` called before `set()` in registerPresence/updatePresence
 - **Firebase Connection Monitoring:** Offline indicator banner, reconnection toast
