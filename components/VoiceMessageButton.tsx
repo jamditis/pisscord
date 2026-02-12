@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../contexts/ThemeContext';
 import { uploadFile } from '../services/firebase';
+import { logger } from '../services/logger';
 
 interface VoiceMessageButtonProps {
   onVoiceMessageSent: (audioUrl: string, duration: number, fileName: string, fileSize: number) => void;
@@ -35,6 +36,8 @@ export const VoiceMessageButton: React.FC<VoiceMessageButtonProps> = ({
   const audioDataRef = useRef<Float32Array[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingDurationRef = useRef<number>(0);
+  const isStoppingRef = useRef(false);
+  const stopRecordingRef = useRef<() => Promise<void>>();
 
   // Cleanup on unmount
   useEffect(() => {
@@ -119,9 +122,9 @@ export const VoiceMessageButton: React.FC<VoiceMessageButtonProps> = ({
 
       // Log audio track info
       const audioTracks = stream.getAudioTracks();
-      console.log('[VoiceMessage] Audio tracks:', audioTracks.length);
+      logger.debug('voiceMessage', `Audio tracks: ${audioTracks.length}`);
       audioTracks.forEach((track, i) => {
-        console.log(`[VoiceMessage] Track ${i}: label=${track.label}, enabled=${track.enabled}, muted=${track.muted}`);
+        logger.debug('voiceMessage', `Track ${i}: label=${track.label}, enabled=${track.enabled}, muted=${track.muted}`);
       });
 
       // Create audio context and processor
@@ -142,7 +145,7 @@ export const VoiceMessageButton: React.FC<VoiceMessageButtonProps> = ({
         if (audioDataRef.current.length % 11 === 1) {
           const max = Math.max(...Array.from(copy).map(Math.abs));
           const rms = Math.sqrt(copy.reduce((sum, x) => sum + x * x, 0) / copy.length);
-          console.log(`[VoiceMessage] Audio level - max: ${max.toFixed(4)}, rms: ${rms.toFixed(4)}`);
+          logger.debug('voiceMessage', `Audio level - max: ${max.toFixed(4)}, rms: ${rms.toFixed(4)}`);
         }
       };
 
@@ -150,31 +153,28 @@ export const VoiceMessageButton: React.FC<VoiceMessageButtonProps> = ({
       processor.connect(audioContext.destination);
 
       setIsRecording(true);
-      console.log('[VoiceMessage] Recording started with Web Audio API');
+      logger.info('voiceMessage', 'Recording started with Web Audio API');
 
       // Start duration timer
       timerRef.current = setInterval(() => {
-        setRecordingDuration(prev => {
-          const newDuration = prev + 1;
-          recordingDurationRef.current = newDuration;
-          if (newDuration >= MAX_DURATION) {
-            stopRecording();
-            return prev;
-          }
-          return newDuration;
-        });
+        recordingDurationRef.current += 1;
+        setRecordingDuration(recordingDurationRef.current);
+        if (recordingDurationRef.current >= MAX_DURATION) {
+          stopRecordingRef.current?.();
+        }
       }, 1000);
 
-    } catch (err: any) {
-      console.error('[VoiceMessage] Failed to start recording:', err);
-      setError(err.message || 'Microphone access denied');
+    } catch (err: unknown) {
+      logger.error('voiceMessage', 'Failed to start recording', err);
+      setError(err instanceof Error ? err.message : 'Microphone access denied');
     }
   }, []);
 
   const stopRecording = useCallback(async () => {
-    if (!isRecording) return;
+    if (!isRecording || isStoppingRef.current) return;
+    isStoppingRef.current = true;
 
-    console.log('[VoiceMessage] Stopping recording...');
+    logger.debug('voiceMessage', 'Stopping recording');
     setIsRecording(false);
 
     // Stop timer
@@ -209,36 +209,41 @@ export const VoiceMessageButton: React.FC<VoiceMessageButtonProps> = ({
     if (audioDataRef.current.length > 0) {
       setIsUploading(true);
       try {
-        console.log('[VoiceMessage] Encoding to WAV...', audioDataRef.current.length, 'chunks');
+        logger.debug('voiceMessage', `Encoding to WAV, ${audioDataRef.current.length} chunks`);
         const wavBlob = encodeToWav(audioDataRef.current, SAMPLE_RATE);
-        console.log('[VoiceMessage] WAV blob size:', wavBlob.size, 'bytes');
+        logger.debug('voiceMessage', `WAV blob size: ${wavBlob.size} bytes`);
 
         const fileName = `voice_${Date.now()}.wav`;
         const file = new File([wavBlob], fileName, { type: 'audio/wav' });
 
-        console.log('[VoiceMessage] Uploading file:', fileName);
+        logger.info('voiceMessage', `Uploading file: ${fileName}`);
         const url = await uploadFile(file);
-        console.log('[VoiceMessage] Upload complete:', url);
+        logger.info('voiceMessage', `Upload complete: ${url}`);
 
         onVoiceMessageSent(url, Math.max(finalDuration, 1), fileName, wavBlob.size);
       } catch (err) {
-        console.error('[VoiceMessage] Processing/upload failed:', err);
+        logger.error('voiceMessage', 'Processing/upload failed', err);
         setError('Failed to process voice message');
       } finally {
         setIsUploading(false);
         audioDataRef.current = [];
       }
     } else {
-      console.warn('[VoiceMessage] No audio data recorded');
+      logger.warn('voiceMessage', 'No audio data recorded');
       setError('No audio recorded');
     }
+
+    isStoppingRef.current = false;
   }, [isRecording, onVoiceMessageSent]);
+
+  stopRecordingRef.current = stopRecording;
 
   const cancelRecording = useCallback(async () => {
     if (!isRecording) return;
 
-    console.log('[VoiceMessage] Canceling recording...');
+    logger.debug('voiceMessage', 'Canceling recording');
     setIsRecording(false);
+    isStoppingRef.current = false;
     setRecordingDuration(0);
     recordingDurationRef.current = 0;
     audioDataRef.current = [];

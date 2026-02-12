@@ -567,4 +567,150 @@ describe('firebase service', () => {
       expect(onError).toHaveBeenCalledWith(expect.any(Error));
     });
   });
+
+  describe('message validation (isValidMessage filtering)', () => {
+    it('filters out invalid messages from subscription', () => {
+      const validMsg = {
+        id: '1',
+        sender: 'Test',
+        content: 'Hello',
+        timestamp: Date.now(),
+      };
+      const invalidMsg1 = { id: 123, sender: 'Test', content: 'Hello', timestamp: Date.now() }; // id is number
+      const invalidMsg2 = { sender: 'Test', content: 'Hello', timestamp: Date.now() }; // missing id
+      const invalidMsg3 = null; // null entry
+
+      let capturedCallback: any;
+      mockOnValue.mockImplementation((ref: any, callback: (snap: any) => void) => {
+        capturedCallback = callback;
+        return vi.fn();
+      });
+
+      const messages: any[] = [];
+      subscribeToMessages('test-channel', (msgs) => {
+        messages.push(...msgs);
+      });
+
+      // Trigger the callback with mixed valid/invalid data
+      capturedCallback({
+        val: () => ({
+          'msg1': validMsg,
+          'msg2': invalidMsg1,
+          'msg3': invalidMsg2,
+          'msg4': invalidMsg3,
+        }),
+      });
+
+      // Only the valid message should come through
+      expect(messages.length).toBe(1);
+      expect(messages[0].id).toBe('1');
+    });
+
+    it('filters messages where content is not a string', () => {
+      const invalidContentMsg = { id: 'x', sender: 'Test', content: 42, timestamp: Date.now() };
+
+      let capturedCallback: any;
+      mockOnValue.mockImplementation((ref: any, callback: (snap: any) => void) => {
+        capturedCallback = callback;
+        return vi.fn();
+      });
+
+      const messages: any[] = [];
+      subscribeToMessages('test-channel', (msgs) => {
+        messages.push(...msgs);
+      });
+
+      capturedCallback({
+        val: () => ({ 'msg1': invalidContentMsg }),
+      });
+
+      expect(messages.length).toBe(0);
+    });
+
+    it('filters messages where timestamp is not a number', () => {
+      const invalidTimestampMsg = { id: 'x', sender: 'Test', content: 'hi', timestamp: 'not-a-number' };
+
+      let capturedCallback: any;
+      mockOnValue.mockImplementation((ref: any, callback: (snap: any) => void) => {
+        capturedCallback = callback;
+        return vi.fn();
+      });
+
+      const messages: any[] = [];
+      subscribeToMessages('test-channel', (msgs) => {
+        messages.push(...msgs);
+      });
+
+      capturedCallback({
+        val: () => ({ 'msg1': invalidTimestampMsg }),
+      });
+
+      expect(messages.length).toBe(0);
+    });
+
+    it('returns empty array when snapshot has no data', () => {
+      let capturedCallback: any;
+      mockOnValue.mockImplementation((ref: any, callback: (snap: any) => void) => {
+        capturedCallback = callback;
+        return vi.fn();
+      });
+
+      const messages: any[] = [];
+      subscribeToMessages('test-channel', (msgs) => {
+        messages.push(...msgs);
+      });
+
+      capturedCallback({ val: () => null });
+
+      expect(messages.length).toBe(0);
+    });
+  });
+
+  describe('transcript caching with non-ASCII URLs', () => {
+    it('saveTranscript handles non-ASCII URL without crashing', async () => {
+      // URL with emoji/accented chars that would crash raw btoa()
+      const nonAsciiUrl = 'https://example.com/audio/caf\u00e9-r\u00e9sum\u00e9.wav';
+
+      // Should not throw
+      await expect(saveTranscript(nonAsciiUrl, 'test transcript')).resolves.not.toThrow();
+
+      // Verify set was called (i.e., urlToKey didn't crash)
+      expect(mockSet).toHaveBeenCalled();
+    });
+
+    it('saveTranscript handles URL with CJK characters', async () => {
+      const cjkUrl = 'https://example.com/audio/\u4f60\u597d\u4e16\u754c.mp3';
+
+      await expect(saveTranscript(cjkUrl, 'CJK transcript')).resolves.not.toThrow();
+      expect(mockSet).toHaveBeenCalled();
+    });
+
+    it('getTranscript handles non-ASCII URL without crashing', async () => {
+      const nonAsciiUrl = 'https://example.com/audio/caf\u00e9.wav';
+
+      mockGet.mockResolvedValueOnce({
+        exists: () => true,
+        val: () => ({ transcript: 'Found it', audioUrl: nonAsciiUrl, createdAt: 123 }),
+      });
+
+      const result = await getTranscript(nonAsciiUrl);
+      expect(result).toBe('Found it');
+    });
+
+    it('saveTranscript and getTranscript produce consistent keys for same URL', async () => {
+      const url = 'https://example.com/audio/\u00fc\u00f1\u00ee\u00e7\u00f6d\u00e9.wav';
+
+      // Save
+      await saveTranscript(url, 'unicode transcript');
+      const saveRefCall = mockRef.mock.calls[mockRef.mock.calls.length - 1];
+
+      // Get
+      mockGet.mockResolvedValueOnce({ exists: () => false, val: () => null });
+      await getTranscript(url);
+      const getRefCall = mockRef.mock.calls[mockRef.mock.calls.length - 1];
+
+      // Both should use the same ref path (same urlToKey output)
+      expect(saveRefCall).toEqual(getRefCall);
+    });
+  });
 });

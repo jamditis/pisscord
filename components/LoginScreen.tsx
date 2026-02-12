@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { sendEmailLink, signInWithGoogle } from '../services/auth';
+import { logger } from '../services/logger';
 
 interface LoginScreenProps {
   error?: string | null;
@@ -28,7 +29,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ error: authError }) =>
       await sendEmailLink(email);
       setEmailSent(true);
     } catch (err: any) {
-      console.error('Email link error:', err);
+      logger.error('auth', 'Email link error', err);
       setError(err.message || 'Failed to send magic link');
     } finally {
       setLoading(false);
@@ -42,7 +43,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ error: authError }) =>
     try {
       await signInWithGoogle();
     } catch (err: any) {
-      console.error('Google sign-in error:', err);
+      logger.error('auth', 'Google sign-in error', err);
       if (!err.message?.includes('Redirecting')) {
         setError(err.message || 'Google sign-in failed');
       }

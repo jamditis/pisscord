@@ -11,6 +11,7 @@ import { VideoEmbed } from './VideoEmbed';
 import { MarkdownToolbar } from './MarkdownToolbar';
 import { QuickEmojiPicker } from './QuickEmojiPicker';
 import { extractVideoEmbeds, isVideoFileUrl } from '../services/videoEmbed';
+import { logger } from '../services/logger';
 
 // Simple Discord-style Markdown renderer
 const renderMarkdown = (text: string): React.ReactNode[] => {
@@ -50,12 +51,18 @@ const renderMarkdown = (text: string): React.ReactNode[] => {
         // ~~strikethrough~~
         result.push(<del key={`s-${innerKey++}`} className="line-through opacity-70">{innerMatch[5]}</del>);
       } else if (innerMatch[6] && innerMatch[7]) {
-        // [link](url)
-        result.push(
-          <a key={`a-${innerKey++}`} href={innerMatch[7]} target="_blank" rel="noopener noreferrer" className="text-discord-link hover:underline underline-offset-2 decoration-discord-link/40 hover:decoration-discord-link font-medium">
-            {innerMatch[6]}
-          </a>
-        );
+        // [link](url) — only allow safe protocols to prevent javascript: XSS
+        const href = innerMatch[7];
+        if (/^https?:\/\//i.test(href) || /^mailto:/i.test(href)) {
+          result.push(
+            <a key={`a-${innerKey++}`} href={href} target="_blank" rel="noopener noreferrer" className="text-discord-link hover:underline underline-offset-2 decoration-discord-link/40 hover:decoration-discord-link font-medium">
+              {innerMatch[6]}
+            </a>
+          );
+        } else {
+          // Unsafe protocol — render as plain text
+          result.push(<span key={`a-${innerKey++}`}>[{innerMatch[6]}]({href})</span>);
+        }
       } else if (innerMatch[8]) {
         // Plain URL
         result.push(
@@ -76,53 +83,8 @@ const renderMarkdown = (text: string): React.ReactNode[] => {
     return result.length > 0 ? result : [str];
   };
 
-  while ((match = codeBlockRegex.exec(text)) !== null) {
-    // Add text before code block (with inline processing)
-    if (match.index > lastIndex) {
-      const beforeText = text.substring(lastIndex, match.index);
-      // Process headers and lists in non-code sections
-      const lines = beforeText.split('\n');
-      lines.forEach((line, i) => {
-        if (line.startsWith('# ')) {
-          elements.push(<h1 key={key++} className="text-xl font-bold text-white mt-2 mb-1">{processInlineMarkdown(line.slice(2))}</h1>);
-        } else if (line.startsWith('## ')) {
-          elements.push(<h2 key={key++} className="text-lg font-bold text-white mt-2 mb-1">{processInlineMarkdown(line.slice(3))}</h2>);
-        } else if (line.startsWith('### ')) {
-          elements.push(<h3 key={key++} className="text-base font-bold text-white mt-1 mb-1">{processInlineMarkdown(line.slice(4))}</h3>);
-        } else if (line.match(/^[-*] \[x\] /)) {
-          elements.push(<div key={key++} className="flex items-center gap-2"><input type="checkbox" checked disabled className="accent-discord-green" /><span className="line-through opacity-70">{processInlineMarkdown(line.slice(6))}</span></div>);
-        } else if (line.match(/^[-*] \[ \] /)) {
-          elements.push(<div key={key++} className="flex items-center gap-2"><input type="checkbox" disabled /><span>{processInlineMarkdown(line.slice(6))}</span></div>);
-        } else if (line.match(/^[-*] /)) {
-          elements.push(<div key={key++} className="flex items-start gap-2 ml-2"><span className="text-discord-muted">•</span><span>{processInlineMarkdown(line.slice(2))}</span></div>);
-        } else if (line.match(/^\d+\. /)) {
-          const num = line.match(/^(\d+)\. /)?.[1];
-          elements.push(<div key={key++} className="flex items-start gap-2 ml-2"><span className="text-discord-muted">{num}.</span><span>{processInlineMarkdown(line.replace(/^\d+\. /, ''))}</span></div>);
-        } else if (line.startsWith('> ')) {
-          elements.push(<blockquote key={key++} className="border-l-4 border-discord-muted pl-3 py-1 text-discord-text/80 italic">{processInlineMarkdown(line.slice(2))}</blockquote>);
-        } else {
-          elements.push(<span key={key++}>{processInlineMarkdown(line)}{i < lines.length - 1 ? <br /> : null}</span>);
-        }
-      });
-    }
-
-    // Add code block
-    const language = match[1] || '';
-    const code = match[2].trim();
-    elements.push(
-      <pre key={key++} className="bg-discord-dark rounded-lg p-3 my-2 overflow-x-auto max-w-full">
-        {language && <div className="text-[10px] text-discord-muted uppercase mb-2">{language}</div>}
-        <code className="text-sm font-mono text-green-400 whitespace-pre-wrap break-words">{code}</code>
-      </pre>
-    );
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  // Process remaining text after last code block
-  if (lastIndex < text.length) {
-    const remainingText = text.substring(lastIndex);
-    const lines = remainingText.split('\n');
+  const processLines = (section: string) => {
+    const lines = section.split('\n');
     lines.forEach((line, i) => {
       if (line.startsWith('# ')) {
         elements.push(<h1 key={key++} className="text-xl font-bold text-white mt-2 mb-1">{processInlineMarkdown(line.slice(2))}</h1>);
@@ -145,6 +107,30 @@ const renderMarkdown = (text: string): React.ReactNode[] => {
         elements.push(<span key={key++}>{processInlineMarkdown(line)}{i < lines.length - 1 ? <br /> : null}</span>);
       }
     });
+  };
+
+  while ((match = codeBlockRegex.exec(text)) !== null) {
+    // Add text before code block (with inline processing)
+    if (match.index > lastIndex) {
+      processLines(text.substring(lastIndex, match.index));
+    }
+
+    // Add code block
+    const language = match[1] || '';
+    const code = match[2].trim();
+    elements.push(
+      <pre key={key++} className="bg-discord-dark rounded-lg p-3 my-2 overflow-x-auto max-w-full">
+        {language && <div className="text-[10px] text-discord-muted uppercase mb-2">{language}</div>}
+        <code className="text-sm font-mono text-green-400 whitespace-pre-wrap break-words">{code}</code>
+      </pre>
+    );
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Process remaining text after last code block
+  if (lastIndex < text.length) {
+    processLines(text.substring(lastIndex));
   }
 
   return elements;
@@ -173,9 +159,10 @@ interface ChatAreaProps {
   onSendMessage: (text: string, attachment?: Message['attachment']) => void;
   onSendAIMessage: (text: string, response: string) => void;
   onOpenReportModal?: () => void;
+  onError?: (title: string, message?: string) => void;
 }
 
-export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUsers, onSendMessage, onSendAIMessage, onOpenReportModal }) => {
+export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUsers, onSendMessage, onSendAIMessage, onOpenReportModal, onError }) => {
   const [inputValue, setInputValue] = useState('');
   const [isTypingAI, setIsTypingAI] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -186,6 +173,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [showMobileToolbar, setShowMobileToolbar] = useState(false);
   const [collapsedMedia, setCollapsedMedia] = useState<Set<string>>(new Set());
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -268,6 +256,19 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
     scrollToBottom();
   }, [messages]);
 
+  // Manage object URL for pending file image preview to prevent memory leaks
+  useEffect(() => {
+    if (pendingFile?.type === 'image') {
+      const url = URL.createObjectURL(pendingFile.file);
+      setPreviewUrl(url);
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [pendingFile]);
+
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     // Enter sends, Shift+Enter creates new line (only applies to textarea)
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -310,8 +311,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
         size: pendingFile.file.size
       });
     } catch (error) {
-      console.error('Upload failed', error);
-      alert('File upload failed.');
+      logger.error('chat', `File upload failed: ${error instanceof Error ? error.message : String(error)}`);
+      onError?.('Upload failed', 'File could not be uploaded. Check your connection.');
     } finally {
       setIsUploading(false);
       setPendingFile(null);
@@ -359,7 +360,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
           onSendAIMessage(text, response);
       } catch (err: any) {
           const errorMsg = `AI Error: ${err.message || "Unknown error"}`;
-          console.error(errorMsg);
+          logger.error('chat', errorMsg);
           onSendAIMessage(text, "😵 Pissbot crashed! Check debug logs.");
       } finally {
           setIsTypingAI(false);
@@ -898,9 +899,9 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ channel, messages, onlineUse
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
-                  {pendingFile.type === 'image' ? (
+                  {pendingFile.type === 'image' && previewUrl ? (
                     <img
-                      src={URL.createObjectURL(pendingFile.file)}
+                      src={previewUrl}
                       alt="Preview"
                       className="w-12 h-12 object-cover rounded mr-3"
                     />

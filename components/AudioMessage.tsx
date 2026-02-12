@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../contexts/ThemeContext';
 import { transcribeAudio } from '../services/geminiService';
 import { saveTranscript, getTranscript } from '../services/firebase';
+import { logger } from '../services/logger';
 
 // Simple markdown renderer for transcripts (bold, italic, line breaks)
 const renderTranscriptMarkdown = (text: string): React.ReactNode[] => {
@@ -122,7 +123,7 @@ export const AudioMessage: React.FC<AudioMessageProps> = ({
       setIsLoading(false);
       const errorCode = audio.error?.code;
       const errorMessage = audio.error?.message || 'Unknown error';
-      console.error('Audio load error:', { code: errorCode, message: errorMessage, url });
+      logger.error('audio', `Audio load error: code=${errorCode}, message=${errorMessage}, url=${url}`);
       setError(`Failed to load audio (${errorCode || 'unknown'})`);
     };
 
@@ -153,7 +154,7 @@ export const AudioMessage: React.FC<AudioMessageProps> = ({
         await audio.play();
         setIsPlaying(true);
       } catch (err) {
-        console.error('Playback failed:', err);
+        logger.error('audio', 'Playback failed', err);
         setError('Playback blocked - tap to retry');
         setIsPlaying(false);
       }
@@ -209,7 +210,7 @@ export const AudioMessage: React.FC<AudioMessageProps> = ({
         saveTranscript(url, result);
       }
     } catch (err) {
-      console.error('Transcription failed:', err);
+      logger.error('audio', 'Transcription failed', err);
       setTranscript('⚠️ Transcription failed');
       setShowTranscript(true);
     } finally {

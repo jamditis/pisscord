@@ -1,10 +1,4 @@
 
-export interface User {
-  id: string;
-  username: string;
-  isSelf: boolean;
-}
-
 export interface UserProfile {
   displayName: string;
   statusMessage: string;

@@ -7,6 +7,9 @@
  * Web-safe: Capacitor modules are loaded conditionally to support pure browser deployments.
  */
 
+import type { ElectronUpdateInfo, ElectronDownloadProgress } from '../types';
+import { logger } from './logger';
+
 // ============================================================================
 // Capacitor Detection & Lazy Loading
 // ============================================================================
@@ -42,7 +45,7 @@ const loadCapacitorModules = async () => {
     CapacitorApp = app.App;
     CapacitorStatusBar = { StatusBar: statusBar.StatusBar, Style: statusBar.Style };
   } catch (e) {
-    console.warn('[Platform] Failed to load Capacitor modules:', e);
+    logger.warn('platform', 'Failed to load Capacitor modules', e);
   }
 };
 
@@ -68,14 +71,14 @@ const isMobileDevice = isNativePlatform || (isMobileUserAgent && hasTouchScreen)
 
 export const Platform = {
   /** Running in Electron desktop app */
-  isElectron: typeof window !== 'undefined' && !!(window as any).electronAPI,
+  isElectron: typeof window !== 'undefined' && !!window.electronAPI,
 
   /** Running in Capacitor mobile app */
   isCapacitor: isNativePlatform,
 
   /** Running in a web browser (not Electron or Capacitor) */
   isWeb: typeof window !== 'undefined' &&
-         !(window as any).electronAPI &&
+         !window.electronAPI &&
          !isNativePlatform,
 
   /** Running on iOS (Capacitor native app) */
@@ -98,7 +101,7 @@ export const Platform = {
 
   /** Get the current platform name */
   getName(): 'electron' | 'ios' | 'android' | 'web' | 'mobile-web' {
-    if ((window as any).electronAPI) return 'electron';
+    if (window.electronAPI) return 'electron';
     if (capacitorPlatform === 'ios') return 'ios';
     if (capacitorPlatform === 'android') return 'android';
     if (isMobileUserAgent && hasTouchScreen) return 'mobile-web';
@@ -113,7 +116,7 @@ export const Platform = {
 export const ClipboardService = {
   async write(text: string): Promise<void> {
     if (Platform.isElectron) {
-      (window as any).electronAPI.copyToClipboard(text);
+      window.electronAPI?.copyToClipboard(text);
     } else if (Platform.isCapacitor && CapacitorClipboard) {
       await CapacitorClipboard.write({ string: text });
     } else {
@@ -137,22 +140,7 @@ export const ClipboardService = {
 // Logging
 // ============================================================================
 
-export const LogService = {
-  log(type: 'info' | 'error' | 'webrtc' | 'debug', message: string): void {
-    // Console log always
-    const prefix = `[${type.toUpperCase()}]`;
-    if (type === 'error') {
-      console.error(prefix, message);
-    } else {
-      console.log(prefix, message);
-    }
-
-    // File logging in Electron
-    if (Platform.isElectron && (window as any).electronAPI?.logToFile) {
-      (window as any).electronAPI.logToFile(`${prefix} ${message}`);
-    }
-  }
-};
+// Removed: LogService is now centralized in services/logger.ts
 
 // ============================================================================
 // External Links
@@ -161,7 +149,7 @@ export const LogService = {
 export const LinkService = {
   openExternal(url: string): void {
     if (Platform.isElectron) {
-      (window as any).electronAPI.openExternal(url);
+      window.electronAPI?.openExternal(url);
     } else {
       // Capacitor and Web - open in new tab/browser
       window.open(url, '_blank', 'noopener,noreferrer');
@@ -179,38 +167,46 @@ export const UpdateService = {
 
   downloadUpdate(): void {
     if (Platform.isElectron) {
-      (window as any).electronAPI.downloadUpdate();
+      window.electronAPI?.downloadUpdate();
     }
   },
 
   installUpdate(): void {
     if (Platform.isElectron) {
-      (window as any).electronAPI.installUpdate();
+      window.electronAPI?.installUpdate();
     }
   },
 
-  onUpdateAvailable(callback: (data: any) => void): void {
+  onUpdateAvailable(callback: (data: ElectronUpdateInfo) => void): (() => void) {
     if (Platform.isElectron) {
-      (window as any).electronAPI.onUpdateAvailable(callback);
+      window.electronAPI?.onUpdateAvailable(callback);
+      return () => { window.electronAPI?.removeAllListeners('update-available'); };
     }
+    return () => {};
   },
 
-  onUpdateProgress(callback: (data: any) => void): void {
+  onUpdateProgress(callback: (data: ElectronDownloadProgress) => void): (() => void) {
     if (Platform.isElectron) {
-      (window as any).electronAPI.onUpdateDownloadProgress(callback);
+      window.electronAPI?.onUpdateDownloadProgress(callback);
+      return () => { window.electronAPI?.removeAllListeners('update-download-progress'); };
     }
+    return () => {};
   },
 
-  onUpdateDownloaded(callback: (data: any) => void): void {
+  onUpdateDownloaded(callback: (data: ElectronUpdateInfo) => void): (() => void) {
     if (Platform.isElectron) {
-      (window as any).electronAPI.onUpdateDownloaded(callback);
+      window.electronAPI?.onUpdateDownloaded(callback);
+      return () => { window.electronAPI?.removeAllListeners('update-downloaded'); };
     }
+    return () => {};
   },
 
-  onUpdateError(callback: (message: string) => void): void {
+  onUpdateError(callback: (message: string) => void): (() => void) {
     if (Platform.isElectron) {
-      (window as any).electronAPI.onUpdateError(callback);
+      window.electronAPI?.onUpdateError(callback);
+      return () => { window.electronAPI?.removeAllListeners('update-error'); };
     }
+    return () => {};
   }
 };
 
@@ -224,7 +220,7 @@ export const ScreenShareService = {
 
   async getSources(): Promise<Array<{ id: string; name: string; thumbnail: string }> | null> {
     if (Platform.isElectron) {
-      return await (window as any).electronAPI.getDesktopSources();
+      return await window.electronAPI?.getDesktopSources() || null;
     }
     return null;
   }
@@ -237,7 +233,7 @@ export const ScreenShareService = {
 export const WindowService = {
   showWindow(): void {
     if (Platform.isElectron) {
-      (window as any).electronAPI.showWindow();
+      window.electronAPI?.showWindow();
     }
   }
 };
@@ -338,16 +334,20 @@ export const OrientationService = {
 // ============================================================================
 
 export const AppLifecycleService = {
-  onBackButton(callback: () => void): void {
+  onBackButton(callback: () => void): (() => void) {
     if (Platform.isCapacitor && CapacitorApp) {
-      CapacitorApp.addListener('backButton', callback);
+      const handle = CapacitorApp.addListener('backButton', callback);
+      return () => { handle?.remove?.(); };
     }
+    return () => {};
   },
 
-  onAppStateChange(callback: (state: { isActive: boolean }) => void): void {
+  onAppStateChange(callback: (state: { isActive: boolean }) => void): (() => void) {
     if (Platform.isCapacitor && CapacitorApp) {
-      CapacitorApp.addListener('appStateChange', callback);
+      const handle = CapacitorApp.addListener('appStateChange', callback);
+      return () => { handle?.remove?.(); };
     }
+    return () => {};
   },
 
   async exitApp(): Promise<void> {

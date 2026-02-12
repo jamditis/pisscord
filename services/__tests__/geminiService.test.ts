@@ -10,7 +10,7 @@ const { mockGenerateContent, mockGetPissbotConfig, mockGetGeminiApiKey } = vi.ho
     documentation: null,
     lastUpdated: Date.now(),
   }),
-  mockGetGeminiApiKey: vi.fn().mockResolvedValue(null),
+  mockGetGeminiApiKey: vi.fn().mockResolvedValue('test-firebase-key'),
 }));
 
 vi.mock('../firebase', () => ({
@@ -47,9 +47,7 @@ describe('geminiService', () => {
       documentation: null,
       lastUpdated: Date.now(),
     });
-    mockGetGeminiApiKey.mockResolvedValue(null);
-    // Ensure env var is set so getClient() finds a key by default
-    (import.meta as any).env = { VITE_GEMINI_API_KEY: 'test-key' };
+    mockGetGeminiApiKey.mockResolvedValue('test-firebase-key');
   });
 
   afterEach(() => {
@@ -80,9 +78,8 @@ describe('geminiService', () => {
       expect(result).toContain('API error');
     });
 
-    // Note: The "no API key" path can't be tested because Vitest statically
-    // replaces import.meta.env.VITE_GEMINI_API_KEY at transform time from .env.local.
-    // Runtime mutation of import.meta.env has no effect on the already-transformed code.
+    // Note: The "no API key" path can't be tested because we need a valid API key
+    // for getClient() to work. The mock provides 'test-firebase-key' from Firebase.
 
     it('includes conversation history in request', async () => {
       mockGenerateContent.mockResolvedValue({ text: 'response' });
@@ -124,8 +121,7 @@ describe('geminiService', () => {
   });
 
   describe('transcribeAudio', () => {
-    // Note: Same as above — can't test the "no API key" path at runtime
-    // because Vitest/Vite statically injects env vars from .env.local.
+    // Note: API key is provided via Firebase mock, so tests can run successfully.
 
     it('returns error when fetch returns non-ok', async () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({

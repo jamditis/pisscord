@@ -85,11 +85,13 @@ export const logger = {
   info(module: string, message: string): void {
     emit('info', module, message);
   },
-  warn(module: string, message: string): void {
-    emit('warn', module, message);
+  warn(module: string, message: string, error?: unknown): void {
+    const msg = error ? `${message}: ${error instanceof Error ? error.message : String(error)}` : message;
+    emit('warn', module, msg);
   },
-  error(module: string, message: string): void {
-    emit('error', module, message);
+  error(module: string, message: string, error?: unknown): void {
+    const msg = error ? `${message}: ${error instanceof Error ? error.message : String(error)}` : message;
+    emit('error', module, msg);
   },
 
   /** Get the current log buffer (newest first) */

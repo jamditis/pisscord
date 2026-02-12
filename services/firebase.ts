@@ -214,6 +214,16 @@ function isValidPresenceUser(raw: unknown): raw is PresenceUser {
          typeof obj.lastSeen === 'number';
 }
 
+/** Validate that a raw Firebase value looks like a Message */
+function isValidMessage(raw: unknown): raw is Message {
+  if (typeof raw !== 'object' || raw === null) return false;
+  const obj = raw as Record<string, unknown>;
+  return typeof obj.id === 'string' &&
+         typeof obj.sender === 'string' &&
+         typeof obj.content === 'string' &&
+         typeof obj.timestamp === 'number';
+}
+
 export const subscribeToUsers = (
   onUsersUpdate: (users: PresenceUser[]) => void,
   onError?: (error: Error) => void
@@ -371,7 +381,11 @@ export const subscribeToMessages = (
     (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const messageList = Object.values(data) as Message[];
+        const rawValues = Object.values(data);
+        const messageList = rawValues.filter(isValidMessage);
+        if (messageList.length !== rawValues.length) {
+          logger.warn('firebase', `Filtered ${rawValues.length - messageList.length} invalid messages in ${channelId}`);
+        }
         onMessageUpdate(messageList);
       } else {
         onMessageUpdate([]);
@@ -420,8 +434,8 @@ export const cleanupOldMessages = async (channelIds: string[]) => {
 
 // Create a safe key from URL (Firebase keys can't contain . # $ [ ] /)
 const urlToKey = (url: string): string => {
-  // Use btoa to encode, then replace unsafe characters
-  return btoa(url).replace(/[.#$\[\]/]/g, '_').slice(0, 200);
+  // Use btoa with safe encoding for non-ASCII characters
+  return btoa(unescape(encodeURIComponent(url))).replace(/[.#$\[\]/]/g, '_').slice(0, 200);
 };
 
 /**

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Platform, UpdateService, LinkService } from '../services/platform';
 import { useTheme } from '../contexts/ThemeContext';
+import { logger } from '../services/logger';
 
 interface ReleaseNotesModalProps {
   version: string;
@@ -30,7 +31,7 @@ export function markVersionAsSeen(version: string): void {
   try {
     localStorage.setItem(STORAGE_KEY, version);
   } catch (error) {
-    console.error('[ReleaseNotes] Failed to save version:', error);
+    logger.error('releaseNotes', 'Failed to save version', error);
   }
 }
 

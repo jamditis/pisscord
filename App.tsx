@@ -11,7 +11,6 @@ import { UserSettingsModal } from './components/UserSettingsModal';
 import { ScreenPickerModal } from './components/ScreenPickerModal';
 import { ReportIssueModal } from './components/ReportIssueModal';
 import { ToastContainer, useToast } from './components/Toast';
-import { ConfirmModal } from './components/ConfirmModal';
 import { ContextMenu, useContextMenu } from './components/ContextMenu';
 import { MobileNav, MobileView } from './components/MobileNav';
 import { SplashScreen } from './components/SplashScreen';
@@ -84,19 +83,7 @@ export default function App() {
   // --- TOAST, CONFIRM & CONTEXT MENU ---
   const toast = useToast();
   const { contextMenu, showContextMenu, hideContextMenu } = useContextMenu();
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    confirmText?: string;
-    cancelText?: string;
-    confirmStyle?: 'danger' | 'primary';
-    onConfirm: () => void;
-  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
-  // Pending call state for incoming call confirmation
-  const pendingCallRef = useRef<MediaConnection | null>(null);
-  
   // --- STATE: Data ---
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
@@ -224,6 +211,7 @@ export default function App() {
   const myStreamRef = useRef<MediaStream | null>(null);
   const activeVoiceChannelIdRef = useRef<string | null>(activeVoiceChannelId);
   const audioProcessorRef = useRef<AudioProcessor | null>(null);
+  const onlineUsersRef = useRef<PresenceUser[]>([]);
 
   useEffect(() => {
     isAudioEnabledRef.current = isAudioEnabled;
@@ -241,6 +229,10 @@ export default function App() {
     activeVoiceChannelIdRef.current = activeVoiceChannelId;
   }, [activeVoiceChannelId]);
 
+  useEffect(() => {
+    onlineUsersRef.current = onlineUsers;
+  }, [onlineUsers]);
+
   const activeChannel = INITIAL_CHANNELS.find(c => c.id === activeChannelId) || INITIAL_CHANNELS[0];
 
   // --- SUBSCRIPTIONS ---
@@ -248,15 +240,17 @@ export default function App() {
       // Subscribe to messages for the active channel
       if (activeChannel.id === '4') {
           // Dev Updates Channel - Fetch from GitHub (Releases + Events)
+          let cancelled = false;
           Promise.all([fetchGitHubReleases(), fetchGitHubEvents()]).then(([releases, events]) => {
+              if (cancelled) return;
               const allMessages = [...releases, ...events].sort((a, b) => a.timestamp - b.timestamp);
-              
+
               // Add Roadmap as a pinned message (fake timestamp)
               const roadmapMessage: Message = {
                   id: 'roadmap',
                   sender: 'System',
                   content: "# 🗺️ Roadmap\n\n- [x] Group Calls\n- [x] File Sharing\n- [x] Profile Pictures\n- [x] Mobile App\n- [x] Theme Customization\n- [x] End-to-End Encryption\n- [x] Web Browser Version\n- [ ] Direct Messages (DMs)\n- [ ] iOS App\n\n*Updates every commit.*",
-                  timestamp: Date.now(), // Always at bottom? Or top? 
+                  timestamp: Date.now(), // Always at bottom? Or top?
                   // If we want it at top, set timestamp 0. If bottom, Date.now().
                   // Actually, let's just put it in the list.
                   isAi: false
@@ -266,7 +260,12 @@ export default function App() {
                   ...prev,
                   '4': [...allMessages, roadmapMessage]
               }));
+          }).catch(err => {
+              if (!cancelled) {
+                  logger.error('app', 'Failed to fetch dev updates', err);
+              }
           });
+          return () => { cancelled = true; };
       } else if (activeChannel.type !== ChannelType.VOICE) {
           // Mark channel as read when viewing it
           markChannelAsRead(activeChannelId);
@@ -359,7 +358,7 @@ export default function App() {
     };
 
     // Capacitor (native mobile apps)
-    AppLifecycleService.onAppStateChange(({ isActive }) => handleAppStateChange(isActive));
+    const removeAppStateListener = AppLifecycleService.onAppStateChange(({ isActive }) => handleAppStateChange(isActive));
 
     // Web Visibility API (mobile web browsers like Safari, Chrome mobile)
     const handleVisibilityChange = () => {
@@ -440,8 +439,12 @@ export default function App() {
     });
 
     // Setup auto-updater listeners (Electron only - no-op on other platforms)
+    let removeUpdateAvailable = () => {};
+    let removeUpdateProgress = () => {};
+    let removeUpdateDownloaded = () => {};
+    let removeUpdateError = () => {};
     if (UpdateService.isSupported) {
-      UpdateService.onUpdateAvailable((data: any) => {
+      removeUpdateAvailable = UpdateService.onUpdateAvailable(data => {
         if (!isMountedRef.current) return;
         log(`Update available: ${data.version}`, 'info');
         setUpdateInfo({
@@ -453,7 +456,7 @@ export default function App() {
         setShowUpdateModal(true);
       });
 
-      UpdateService.onUpdateProgress((data: any) => {
+      removeUpdateProgress = UpdateService.onUpdateProgress(data => {
         if (!isMountedRef.current) return;
         log(`Downloading update: ${data.percent}%`, 'info');
         setUpdateInfo(prev => prev ? {
@@ -463,7 +466,7 @@ export default function App() {
         } : null);
       });
 
-      UpdateService.onUpdateDownloaded((data: any) => {
+      removeUpdateDownloaded = UpdateService.onUpdateDownloaded(data => {
         if (!isMountedRef.current) return;
         log(`Update downloaded: ${data.version}`, 'info');
         setUpdateInfo(prev => prev ? {
@@ -473,7 +476,7 @@ export default function App() {
         } : null);
       });
 
-      UpdateService.onUpdateError((message: string) => {
+      removeUpdateError = UpdateService.onUpdateError((message: string) => {
         log(`Update error: ${message}`, 'error');
       });
     }
@@ -575,6 +578,11 @@ export default function App() {
     return () => {
       isMountedRef.current = false;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      removeAppStateListener();
+      removeUpdateAvailable();
+      removeUpdateProgress();
+      removeUpdateDownloaded();
+      removeUpdateError();
       if (peerInstance.current) {
           if (peerInstance.current.id) removePresence(peerInstance.current.id);
           peerInstance.current.destroy();
@@ -744,7 +752,7 @@ export default function App() {
           audioProcessorRef.current = null;
       }
 
-      if (myStream) myStream.getTracks().forEach(t => t.stop());
+      if (myStreamRef.current) myStreamRef.current.getTracks().forEach(t => t.stop());
       
       setMyStream(null);
       setRemoteStreams(new Map());
@@ -821,11 +829,20 @@ export default function App() {
 
   const handleAcceptCall = async (call: MediaConnection) => {
       setConnectionState(ConnectionState.CONNECTING);
-      // Move user to voice channel view automatically
-      const voiceChan = INITIAL_CHANNELS.find(c => c.type === ChannelType.VOICE);
+      // Route to the caller's voice channel (not just the first one)
+      const callerUser = onlineUsersRef.current.find(u => u.peerId === call.peer);
+      const callerChannelId = callerUser?.voiceChannelId;
+      const voiceChan = callerChannelId
+        ? INITIAL_CHANNELS.find(c => c.id === callerChannelId)
+        : INITIAL_CHANNELS.find(c => c.type === ChannelType.VOICE);
       if (voiceChan) {
           setActiveChannelId(voiceChan.id);
           setActiveVoiceChannelId(voiceChan.id);
+
+          // Update presence so other users see us in this voice channel
+          if (myPeerId) {
+              updatePresence(myPeerId, userProfile, voiceChan.id);
+          }
       }
 
       try {
@@ -843,7 +860,7 @@ export default function App() {
 
       const initiateCall = async () => {
           // Only set connecting if we aren't already connected
-          if (connectionState !== ConnectionState.CONNECTED) {
+          if (connectionStateRef.current !== ConnectionState.CONNECTED) {
              setConnectionState(ConnectionState.CONNECTING);
           }
 
@@ -862,7 +879,7 @@ export default function App() {
               const conn = peerInstance.current!.connect(remoteId);
               setupDataConnection(conn);
               
-              if (connectionState !== ConnectionState.CONNECTED) {
+              if (connectionStateRef.current !== ConnectionState.CONNECTED) {
                   // Don't play outgoing call sound for voice channel joins
                   // toast is handled by joinVoiceChannel
               } else {
@@ -1181,7 +1198,7 @@ export default function App() {
       // Build message object - only include attachment if it exists
       // Firebase RTDB doesn't allow undefined values
       const newMessage: Message = {
-          id: Date.now().toString() + Math.random().toString(),
+          id: crypto.randomUUID(),
           sender,
           content: text,
           timestamp: Date.now(),
@@ -1323,7 +1340,7 @@ export default function App() {
       // Only play voice call audio elements, not chat audio messages
       const voiceAudioElements = document.querySelectorAll('audio[data-voice-call]');
       voiceAudioElements.forEach(el => {
-          (el as HTMLAudioElement).play().catch(e => console.error("Still failed to play:", e));
+          (el as HTMLAudioElement).play().catch(e => logger.error('audio', 'Still failed to play after unlock', e));
       });
       audioUnlockDismissedRef.current = true;
       setAudioUnlockNeeded(false);
@@ -1632,6 +1649,7 @@ export default function App() {
                     onSendMessage={(text, attachment) => addMessage(chatChannel.id, text, userProfile.displayName, false, attachment)}
                     onSendAIMessage={(text, response) => addMessage(chatChannel.id, response, 'Pissbot', true)}
                     onOpenReportModal={() => setShowReportModal(true)}
+                    onError={(title, message) => toast.error(title, message)}
                   />
                 </motion.div>
               )}
@@ -1915,6 +1933,7 @@ export default function App() {
                     onSendMessage={(text, attachment) => addMessage(activeChannel.id, text, userProfile.displayName, false, attachment)}
                     onSendAIMessage={(text, response) => addMessage(activeChannel.id, response, 'Pissbot', true)}
                     onOpenReportModal={() => setShowReportModal(true)}
+                    onError={(title, message) => toast.error(title, message)}
                  />
                  <div
                     className="relative h-full"
@@ -1943,26 +1962,6 @@ export default function App() {
 
       {/* Toast Notifications */}
       <ToastContainer toasts={toast.toasts} onDismiss={toast.dismissToast} />
-
-      {/* Confirm Modal */}
-      <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        title={confirmModal.title}
-        message={confirmModal.message}
-        confirmText={confirmModal.confirmText}
-        cancelText={confirmModal.cancelText}
-        confirmStyle={confirmModal.confirmStyle}
-        onConfirm={confirmModal.onConfirm}
-        onCancel={() => {
-            // If there's a pending call, close it
-            if (pendingCallRef.current) {
-                stopLoopingSound(); // Stop the ringing
-                pendingCallRef.current.close();
-                pendingCallRef.current = null;
-            }
-            setConfirmModal(prev => ({ ...prev, isOpen: false }));
-        }}
-      />
 
       {/* Context Menu */}
       {contextMenu && (

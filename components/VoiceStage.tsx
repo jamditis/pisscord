@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
+import React, { useEffect, useRef, useState, useCallback, memo, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConnectionState, UserProfile, PresenceUser, Channel, ChannelType } from '../types';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useTheme } from '../contexts/ThemeContext';
+import { logger } from '../services/logger';
 
 // Memoized Mobile Video Tile - defined OUTSIDE VoiceStage to prevent recreation
 const MobileVideoTile = memo(({
@@ -42,7 +43,7 @@ const MobileVideoTile = memo(({
     if (el.srcObject !== stream) {
       el.srcObject = stream;
       // Mobile WebView needs explicit play
-      el.play().catch(e => console.log(`Video play error: ${e.message}`));
+      el.play().catch(e => logger.debug('voiceStage', `Video play error: ${e.message}`));
     }
 
     return () => {
@@ -117,6 +118,39 @@ const MobileVideoTile = memo(({
     </div>
   );
 });
+MobileVideoTile.displayName = 'MobileVideoTile';
+
+// Mobile control button - defined OUTSIDE VoiceStage to prevent recreation on every render
+const MobileControlButton: React.FC<{
+  onClick: () => void;
+  active?: boolean;
+  danger?: boolean;
+  icon: string;
+  label: string;
+}> = ({ onClick, active, danger, icon, label }) => (
+  <motion.button
+    onClick={onClick}
+    whileTap={{ scale: 0.9 }}
+    className={`flex flex-col items-center justify-center gap-1 ${
+      danger
+        ? 'text-red-400'
+        : active
+          ? 'text-white'
+          : 'text-white/50'
+    }`}
+  >
+    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
+      danger
+        ? 'bg-red-500/20 border border-red-500/30'
+        : active
+          ? 'bg-purple-500/20 border border-purple-500/30'
+          : 'bg-white/5 border border-white/10'
+    }`}>
+      <i className={`fas ${icon} text-xl`}></i>
+    </div>
+    <span className="text-[10px] font-medium">{label}</span>
+  </motion.button>
+);
 
 interface VoiceStageProps {
   myStream: MediaStream | null;
@@ -145,16 +179,19 @@ const useAudioActivity = (stream: MediaStream | null, enabled: boolean = true) =
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const prevSpeakingRef = useRef(false);
 
   useEffect(() => {
     if (!stream || !enabled) {
       setIsSpeaking(false);
+      prevSpeakingRef.current = false;
       return;
     }
 
     const audioTracks = stream.getAudioTracks();
     if (audioTracks.length === 0) {
       setIsSpeaking(false);
+      prevSpeakingRef.current = false;
       return;
     }
 
@@ -181,13 +218,17 @@ const useAudioActivity = (stream: MediaStream | null, enabled: boolean = true) =
         analyserRef.current.getByteFrequencyData(dataArray);
         const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
 
-        setIsSpeaking(average > THRESHOLD);
+        const nowSpeaking = average > THRESHOLD;
+        if (nowSpeaking !== prevSpeakingRef.current) {
+          prevSpeakingRef.current = nowSpeaking;
+          setIsSpeaking(nowSpeaking);
+        }
         animationFrameRef.current = requestAnimationFrame(checkAudio);
       };
 
       checkAudio();
     } catch (err) {
-      console.error('Audio activity detection error:', err);
+      logger.error('voiceStage', 'Audio activity detection error', err);
     }
 
     // Cleanup always runs — whether try succeeded or caught
@@ -263,11 +304,36 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
     });
   }, [remoteStreams]);
 
-  // Effect to track audio activity for remote streams
-  useEffect(() => {
-    const audioContexts: Map<string, { ctx: AudioContext; animFrame: number }> = new Map();
+  // Ref to track active AudioContexts by peer ID (avoids teardown/recreate on every remoteStreams change)
+  const remoteAudioContextsRef = useRef<Map<string, { ctx: AudioContext; animFrame: number }>>(new Map());
 
+  // Ref to track previous speaking state per peer (avoids setState on every rAF)
+  const prevRemoteSpeakingRef = useRef<Map<string, boolean>>(new Map());
+
+  // Effect to track audio activity for remote streams (incremental diff)
+  useEffect(() => {
+    const activeContexts = remoteAudioContextsRef.current;
+    const currentPeerIds = new Set(remoteStreams.keys());
+
+    // Remove contexts for peers that are no longer in remoteStreams
+    activeContexts.forEach(({ ctx, animFrame }, peerId) => {
+      if (!currentPeerIds.has(peerId)) {
+        cancelAnimationFrame(animFrame);
+        ctx.close();
+        activeContexts.delete(peerId);
+        prevRemoteSpeakingRef.current.delete(peerId);
+        setRemoteSpeaking(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(peerId);
+          return newMap;
+        });
+      }
+    });
+
+    // Add contexts for new peers
     remoteStreams.forEach((stream, peerId) => {
+      if (activeContexts.has(peerId)) return; // Already tracked, leave unchanged
+
       const audioTracks = stream.getAudioTracks();
       if (audioTracks.length === 0) return;
 
@@ -287,33 +353,43 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
           analyser.getByteFrequencyData(dataArray);
           const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
 
-          setRemoteSpeaking(prev => {
-            const newMap = new Map(prev);
-            newMap.set(peerId, average > THRESHOLD);
-            return newMap;
-          });
+          const nowSpeaking = average > THRESHOLD;
+          const prevSpeaking = prevRemoteSpeakingRef.current.get(peerId);
+          if (nowSpeaking !== prevSpeaking) {
+            prevRemoteSpeakingRef.current.set(peerId, nowSpeaking);
+            setRemoteSpeaking(prev => {
+              const newMap = new Map(prev);
+              newMap.set(peerId, nowSpeaking);
+              return newMap;
+            });
+          }
 
           const animFrame = requestAnimationFrame(checkAudio);
-          const existing = audioContexts.get(peerId);
+          const existing = activeContexts.get(peerId);
           if (existing) {
-            audioContexts.set(peerId, { ...existing, animFrame });
+            activeContexts.set(peerId, { ...existing, animFrame });
           }
         };
 
         const animFrame = requestAnimationFrame(checkAudio);
-        audioContexts.set(peerId, { ctx: audioContext, animFrame });
+        activeContexts.set(peerId, { ctx: audioContext, animFrame });
       } catch (err) {
-        console.error('Remote audio activity error:', err);
+        logger.error('voiceStage', 'Remote audio activity error', err);
       }
     });
+    // NO cleanup function here — the diff logic above handles add/remove incrementally
+  }, [remoteStreams]);
 
+  // Separate unmount-only cleanup for remote audio contexts
+  useEffect(() => {
     return () => {
-      audioContexts.forEach(({ ctx, animFrame }) => {
+      remoteAudioContextsRef.current.forEach(({ ctx, animFrame }) => {
         cancelAnimationFrame(animFrame);
         ctx.close();
       });
+      remoteAudioContextsRef.current.clear();
     };
-  }, [remoteStreams]);
+  }, []);
 
   // Toggle spotlight
   const toggleSpotlight = (userId: string) => {
@@ -345,7 +421,7 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
         const playPromise = el.play();
         if (playPromise !== undefined) {
           playPromise.catch((e) => {
-            console.log(`Local video play failed: ${e.message}`);
+            logger.debug('voiceStage', `Video play error: ${e.message}`);
           });
         }
       }
@@ -357,7 +433,7 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
         const playPromise = el.play();
         if (playPromise !== undefined) {
           playPromise.catch((e) => {
-            console.log(`Remote video play failed for ${userId}: ${e.message}`);
+            logger.debug('voiceStage', `Video play error: ${e.message}`);
           });
         }
       }
@@ -465,8 +541,8 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
     </div>
   );
 
-  // Get all participants for rendering
-  const allParticipants = [
+  // Get all participants for rendering (memoized to avoid re-computing on every render)
+  const allParticipants = useMemo(() => [
     { id: 'self', stream: myStream, isLocal: true, isSpeaking: isLocalSpeaking, hasVideo: isVideoEnabled || isScreenSharing },
     ...Array.from(remoteStreams.entries()).map(([peerId, stream]) => {
       // Check for video tracks - on mobile, tracks may initially report as not enabled
@@ -482,42 +558,17 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
         hasVideo
       };
     })
-  ];
+  ], [myStream, isLocalSpeaking, isVideoEnabled, isScreenSharing, remoteStreams, remoteSpeaking]);
+
+  // Clear spotlight if the spotlighted user is no longer a participant (e.g., they left)
+  useEffect(() => {
+    if (spotlightedUser && !allParticipants.find(p => p.id === spotlightedUser)) {
+      setSpotlightedUser(null);
+    }
+  }, [spotlightedUser, allParticipants]);
 
   const isMobile = useIsMobile();
   const { colors } = useTheme();
-
-  // Mobile control button component
-  const MobileControlButton: React.FC<{
-    onClick: () => void;
-    active?: boolean;
-    danger?: boolean;
-    icon: string;
-    label: string;
-  }> = ({ onClick, active, danger, icon, label }) => (
-    <motion.button
-      onClick={onClick}
-      whileTap={{ scale: 0.9 }}
-      className={`flex flex-col items-center justify-center gap-1 ${
-        danger
-          ? 'text-red-400'
-          : active
-            ? 'text-white'
-            : 'text-white/50'
-      }`}
-    >
-      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
-        danger
-          ? 'bg-red-500/20 border border-red-500/30'
-          : active
-            ? 'bg-purple-500/20 border border-purple-500/30'
-            : 'bg-white/5 border border-white/10'
-      }`}>
-        <i className={`fas ${icon} text-xl`}></i>
-      </div>
-      <span className="text-[10px] font-medium">{label}</span>
-    </motion.button>
-  );
 
   // Mobile layout
   if (isMobile) {
@@ -664,7 +715,6 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
                   {(() => {
                     const p = allParticipants.find(x => x.id === spotlightedUser);
                     if (!p) {
-                      setSpotlightedUser(null);
                       return null;
                     }
                     const user = p.isLocal ? userProfile : getRemoteUser(p.id);
@@ -825,8 +875,6 @@ export const VoiceStage: React.FC<VoiceStageProps> = ({
               {(() => {
                 const p = allParticipants.find(x => x.id === spotlightedUser);
                 if (!p) {
-                  // User left, clear spotlight
-                  setSpotlightedUser(null);
                   return null;
                 }
                 const user = p.isLocal ? userProfile : getRemoteUser(p.id);

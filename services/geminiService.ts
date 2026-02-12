@@ -254,32 +254,39 @@ export const transcribeAudio = async (audioUrl: string): Promise<string> => {
 
     const mimeType = blob.type || 'audio/wav';
 
-    const result = await client.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            {
-              inlineData: {
-                mimeType,
-                data: base64
+    const transcriptionTimeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('TIMEOUT')), 30000)
+    );
+
+    const result = await Promise.race([
+      client.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                inlineData: {
+                  mimeType,
+                  data: base64
+                }
+              },
+              {
+                text: "Transcribe this audio message. Format the transcript nicely with proper punctuation and capitalization. If multiple speakers are detected, label them as 'Speaker 1:', 'Speaker 2:', etc. on separate lines. Keep the transcription accurate to what was spoken. If the audio is unclear or silent, respond with '[Audio unclear or silent]'."
               }
-            },
-            {
-              text: "Transcribe this audio message. Format the transcript nicely with proper punctuation and capitalization. If multiple speakers are detected, label them as 'Speaker 1:', 'Speaker 2:', etc. on separate lines. Keep the transcription accurate to what was spoken. If the audio is unclear or silent, respond with '[Audio unclear or silent]'."
-            }
-          ]
-        }
-      ],
-      config: {
-        maxOutputTokens: 1024,
-        temperature: 0.1,
-      },
-    });
+            ]
+          }
+        ],
+        config: {
+          maxOutputTokens: 1024,
+          temperature: 0.1,
+        },
+      }),
+      transcriptionTimeout,
+    ]);
     return result.text || "[No transcription generated]";
   } catch (error: any) {
-    if (error.name === 'AbortError') {
+    if (error.name === 'AbortError' || error.message === 'TIMEOUT') {
       logger.error('gemini', 'Transcription timed out after 30s');
       return "⚠️ Transcription timed out. Please try again.";
     }
@@ -384,9 +391,6 @@ export const generateAIResponse = async (
     return "Please provide a prompt.";
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
-
   try {
     const client = await getClient();
     if (!client) {
@@ -407,24 +411,29 @@ export const generateAIResponse = async (
       }
     ];
 
-    const response = await client.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents,
-      config: {
-        systemInstruction,
-        maxOutputTokens: 1024,
-        temperature: 0.8,
-      },
-    });
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('TIMEOUT')), 15000)
+    );
+
+    const response = await Promise.race([
+      client.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents,
+        config: {
+          systemInstruction,
+          maxOutputTokens: 1024,
+          temperature: 0.8,
+        },
+      }),
+      timeout,
+    ]);
     return response.text || "No response generated.";
   } catch (error: any) {
-    if (error.name === 'AbortError') {
+    if (error.message === 'TIMEOUT') {
       logger.error('gemini', 'Pissbot request timed out after 15s');
       return "⚠️ Pissbot took too long to respond. Try again.";
     }
     logger.error('gemini', `Error generating AI response: ${error.message}`);
     return `⚠️ Pissbot Error: ${error.message || "Connection failed"}`;
-  } finally {
-    clearTimeout(timeoutId);
   }
 };

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Platform, UpdateService, LinkService } from '../services/platform';
+import { logger } from '../services/logger';
 
 interface UpdateModalProps {
   latestVersion: string;
@@ -24,7 +25,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 
   const handleDownload = () => {
     if (supportsAutoUpdate) {
-      console.log('[UPDATE] User clicked download, calling UpdateService.downloadUpdate()');
+      logger.info('update', 'User clicked download, calling UpdateService.downloadUpdate()');
       UpdateService.downloadUpdate();
     } else if (isWebBrowser) {
       // Web users just need to refresh the page

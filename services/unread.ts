@@ -5,6 +5,8 @@
  * Persists to localStorage for cross-session tracking.
  */
 
+import { logger } from './logger';
+
 const STORAGE_KEY = 'pisscord_unread';
 
 interface UnreadState {
@@ -33,7 +35,7 @@ export function loadUnreadState(): void {
       };
     }
   } catch (error) {
-    console.error('[Unread] Failed to load state:', error);
+    logger.error('unread', 'Failed to load state', error);
   }
 }
 
@@ -44,7 +46,7 @@ function saveState(): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (error) {
-    console.error('[Unread] Failed to save state:', error);
+    logger.error('unread', 'Failed to save state', error);
   }
 }
 

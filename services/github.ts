@@ -1,4 +1,5 @@
 import { Message } from '../types';
+import { logger } from './logger';
 
 interface GitHubRelease {
   id: number;
@@ -80,7 +81,7 @@ export const fetchGitHubReleases = async (): Promise<Message[]> => {
     lastFetchTime = Date.now();
     return messages;
   } catch (error) {
-    console.error("GitHub Fetch Error:", error);
+    logger.error('github', 'Failed to fetch releases', error);
     return [];
   }
 };
@@ -140,7 +141,7 @@ export const fetchGitHubEvents = async (): Promise<Message[]> => {
         lastEventsFetchTime = Date.now();
         return messages;
     } catch (error) {
-        console.error("GitHub Events Error:", error);
+        logger.error('github', 'Failed to fetch events', error);
         return [];
     }
 };

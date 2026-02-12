@@ -626,12 +626,12 @@ export const ChannelList: React.FC<ChannelListProps> = ({
                   <input
                     type="range"
                     min="0"
-                    max="200"
+                    max="100"
                     value={remoteVolume}
                     onChange={(e) => onVolumeChange(Number(e.target.value))}
                     className="w-24 h-2 bg-discord-main rounded-lg appearance-none cursor-pointer"
                     style={{
-                      background: `linear-gradient(to right, #5865F2 0%, #5865F2 ${remoteVolume/2}%, #2f3136 ${remoteVolume/2}%, #2f3136 100%)`
+                      background: `linear-gradient(to right, #5865F2 0%, #5865F2 ${remoteVolume}%, #2f3136 ${remoteVolume}%, #2f3136 100%)`
                     }}
                   />
                   <div className="text-xs text-white text-center mt-1">{remoteVolume}%</div>
